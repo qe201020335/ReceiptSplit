@@ -1,0 +1,7 @@
+﻿services:
+  receiptsplit:
+    image: receiptsplit
+    build:
+      context: .
+      dockerfile: ReceiptSplit/Dockerfile
+
