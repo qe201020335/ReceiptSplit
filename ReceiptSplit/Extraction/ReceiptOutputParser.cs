@@ -1,0 +1,165 @@
+using System.Globalization;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+namespace ReceiptSplit.Extraction;
+
+public sealed record ParsedLine(string Name, string? Code, decimal Quantity, decimal Amount, string? TaxCode);
+
+public sealed record ParsedReceipt(
+    IReadOnlyList<ParsedLine> Lines,
+    decimal? Subtotal,
+    decimal? Tax,
+    decimal? Total,
+    string? StoreName,
+    DateOnly? PurchaseDate);
+
+/// <summary>
+/// Reads the model's row-per-line output. The model gets values right but slips on structure (code fences,
+/// a dropped '[', rows wrapped as [[row]], everything in one array), so each row is matched on its own instead
+/// of parsing the whole output as JSON. The totals check catches genuine misreads.
+/// </summary>
+public static partial class ReceiptOutputParser
+{
+    private const string JsonString = """
+        "(?:[^"\\]|\\.)*"
+        """;
+
+    private const string RowPattern =
+        $$"""
+        (?<name>{{JsonString}})\s*,\s*(?<code>{{JsonString}}|null|-?\d+)\s*,\s*(?<qty>"?-?\d+(?:\.\d+)?"?|null)\s*,\s*"(?<amount>\(?-?\$?-?[\d,]*\.\d{2}-?\)?)"\s*,\s*(?<tax>{{JsonString}}|null)
+        """;
+
+    [GeneratedRegex(RowPattern)]
+    private static partial Regex RowRegex();
+
+    [GeneratedRegex("""\{[^{}]*"s"\s*:[^{}]*\}""")]
+    private static partial Regex TotalsRegex();
+
+    public static ParsedReceipt Parse(string content)
+    {
+        var lines = new List<ParsedLine>();
+        foreach (Match row in RowRegex().Matches(content))
+        {
+            var amount = ParseMoney(row.Groups["amount"].Value);
+            if (amount is null or 0m)
+            {
+                continue;
+            }
+
+            lines.Add(new ParsedLine(
+                Name: ReadToken(row.Groups["name"].Value)?.Trim() ?? "",
+                Code: NullIfBlank(ReadToken(row.Groups["code"].Value)),
+                Quantity: ParseQuantity(row.Groups["qty"].Value),
+                Amount: amount.Value,
+                TaxCode: NullIfBlank(ReadToken(row.Groups["tax"].Value))));
+        }
+
+        var totals = TotalsRegex().Matches(content).LastOrDefault();
+        if (totals is null)
+        {
+            return new ParsedReceipt(lines, null, null, null, null, null);
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(totals.Value);
+            var root = document.RootElement;
+            return new ParsedReceipt(
+                lines,
+                Subtotal: ParseMoney(ReadProperty(root, "s")),
+                Tax: ParseMoney(ReadProperty(root, "t")),
+                Total: ParseMoney(ReadProperty(root, "T")),
+                StoreName: NullIfBlank(ReadProperty(root, "store")),
+                PurchaseDate: ParseDate(ReadProperty(root, "date")));
+        }
+        catch (JsonException)
+        {
+            return new ParsedReceipt(lines, null, null, null, null, null);
+        }
+    }
+
+    /// <summary>Parses "4.99", "$1,234.50", "-3.00", "3.00-" or "(3.00)".</summary>
+    public static decimal? ParseMoney(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        var value = text.Trim();
+        var negative = false;
+        if (value.StartsWith('(') && value.EndsWith(')'))
+        {
+            negative = true;
+            value = value[1..^1];
+        }
+
+        if (value.EndsWith('-'))
+        {
+            negative = true;
+            value = value[..^1];
+        }
+
+        value = value.Replace("$", "").Replace(",", "").Trim();
+        if (value.StartsWith('-'))
+        {
+            negative = true;
+            value = value[1..];
+        }
+
+        return decimal.TryParse(value, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var amount)
+            ? negative ? -amount : amount
+            : null;
+    }
+
+    private static decimal ParseQuantity(string token)
+    {
+        var value = token.Trim('"');
+        return decimal.TryParse(value, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
+            CultureInfo.InvariantCulture, out var quantity)
+            ? quantity
+            : 1m;
+    }
+
+    private static DateOnly? ParseDate(string? text) =>
+        text is { Length: >= 10 } &&
+        DateOnly.TryParseExact(text.Trim()[..10], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+            ? date
+            : null;
+
+    /// <summary>Reads a matched JSON string, <c>null</c>, or bare number token.</summary>
+    private static string? ReadToken(string token)
+    {
+        if (token == "null")
+        {
+            return null;
+        }
+
+        if (!token.StartsWith('"'))
+        {
+            return token;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<string>(token);
+        }
+        catch (JsonException)
+        {
+            return token[1..^1];
+        }
+    }
+
+    private static string? ReadProperty(JsonElement root, string name) =>
+        root.TryGetProperty(name, out var value)
+            ? value.ValueKind switch
+            {
+                JsonValueKind.String => value.GetString(),
+                JsonValueKind.Number => value.GetRawText(),
+                _ => null,
+            }
+            : null;
+
+    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+}
