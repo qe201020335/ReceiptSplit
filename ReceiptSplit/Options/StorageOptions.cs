@@ -1,0 +1,16 @@
+namespace ReceiptSplit.Options;
+
+/// <summary>Where the SQLite database and uploaded receipt photos live.</summary>
+public sealed class StorageOptions
+{
+    public const string SectionName = "Storage";
+
+    /// <summary>Resolved against the content root when relative.</summary>
+    public string Root { get; set; } = "data";
+
+    public string DatabasePath => Path.Combine(Root, "receiptsplit.db");
+
+    public string UploadsPath => Path.Combine(Root, "uploads");
+
+    public string GetUploadPath(string storedFileName) => Path.Combine(UploadsPath, storedFileName);
+}
