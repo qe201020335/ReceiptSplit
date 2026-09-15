@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# MSBuild output of receiptsplit.client.esproj. On Linux the JavaScript SDK's first restore
+# writes into a folder literally named "obj\Debug", which the root obj/ rule doesn't match.
+bin
+obj*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
