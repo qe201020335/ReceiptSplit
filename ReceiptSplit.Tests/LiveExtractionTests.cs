@@ -26,7 +26,8 @@ public class LiveExtractionTests
         var preparer = scope.ServiceProvider.GetRequiredService<ImagePreparer>();
         var llm = scope.ServiceProvider.GetRequiredService<ILlamaClient>();
 
-        var image = preparer.Prepare(await File.ReadAllBytesAsync(Path.Combine(TestPaths.Samples, photo)));
+        var image = preparer.Prepare(
+            await File.ReadAllBytesAsync(Path.Combine(TestPaths.Samples, photo), TestContext.Current.CancellationToken));
         var completion = await llm.ExtractReceiptAsync(image, TestContext.Current.CancellationToken);
         var parsed = ReceiptOutputParser.Parse(completion.Content);
 

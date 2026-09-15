@@ -17,6 +17,8 @@ public class ReceiptsApiTests
         Converters = { new JsonStringEnumConverter() },
     };
 
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
+
     [Fact]
     public async Task Upload_extract_rerun_and_delete()
     {
@@ -25,13 +27,13 @@ public class ReceiptsApiTests
         var photo = TestImages.Create(64, 48, MagickFormat.Jpeg);
 
         factory.Llm.Block();
-        using var upload = await client.PostAsync("/api/receipts", PhotoForm(photo, "lunch.jpg"));
+        using var upload = await client.PostAsync("/api/receipts", PhotoForm(photo, "lunch.jpg"), Ct);
         Assert.Equal(HttpStatusCode.Accepted, upload.StatusCode);
-        var queued = (await upload.Content.ReadFromJsonAsync<ReceiptQueuedDto>(Json))!;
+        var queued = (await upload.Content.ReadFromJsonAsync<ReceiptQueuedDto>(Json, Ct))!;
         Assert.Equal(ReceiptStatus.Queued, queued.Status);
         Assert.Equal($"/api/receipts/{queued.Id}", upload.Headers.Location?.AbsolutePath);
 
-        using (var busy = await client.PostAsync($"/api/receipts/{queued.Id}/extract", null))
+        using (var busy = await client.PostAsync($"/api/receipts/{queued.Id}/extract", null, Ct))
         {
             Assert.Equal(HttpStatusCode.Conflict, busy.StatusCode);
         }
@@ -55,11 +57,11 @@ public class ReceiptsApiTests
         Assert.Equal(("fake-model", 64, 48), (receipt.Extraction?.Model, receipt.Extraction?.SentImageWidth, receipt.Extraction?.SentImageHeight));
         Assert.Equal(photo, Assert.Single(factory.Llm.Requests).Data);
 
-        Assert.Equal(photo, await client.GetByteArrayAsync($"/api/receipts/{queued.Id}/image"));
-        var summaries = await client.GetFromJsonAsync<List<ReceiptSummaryDto>>("/api/receipts", Json);
+        Assert.Equal(photo, await client.GetByteArrayAsync($"/api/receipts/{queued.Id}/image", Ct));
+        var summaries = await client.GetFromJsonAsync<List<ReceiptSummaryDto>>("/api/receipts", Json, Ct);
         Assert.Equal((queued.Id, 8.19m), (Assert.Single(summaries!).Id, summaries![0].Total!.Value));
 
-        using (var rerun = await client.PostAsync($"/api/receipts/{queued.Id}/extract", null))
+        using (var rerun = await client.PostAsync($"/api/receipts/{queued.Id}/extract", null, Ct))
         {
             Assert.Equal(HttpStatusCode.Accepted, rerun.StatusCode);
         }
@@ -69,12 +71,12 @@ public class ReceiptsApiTests
         Assert.Equal(2, receipt.Lines.Count);
         Assert.Equal(2, factory.Llm.Requests.Count);
 
-        using (var delete = await client.DeleteAsync($"/api/receipts/{queued.Id}"))
+        using (var delete = await client.DeleteAsync($"/api/receipts/{queued.Id}", Ct))
         {
             Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
         }
 
-        using var gone = await client.GetAsync($"/api/receipts/{queued.Id}");
+        using var gone = await client.GetAsync($"/api/receipts/{queued.Id}", Ct);
         Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
         Assert.Empty(Directory.GetFiles(Path.Combine(factory.StorageRoot, "uploads")));
     }
@@ -114,11 +116,11 @@ public class ReceiptsApiTests
         await using var factory = new ReceiptApiFactory();
         using var client = factory.CreateClient();
 
-        using var response = await client.PostAsync("/api/receipts", PhotoForm("not a photo"u8.ToArray(), "notes.txt"));
+        using var response = await client.PostAsync("/api/receipts", PhotoForm("not a photo"u8.ToArray(), "notes.txt"), Ct);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Empty(Directory.GetFiles(Path.Combine(factory.StorageRoot, "uploads")));
-        Assert.Empty((await client.GetFromJsonAsync<List<ReceiptSummaryDto>>("/api/receipts", Json))!);
+        Assert.Empty((await client.GetFromJsonAsync<List<ReceiptSummaryDto>>("/api/receipts", Json, Ct))!);
     }
 
     [Fact]
@@ -128,19 +130,19 @@ public class ReceiptsApiTests
         using var client = factory.CreateClient();
         var id = Guid.CreateVersion7();
 
-        using var get = await client.GetAsync($"/api/receipts/{id}");
-        using var image = await client.GetAsync($"/api/receipts/{id}/image");
-        using var extract = await client.PostAsync($"/api/receipts/{id}/extract", null);
-        using var delete = await client.DeleteAsync($"/api/receipts/{id}");
+        using var get = await client.GetAsync($"/api/receipts/{id}", Ct);
+        using var image = await client.GetAsync($"/api/receipts/{id}/image", Ct);
+        using var extract = await client.PostAsync($"/api/receipts/{id}/extract", null, Ct);
+        using var delete = await client.DeleteAsync($"/api/receipts/{id}", Ct);
 
         Assert.All([get, image, extract, delete], r => Assert.Equal(HttpStatusCode.NotFound, r.StatusCode));
     }
 
     private static async Task<ReceiptDetailDto> UploadAndWaitAsync(HttpClient client, byte[] photo)
     {
-        using var upload = await client.PostAsync("/api/receipts", PhotoForm(photo, "receipt.jpg"));
+        using var upload = await client.PostAsync("/api/receipts", PhotoForm(photo, "receipt.jpg"), Ct);
         Assert.Equal(HttpStatusCode.Accepted, upload.StatusCode);
-        var queued = (await upload.Content.ReadFromJsonAsync<ReceiptQueuedDto>(Json))!;
+        var queued = (await upload.Content.ReadFromJsonAsync<ReceiptQueuedDto>(Json, Ct))!;
         return await WaitForResultAsync(client, queued.Id);
     }
 
@@ -148,13 +150,13 @@ public class ReceiptsApiTests
     {
         for (var attempt = 0; attempt < 200; attempt++)
         {
-            var receipt = (await client.GetFromJsonAsync<ReceiptDetailDto>($"/api/receipts/{id}", Json))!;
+            var receipt = (await client.GetFromJsonAsync<ReceiptDetailDto>($"/api/receipts/{id}", Json, Ct))!;
             if (receipt.Status is not (ReceiptStatus.Queued or ReceiptStatus.Processing))
             {
                 return receipt;
             }
 
-            await Task.Delay(50);
+            await Task.Delay(50, Ct);
         }
 
         throw new TimeoutException($"Receipt {id} was not extracted within 10 seconds.");
