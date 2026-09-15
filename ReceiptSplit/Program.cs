@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ReceiptSplit.Data;
@@ -34,7 +35,8 @@ builder.Services.AddScoped<ReceiptService>();
 // Registered after DatabaseInitializer so migrations are applied before unfinished receipts are re-queued.
 builder.Services.AddHostedService<ExtractionWorker>();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
