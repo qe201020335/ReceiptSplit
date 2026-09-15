@@ -1,8 +1,11 @@
-﻿FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
-USER $APP_UID
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
+# The SQLite database and uploaded photos live here. It's owned by the non-root app user so a
+# named volume mounted over it inherits that ownership.
+RUN mkdir -p /app/data && chown $APP_UID /app/data
+USER $APP_UID
+ENV Storage__Root=/app/data
 EXPOSE 8080
-EXPOSE 8081
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
