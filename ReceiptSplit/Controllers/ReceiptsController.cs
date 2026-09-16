@@ -75,6 +75,23 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts, IOptio
         return System.IO.File.Exists(path) ? PhysicalFile(path, receipt.ContentType) : NotFound();
     }
 
+    /// <summary>Replaces the extracted lines and totals with hand corrected ones and re-checks the receipt.</summary>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType<ReceiptDetailDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ReceiptDetailDto>> Update(Guid id, ReceiptEditDto request, CancellationToken cancellationToken) =>
+        await receipts.UpdateAsync(id, request.ToEdit(), cancellationToken) switch
+        {
+            ReceiptActionResult.Done => await Get(id, cancellationToken),
+            ReceiptActionResult.Busy => Problem(
+                title: "Receipt is busy",
+                detail: "The receipt is queued or being extracted; edit it once extraction finishes.",
+                statusCode: StatusCodes.Status409Conflict),
+            _ => NotFound(),
+        };
+
     /// <summary>Changes the tax rate the receipt is checked against and re-checks it, without calling the model.</summary>
     [HttpPatch("{id:guid}")]
     [ProducesResponseType<ReceiptDetailDto>(StatusCodes.Status200OK)]

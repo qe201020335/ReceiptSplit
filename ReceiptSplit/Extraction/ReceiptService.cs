@@ -98,6 +98,55 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
     }
 
     /// <summary>
+    /// Replaces the extracted store, date, totals and lines with hand corrected ones, and re-checks the receipt.
+    /// Refused while the model is reading the photo, because that would overwrite the correction moments later.
+    /// </summary>
+    public async Task<ReceiptActionResult> UpdateAsync(Guid id, ReceiptEdit edit, CancellationToken cancellationToken)
+    {
+        var receipt = await db.Receipts.Include(r => r.Lines).FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+        if (receipt is null)
+        {
+            return ReceiptActionResult.NotFound;
+        }
+
+        if (receipt.Status is ReceiptStatus.Queued or ReceiptStatus.Processing)
+        {
+            return ReceiptActionResult.Busy;
+        }
+
+        receipt.StoreName = Trimmed(edit.StoreName);
+        receipt.PurchaseDate = edit.PurchaseDate;
+        receipt.Subtotal = edit.Subtotal;
+        receipt.Tax = edit.Tax;
+        receipt.Total = edit.Total;
+
+        receipt.Lines.Clear();
+        receipt.Lines.AddRange(edit.Lines.Select((line, position) => new ReceiptLine
+        {
+            Position = position,
+            Name = line.Name.Trim(),
+            Code = Trimmed(line.Code),
+            Quantity = line.Quantity,
+            Amount = line.Amount,
+            TaxCode = Trimmed(line.TaxCode),
+            IsTaxed = line.IsTaxed,
+        }));
+
+        // Whatever went wrong during extraction has just been corrected by hand.
+        receipt.Error = null;
+        receipt.EditedAt = DateTime.UtcNow;
+        receipt.Status = ReceiptChecks.StatusFor(ReceiptChecks.Evaluate(
+            receipt.Lines.Select(l => (l.Amount, l.IsTaxed)),
+            receipt.Subtotal,
+            receipt.Tax,
+            receipt.Total,
+            receipt.TaxRatePercent));
+
+        await db.SaveChangesAsync(cancellationToken);
+        return ReceiptActionResult.Done;
+    }
+
+    /// <summary>
     /// Changes the tax rate the receipt is checked against. The checks are computed from the stored lines,
     /// so an already extracted receipt is re-checked here instead of being sent to the model again.
     /// </summary>
@@ -154,6 +203,8 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
         File.Delete(storage.Value.GetUploadPath(receipt.StoredFileName));
         return ReceiptActionResult.Done;
     }
+
+    private static string? Trimmed(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static void ValidateTaxRate(decimal percent)
     {
