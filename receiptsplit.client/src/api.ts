@@ -22,6 +22,8 @@ export interface ReceiptLine {
   code: string | null
   quantity: number
   amount: number
+  /** Promotion already deducted from the amount, negative, or 0; the printed price is amount - discount. */
+  discount: number
   taxCode: string | null
   isTaxed: boolean
 }
@@ -61,6 +63,7 @@ export interface ReceiptLineEdit {
   code: string | null
   quantity: number
   amount: number
+  discount: number
   taxCode: string | null
   isTaxed: boolean
 }
