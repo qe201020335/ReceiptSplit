@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ActionIcon, Button, Checkbox, Group, Stack, Table, Text, TextInput } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
 import { api, errorMessage, type ReceiptDetail, type ReceiptLineEdit } from '../api.ts'
 import { formatMoney } from '../format.ts'
 
@@ -48,6 +50,8 @@ function draftLines(receipt: ReceiptDetail): LineDraft[] {
   }))
 }
 
+const numberInput = { input: { textAlign: 'right' as const } }
+
 export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps) {
   const [storeName, setStoreName] = useState(receipt.storeName ?? '')
   const [purchaseDate, setPurchaseDate] = useState(receipt.purchaseDate ?? '')
@@ -57,7 +61,6 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
   const [lines, setLines] = useState<LineDraft[]>(() => draftLines(receipt))
   const [nextKey, setNextKey] = useState(receipt.lines.length)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   function updateLine(key: number, change: Partial<LineDraft>) {
     setLines((current) => current.map((line) => (line.key === key ? { ...line, ...change } : line)))
@@ -94,7 +97,6 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
     }
 
     setSaving(true)
-    setError(null)
     try {
       const edit = {
         storeName: storeName.trim() === '' ? null : storeName.trim(),
@@ -116,170 +118,193 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
       }
       onSaved(await api.updateReceipt(receipt.id, edit))
     } catch (e) {
-      setError(errorMessage(e))
+      notifications.show({ title: "Couldn't save the corrections", message: errorMessage(e), color: 'red' })
       setSaving(false)
     }
   }
 
   return (
     <form
-      className="editor"
       onSubmit={(event) => {
         event.preventDefault()
         void save()
       }}
     >
-      {error && <p className="error">{error}</p>}
+      <Stack gap="sm">
+        <Group gap="sm" align="flex-end">
+          <TextInput
+            label="Store"
+            size="xs"
+            w={200}
+            maxLength={200}
+            value={storeName}
+            onChange={(event) => setStoreName(event.currentTarget.value)}
+          />
+          <TextInput
+            label="Purchase date"
+            size="xs"
+            type="date"
+            w={160}
+            value={purchaseDate}
+            onChange={(event) => setPurchaseDate(event.currentTarget.value)}
+          />
+        </Group>
 
-      <div className="editor-fields">
-        <label>
-          Store
-          <input type="text" value={storeName} onChange={(event) => setStoreName(event.target.value)} maxLength={200} />
-        </label>
-        <label>
-          Purchase date
-          <input type="date" value={purchaseDate} onChange={(event) => setPurchaseDate(event.target.value)} />
-        </label>
-      </div>
+        <Table.ScrollContainer minWidth={700}>
+          <Table verticalSpacing={4} horizontalSpacing="xs">
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th w={30}>#</Table.Th>
+                <Table.Th>Item</Table.Th>
+                <Table.Th w={90}>Code</Table.Th>
+                <Table.Th w={90} ta="right">
+                  Qty
+                </Table.Th>
+                <Table.Th w={100} ta="right">
+                  Amount
+                </Table.Th>
+                <Table.Th w={100} ta="right">
+                  Discount
+                </Table.Th>
+                <Table.Th w={80}>Tax code</Table.Th>
+                <Table.Th w={60}>Taxed</Table.Th>
+                <Table.Th w={40} />
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {lines.map((line, index) => (
+                <Table.Tr key={line.key}>
+                  <Table.Td c="dimmed">{index + 1}</Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="xs"
+                      miw={160}
+                      aria-label={`Item ${index + 1} name`}
+                      maxLength={200}
+                      value={line.name}
+                      onChange={(event) => updateLine(line.key, { name: event.currentTarget.value })}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="xs"
+                      aria-label={`Item ${index + 1} code`}
+                      maxLength={50}
+                      value={line.code}
+                      onChange={(event) => updateLine(line.key, { code: event.currentTarget.value })}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="xs"
+                      inputMode="decimal"
+                      styles={numberInput}
+                      aria-label={`Item ${index + 1} quantity`}
+                      value={line.quantity}
+                      onChange={(event) => updateLine(line.key, { quantity: event.currentTarget.value })}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="xs"
+                      inputMode="decimal"
+                      styles={numberInput}
+                      aria-label={`Item ${index + 1} amount`}
+                      value={line.amount}
+                      onChange={(event) => updateLine(line.key, { amount: event.currentTarget.value })}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="xs"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      styles={numberInput}
+                      aria-label={`Item ${index + 1} discount`}
+                      value={line.discount}
+                      onChange={(event) => updateLine(line.key, { discount: event.currentTarget.value })}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <TextInput
+                      size="xs"
+                      aria-label={`Item ${index + 1} tax code`}
+                      maxLength={16}
+                      value={line.taxCode}
+                      onChange={(event) => updateLine(line.key, { taxCode: event.currentTarget.value })}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <Checkbox
+                      aria-label={`Item ${index + 1} is taxed`}
+                      checked={line.isTaxed}
+                      onChange={(event) => updateLine(line.key, { isTaxed: event.currentTarget.checked })}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <ActionIcon
+                      variant="subtle"
+                      color="red"
+                      aria-label={`Remove item ${index + 1}`}
+                      onClick={() => setLines((current) => current.filter((other) => other.key !== line.key))}
+                    >
+                      ✕
+                    </ActionIcon>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
 
-      <div className="table-scroll">
-        <table className="lines editor-lines">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Item</th>
-              <th>Code</th>
-              <th className="num">Qty</th>
-              <th className="num">Amount</th>
-              <th className="num">Discount</th>
-              <th>Tax code</th>
-              <th>Taxed</th>
-              <th>
-                <span className="visually-hidden">Remove</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line, index) => (
-              <tr key={line.key}>
-                <td className="muted">{index + 1}</td>
-                <td>
-                  <input
-                    type="text"
-                    className="name-input"
-                    aria-label={`Item ${index + 1} name`}
-                    value={line.name}
-                    maxLength={200}
-                    onChange={(event) => updateLine(line.key, { name: event.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    className="code-input"
-                    aria-label={`Item ${index + 1} code`}
-                    value={line.code}
-                    maxLength={50}
-                    onChange={(event) => updateLine(line.key, { code: event.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    className="qty-input"
-                    aria-label={`Item ${index + 1} quantity`}
-                    value={line.quantity}
-                    onChange={(event) => updateLine(line.key, { quantity: event.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    className="amount-input"
-                    aria-label={`Item ${index + 1} amount`}
-                    value={line.amount}
-                    onChange={(event) => updateLine(line.key, { amount: event.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    className="amount-input"
-                    aria-label={`Item ${index + 1} discount`}
-                    value={line.discount}
-                    placeholder="0.00"
-                    onChange={(event) => updateLine(line.key, { discount: event.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    className="code-input"
-                    aria-label={`Item ${index + 1} tax code`}
-                    value={line.taxCode}
-                    maxLength={16}
-                    onChange={(event) => updateLine(line.key, { taxCode: event.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="checkbox"
-                    aria-label={`Item ${index + 1} is taxed`}
-                    checked={line.isTaxed}
-                    onChange={(event) => updateLine(line.key, { isTaxed: event.target.checked })}
-                  />
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    className="link"
-                    aria-label={`Remove item ${index + 1}`}
-                    onClick={() => setLines((current) => current.filter((other) => other.key !== line.key))}
-                  >
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        <Group gap="sm" align="flex-end">
+          <Button size="xs" variant="default" onClick={addLine}>
+            Add line
+          </Button>
+          <TextInput
+            label="Subtotal"
+            size="xs"
+            w={110}
+            inputMode="decimal"
+            styles={numberInput}
+            value={subtotal}
+            onChange={(event) => setSubtotal(event.currentTarget.value)}
+          />
+          <TextInput
+            label="Tax"
+            size="xs"
+            w={110}
+            inputMode="decimal"
+            styles={numberInput}
+            value={tax}
+            onChange={(event) => setTax(event.currentTarget.value)}
+          />
+          <TextInput
+            label="Total"
+            size="xs"
+            w={110}
+            inputMode="decimal"
+            styles={numberInput}
+            value={total}
+            onChange={(event) => setTotal(event.currentTarget.value)}
+          />
+        </Group>
 
-      <div className="editor-fields">
-        <button type="button" onClick={addLine}>
-          Add line
-        </button>
-        <label>
-          Subtotal
-          <input type="text" inputMode="decimal" value={subtotal} onChange={(event) => setSubtotal(event.target.value)} />
-        </label>
-        <label>
-          Tax
-          <input type="text" inputMode="decimal" value={tax} onChange={(event) => setTax(event.target.value)} />
-        </label>
-        <label>
-          Total
-          <input type="text" inputMode="decimal" value={total} onChange={(event) => setTotal(event.target.value)} />
-        </label>
-      </div>
+        <Text size="sm" c={difference === 0 ? 'green' : 'dimmed'}>
+          Lines add up to {formatMoney(linesSum)}
+          {difference != null && difference !== 0 && `, which is ${formatMoney(difference)} against the subtotal`}
+          {difference === 0 && ', matching the subtotal'}
+        </Text>
 
-      <p className={difference === 0 ? 'ok' : 'muted'}>
-        Lines add up to {formatMoney(linesSum)}
-        {difference != null && difference !== 0 && `, which is ${formatMoney(difference)} against the subtotal`}
-        {difference === 0 && ', matching the subtotal'}
-      </p>
-
-      <div className="actions">
-        <button type="submit" className="primary" disabled={invalid || saving}>
-          {saving ? 'Saving…' : 'Save corrections'}
-        </button>
-        <button type="button" onClick={onCancel} disabled={saving}>
-          Cancel
-        </button>
-      </div>
+        <Group gap="xs">
+          <Button type="submit" disabled={invalid} loading={saving}>
+            Save corrections
+          </Button>
+          <Button variant="default" onClick={onCancel} disabled={saving}>
+            Cancel
+          </Button>
+        </Group>
+      </Stack>
     </form>
   )
 }

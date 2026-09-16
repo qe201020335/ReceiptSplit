@@ -1,0 +1,12 @@
+.item {
+  border-radius: var(--mantine-radius-md);
+}
+
+/* The open receipt is where you already are: it keeps the highlight but stops behaving like a link. */
+.item:not([data-active]):hover {
+  background-color: var(--app-hover);
+}
+
+.item[data-active] {
+  cursor: default;
+}

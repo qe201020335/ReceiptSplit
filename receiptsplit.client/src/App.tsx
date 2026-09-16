@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Anchor, Box, Card, Container, Grid, Paper, Stack, Text } from '@mantine/core'
 import { api, errorMessage, inProgress, type ReceiptSummary } from './api.ts'
 import { ReceiptDetail } from './components/ReceiptDetail.tsx'
 import { ReceiptList } from './components/ReceiptList.tsx'
@@ -47,46 +48,57 @@ function App() {
   }, [receipts, anyInProgress, reloadList])
 
   return (
-    <>
-      <header className="app-header">
-        <a
+    <Box mih="100vh" bg="var(--app-bg)">
+      <Paper component="header" radius={0} py="sm" px="md" bd="0 0 1px 0 solid var(--mantine-color-default-border)">
+        <Anchor
           href="/"
-          className="brand"
+          fw={600}
+          size="lg"
+          underline="never"
+          c="var(--mantine-color-text)"
           onClick={(event) => {
             event.preventDefault()
             selectReceipt(null)
           }}
         >
           ReceiptSplit
-        </a>
-      </header>
-      <main className="layout">
-        <aside className="sidebar">
-          <UploadForm
-            onUploaded={(receipt) => {
-              reloadList()
-              selectReceipt(receipt.id)
-            }}
-          />
-          <ReceiptList receipts={receipts} error={listError} selectedId={selectedId} onSelect={selectReceipt} />
-        </aside>
-        <section className="content">
-          {selectedId ? (
-            <ReceiptDetail
-              key={selectedId}
-              id={selectedId}
-              onChanged={reloadList}
-              onDeleted={() => {
-                selectReceipt(null)
-                reloadList()
-              }}
-            />
-          ) : (
-            <p className="empty">Upload a receipt photo, or pick a receipt from the list.</p>
-          )}
-        </section>
-      </main>
-    </>
+        </Anchor>
+      </Paper>
+      <Container size="lg" py="md" px="md">
+        <Grid gap="md" align="flex-start">
+          <Grid.Col span={{ base: 12, sm: 5, md: 4 }}>
+            <Stack gap="md">
+              <UploadForm
+                onUploaded={(receipt) => {
+                  reloadList()
+                  selectReceipt(receipt.id)
+                }}
+              />
+              <ReceiptList receipts={receipts} error={listError} selectedId={selectedId} onSelect={selectReceipt} />
+            </Stack>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 7, md: 8 }}>
+            {selectedId ? (
+              <ReceiptDetail
+                key={selectedId}
+                id={selectedId}
+                onChanged={reloadList}
+                onDeleted={() => {
+                  selectReceipt(null)
+                  reloadList()
+                }}
+              />
+            ) : (
+              <Card withBorder padding="xl">
+                <Text c="dimmed" ta="center">
+                  Upload a receipt photo, or pick a receipt from the list.
+                </Text>
+              </Card>
+            )}
+          </Grid.Col>
+        </Grid>
+      </Container>
+    </Box>
   )
 }
 

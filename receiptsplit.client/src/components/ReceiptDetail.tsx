@@ -1,4 +1,22 @@
 import { useEffect, useState } from 'react'
+import {
+  Accordion,
+  Alert,
+  Anchor,
+  Button,
+  Card,
+  Code,
+  Group,
+  Image,
+  List,
+  NumberInput,
+  Stack,
+  Table,
+  Text,
+  Title,
+} from '@mantine/core'
+import { modals } from '@mantine/modals'
+import { notifications } from '@mantine/notifications'
 import { api, errorMessage, inProgress, type ReceiptDetail as Receipt } from '../api.ts'
 import { formatDateTime, formatMoney, formatPercent, formatSeconds } from '../format.ts'
 import { isValidTaxRate, maxTaxRatePercent, minTaxRatePercent } from '../taxRate.ts'
@@ -19,7 +37,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   // The rate being typed, or null when it is only being displayed.
-  const [taxRateDraft, setTaxRateDraft] = useState<string | null>(null)
+  const [taxRateDraft, setTaxRateDraft] = useState<string | number | null>(null)
   const [editing, setEditing] = useState(false)
   // Bumping this reloads the receipt.
   const [version, setVersion] = useState(0)
@@ -54,9 +72,9 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
     return () => clearTimeout(timer)
   }, [receipt, waiting])
 
-  async function saveTaxRate(draft: string) {
+  async function saveTaxRate(draft: string | number) {
     const rate = Number(draft)
-    if (draft.trim() === '' || !isValidTaxRate(rate)) {
+    if (String(draft).trim() === '' || !isValidTaxRate(rate)) {
       return
     }
 
@@ -67,246 +85,330 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
       setReceipt(updated)
       setTaxRateDraft(null)
       onChanged()
+      notifications.show({ message: `Sales tax set to ${formatPercent(rate)}`, color: 'green' })
     } catch (e) {
-      setError(errorMessage(e))
+      notifications.show({ title: "Couldn't change the tax rate", message: errorMessage(e), color: 'red' })
     } finally {
       setBusy(false)
     }
   }
 
-  async function rerun() {
-    if (receipt?.editedAt != null && !window.confirm('Reading the photo again replaces the corrections you made by hand. Continue?')) {
+  function confirmRerun() {
+    if (receipt?.editedAt == null) {
+      void rerun()
       return
     }
 
+    modals.openConfirmModal({
+      title: 'Read the photo again?',
+      centered: true,
+      children: <Text size="sm">This replaces the corrections you made by hand with whatever the model reads.</Text>,
+      labels: { confirm: 'Read again', cancel: 'Keep corrections' },
+      onConfirm: () => void rerun(),
+    })
+  }
+
+  async function rerun() {
     setBusy(true)
-    setError(null)
     try {
       await api.rerunExtraction(id)
       setVersion((v) => v + 1)
       onChanged()
     } catch (e) {
-      setError(errorMessage(e))
+      notifications.show({ title: "Couldn't start extraction", message: errorMessage(e), color: 'red' })
     } finally {
       setBusy(false)
     }
   }
 
+  function confirmRemove() {
+    modals.openConfirmModal({
+      title: 'Delete this receipt?',
+      centered: true,
+      children: <Text size="sm">The receipt and its photo are deleted for good.</Text>,
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => void remove(),
+    })
+  }
+
   async function remove() {
-    if (!window.confirm('Delete this receipt and its photo?')) {
-      return
-    }
     setBusy(true)
     try {
       await api.deleteReceipt(id)
       onDeleted()
+      notifications.show({ message: 'Receipt deleted', color: 'green' })
     } catch (e) {
-      setError(errorMessage(e))
+      notifications.show({ title: "Couldn't delete the receipt", message: errorMessage(e), color: 'red' })
       setBusy(false)
     }
   }
 
   if (!receipt) {
-    return <div className="card">{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}</div>
+    return (
+      <Card withBorder padding="md">
+        {error ? (
+          <Alert color="red" variant="light">
+            {error}
+          </Alert>
+        ) : (
+          <Text c="dimmed">Loading…</Text>
+        )}
+      </Card>
+    )
   }
 
   const { checks, extraction } = receipt
+  const taxRateValid = taxRateDraft !== null && String(taxRateDraft).trim() !== '' && isValidTaxRate(Number(taxRateDraft))
 
   return (
-    <article className="card receipt-detail">
-      <header className="detail-header">
-        <div>
-          <h2>{receipt.storeName ?? 'Unknown store'}</h2>
-          <p className="muted">
-            {receipt.purchaseDate ?? 'No purchase date'} · uploaded {formatDateTime(receipt.createdAt)} ·{' '}
-            {receipt.originalFileName}
-            {receipt.editedAt && ` · corrected by hand ${formatDateTime(receipt.editedAt)}`}
-          </p>
-          {taxRateDraft === null ? (
-            <p className="tax-rate">
-              Sales tax {formatPercent(receipt.taxRatePercent)}
-              <button
-                type="button"
-                className="link"
-                onClick={() => setTaxRateDraft(String(receipt.taxRatePercent))}
-                disabled={busy || receipt.status === 'Processing'}
+    <Card withBorder padding="md" component="article">
+      <Stack gap="md">
+        <Group justify="space-between" align="flex-start" wrap="nowrap">
+          <Stack gap={4}>
+            <Title order={2}>{receipt.storeName ?? 'Unknown store'}</Title>
+            <Text size="sm" c="dimmed" style={{ overflowWrap: 'anywhere' }}>
+              {receipt.purchaseDate ?? 'No purchase date'} · uploaded {formatDateTime(receipt.createdAt)} ·{' '}
+              {receipt.originalFileName}
+              {receipt.editedAt && ` · corrected by hand ${formatDateTime(receipt.editedAt)}`}
+            </Text>
+            {taxRateDraft === null ? (
+              <Group gap="xs">
+                <Text size="sm">Sales tax {formatPercent(receipt.taxRatePercent)}</Text>
+                <Anchor
+                  component="button"
+                  type="button"
+                  size="sm"
+                  onClick={() => setTaxRateDraft(receipt.taxRatePercent)}
+                  disabled={busy || receipt.status === 'Processing'}
+                >
+                  Change
+                </Anchor>
+              </Group>
+            ) : (
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void saveTaxRate(taxRateDraft)
+                }}
               >
-                Change
-              </button>
-            </p>
-          ) : (
-            <form
-              className="tax-rate"
-              onSubmit={(event) => {
-                event.preventDefault()
-                void saveTaxRate(taxRateDraft)
-              }}
-            >
-              <label className="tax-rate-field">
-                Sales tax
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  autoFocus
-                  min={minTaxRatePercent}
-                  max={maxTaxRatePercent}
-                  step={0.001}
-                  value={taxRateDraft}
-                  onChange={(event) => setTaxRateDraft(event.target.value)}
+                <Group gap="xs" align="flex-end">
+                  <NumberInput
+                    label="Sales tax"
+                    size="xs"
+                    w={110}
+                    data-autofocus
+                    autoFocus
+                    suffix="%"
+                    min={minTaxRatePercent}
+                    max={maxTaxRatePercent}
+                    decimalScale={3}
+                    allowNegative={false}
+                    value={taxRateDraft}
+                    onChange={setTaxRateDraft}
+                  />
+                  <Button type="submit" size="xs" variant="default" disabled={busy || !taxRateValid}>
+                    Save
+                  </Button>
+                  <Button size="xs" variant="subtle" onClick={() => setTaxRateDraft(null)} disabled={busy}>
+                    Cancel
+                  </Button>
+                </Group>
+              </form>
+            )}
+          </Stack>
+          <StatusBadge status={receipt.status} />
+        </Group>
+
+        {error && (
+          <Alert color="red" variant="light">
+            {error}
+          </Alert>
+        )}
+        {waiting && (
+          <Alert color="blue" variant="light">
+            Reading the receipt. This usually takes about 20 seconds, or up to a minute if the model has to load first.
+          </Alert>
+        )}
+        {receipt.error && (
+          <Alert color="red" variant="light">
+            {receipt.error}
+          </Alert>
+        )}
+        {receipt.status === 'NeedsReview' && !receipt.error && (
+          <Alert color="yellow" variant="light">
+            The lines don't agree with the receipt's printed totals. Check them against the photo, and check that the sales
+            tax rate is right for where you shopped.
+          </Alert>
+        )}
+
+        {editing ? (
+          <ReceiptEditor
+            receipt={receipt}
+            onSaved={(corrected) => {
+              setReceipt(corrected)
+              setEditing(false)
+              onChanged()
+            }}
+            onCancel={() => setEditing(false)}
+          />
+        ) : (
+          <>
+            {receipt.lines.length > 0 && (
+              <Table.ScrollContainer minWidth={420}>
+                <Table striped="odd" highlightOnHover verticalSpacing="xs" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th w={40}>#</Table.Th>
+                      <Table.Th>Item</Table.Th>
+                      <Table.Th ta="right">Qty</Table.Th>
+                      <Table.Th ta="right">Amount</Table.Th>
+                      <Table.Th>Tax</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {receipt.lines.map((line) => (
+                      <Table.Tr key={line.position}>
+                        <Table.Td c="dimmed">{line.position + 1}</Table.Td>
+                        <Table.Td>
+                          {line.name}
+                          {line.code && (
+                            <Text span c="dimmed" size="xs">
+                              {' '}
+                              {line.code}
+                            </Text>
+                          )}
+                          {line.discount !== 0 && (
+                            <Text size="xs" c="dimmed">
+                              was {formatMoney(line.amount - line.discount)}, promotion {formatMoney(line.discount)}
+                            </Text>
+                          )}
+                        </Table.Td>
+                        <Table.Td ta="right">{line.quantity}</Table.Td>
+                        <Table.Td ta="right">{formatMoney(line.amount)}</Table.Td>
+                        <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                          {line.taxCode}
+                          {line.isTaxed && (
+                            <Text span c="green" title={`Taxed at ${formatPercent(receipt.taxRatePercent)}`}>
+                              {' '}
+                              ✓
+                            </Text>
+                          )}
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                  <Table.Tfoot>
+                    <Table.Tr>
+                      <Table.Th colSpan={3} ta="right">
+                        Subtotal
+                      </Table.Th>
+                      <Table.Td ta="right">{formatMoney(receipt.subtotal)}</Table.Td>
+                      <Table.Td />
+                    </Table.Tr>
+                    {checks && (
+                      <Table.Tr>
+                        <Table.Th colSpan={3} ta="right">
+                          Taxed items
+                        </Table.Th>
+                        <Table.Td ta="right">{formatMoney(checks.taxedSum)}</Table.Td>
+                        <Table.Td />
+                      </Table.Tr>
+                    )}
+                    <Table.Tr>
+                      <Table.Th colSpan={3} ta="right">
+                        Tax
+                      </Table.Th>
+                      <Table.Td ta="right">{formatMoney(receipt.tax)}</Table.Td>
+                      <Table.Td />
+                    </Table.Tr>
+                    <Table.Tr>
+                      <Table.Th colSpan={3} ta="right">
+                        Total
+                      </Table.Th>
+                      <Table.Td ta="right" fw={700}>
+                        {formatMoney(receipt.total)}
+                      </Table.Td>
+                      <Table.Td />
+                    </Table.Tr>
+                  </Table.Tfoot>
+                </Table>
+              </Table.ScrollContainer>
+            )}
+
+            {checks && (
+              <List spacing={2} size="sm" listStyleType="none">
+                <List.Item c={checks.linesMatchSubtotal ? 'green' : 'red'}>
+                  {checks.linesMatchSubtotal
+                    ? `✓ Lines add up to the subtotal (${formatMoney(checks.linesSum)})`
+                    : `✗ Lines add up to ${formatMoney(checks.linesSum)}, but the subtotal is ${formatMoney(receipt.subtotal)}`}
+                </List.Item>
+                <List.Item c={checks.totalMatches ? 'green' : 'red'}>
+                  {checks.totalMatches ? '✓ Subtotal + tax equals the total' : "✗ Subtotal + tax doesn't equal the total"}
+                </List.Item>
+                <List.Item c={checks.taxMatches ? 'green' : 'red'}>
+                  {checks.taxMatches ? '✓' : '✗'} {formatPercent(receipt.taxRatePercent)} tax on{' '}
+                  {formatMoney(checks.taxedSum)} of taxed items is {formatMoney(checks.expectedTax)}
+                  {checks.taxMatches ? '' : `, but the receipt shows ${formatMoney(receipt.tax)}`}
+                </List.Item>
+              </List>
+            )}
+
+            <Group gap="xs">
+              <Button variant="default" onClick={() => setEditing(true)} disabled={busy || waiting}>
+                Edit lines
+              </Button>
+              <Button variant="default" onClick={confirmRerun} disabled={busy || waiting}>
+                Re-run extraction
+              </Button>
+              <Button variant="default" c="red" onClick={confirmRemove} disabled={busy || receipt.status === 'Processing'}>
+                Delete
+              </Button>
+            </Group>
+          </>
+        )}
+
+        <Accordion variant="separated" chevronPosition="left" multiple>
+          <Accordion.Item value="photo">
+            <Accordion.Control>Original photo</Accordion.Control>
+            <Accordion.Panel>
+              <Anchor href={api.imageUrl(receipt.id)} target="_blank" rel="noreferrer">
+                <Image
+                  src={api.imageUrl(receipt.id)}
+                  alt={`Uploaded photo ${receipt.originalFileName}`}
+                  loading="lazy"
+                  radius="sm"
+                  mah="80vh"
+                  w="auto"
+                  fit="contain"
                 />
-                %
-              </label>
-              <button type="submit" disabled={busy || taxRateDraft.trim() === '' || !isValidTaxRate(Number(taxRateDraft))}>
-                Save
-              </button>
-              <button type="button" onClick={() => setTaxRateDraft(null)} disabled={busy}>
-                Cancel
-              </button>
-            </form>
+              </Anchor>
+            </Accordion.Panel>
+          </Accordion.Item>
+          {extraction && (
+            <Accordion.Item value="extraction">
+              <Accordion.Control>Extraction details</Accordion.Control>
+              <Accordion.Panel>
+                <Stack gap="xs">
+                  <Text size="sm" c="dimmed">
+                    {extraction.model ?? 'Unknown model'}
+                    {extraction.durationMs != null && ` · ${formatSeconds(extraction.durationMs)}`}
+                    {extraction.promptTokens != null &&
+                      ` · ${extraction.promptTokens} prompt + ${extraction.completionTokens} output tokens`}
+                    {extraction.sentImageWidth != null &&
+                      ` · image sent at ${extraction.sentImageWidth}×${extraction.sentImageHeight}`}
+                  </Text>
+                  {extraction.modelOutput && (
+                    <Code block mah="20rem" style={{ overflow: 'auto', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                      {extraction.modelOutput}
+                    </Code>
+                  )}
+                </Stack>
+              </Accordion.Panel>
+            </Accordion.Item>
           )}
-        </div>
-        <StatusBadge status={receipt.status} />
-      </header>
-
-      {error && <p className="error">{error}</p>}
-      {waiting && (
-        <p className="notice">
-          Reading the receipt. This usually takes about 20 seconds, or up to a minute if the model has to load first.
-        </p>
-      )}
-      {receipt.error && <p className="error">{receipt.error}</p>}
-      {receipt.status === 'NeedsReview' && !receipt.error && (
-        <p className="warning">
-          The lines don't agree with the receipt's printed totals. Check them against the photo, and check that the sales tax
-          rate is right for where you shopped.
-        </p>
-      )}
-
-      {editing ? (
-        <ReceiptEditor
-          receipt={receipt}
-          onSaved={(corrected) => {
-            setReceipt(corrected)
-            setEditing(false)
-            onChanged()
-          }}
-          onCancel={() => setEditing(false)}
-        />
-      ) : (
-        <>
-        {receipt.lines.length > 0 && (
-          <div className="table-scroll">
-            <table className="lines">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Item</th>
-                  <th className="num">Qty</th>
-                  <th className="num">Amount</th>
-                  <th>Tax</th>
-                </tr>
-              </thead>
-              <tbody>
-                {receipt.lines.map((line) => (
-                  <tr key={line.position}>
-                    <td className="muted">{line.position + 1}</td>
-                    <td>
-                      {line.name}
-                      {line.code && <span className="muted item-code"> {line.code}</span>}
-                      {line.discount !== 0 && (
-                        <div className="muted promotion">
-                          was {formatMoney(line.amount - line.discount)}, promotion {formatMoney(line.discount)}
-                        </div>
-                      )}
-                    </td>
-                    <td className="num">{line.quantity}</td>
-                    <td className="num">{formatMoney(line.amount)}</td>
-                    <td className="tax">
-                      {line.taxCode}
-                      {line.isTaxed && <span className="taxed" title={`Taxed at ${formatPercent(receipt.taxRatePercent)}`}> ✓</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <th colSpan={3}>Subtotal</th>
-                  <td className="num">{formatMoney(receipt.subtotal)}</td>
-                  <td />
-                </tr>
-                {checks && (
-                  <tr>
-                    <th colSpan={3}>Taxed items</th>
-                    <td className="num">{formatMoney(checks.taxedSum)}</td>
-                    <td />
-                  </tr>
-                )}
-                <tr>
-                  <th colSpan={3}>Tax</th>
-                  <td className="num">{formatMoney(receipt.tax)}</td>
-                  <td />
-                </tr>
-                <tr className="total">
-                  <th colSpan={3}>Total</th>
-                  <td className="num">{formatMoney(receipt.total)}</td>
-                  <td />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
-
-        {checks && (
-          <ul className="checks">
-            <li className={checks.linesMatchSubtotal ? 'ok' : 'bad'}>
-              {checks.linesMatchSubtotal
-                ? `✓ Lines add up to the subtotal (${formatMoney(checks.linesSum)})`
-                : `✗ Lines add up to ${formatMoney(checks.linesSum)}, but the subtotal is ${formatMoney(receipt.subtotal)}`}
-            </li>
-            <li className={checks.totalMatches ? 'ok' : 'bad'}>
-              {checks.totalMatches ? '✓ Subtotal + tax equals the total' : "✗ Subtotal + tax doesn't equal the total"}
-            </li>
-            <li className={checks.taxMatches ? 'ok' : 'bad'}>
-              {checks.taxMatches ? '✓' : '✗'} {formatPercent(receipt.taxRatePercent)} tax on {formatMoney(checks.taxedSum)} of
-              taxed items is {formatMoney(checks.expectedTax)}
-              {checks.taxMatches ? '' : `, but the receipt shows ${formatMoney(receipt.tax)}`}
-            </li>
-          </ul>
-        )}
-
-        <div className="actions">
-          <button type="button" onClick={() => setEditing(true)} disabled={busy || waiting}>
-            Edit lines
-          </button>
-          <button type="button" onClick={() => void rerun()} disabled={busy || waiting}>
-            Re-run extraction
-          </button>
-          <button type="button" className="danger" onClick={() => void remove()} disabled={busy || receipt.status === 'Processing'}>
-            Delete
-          </button>
-        </div>
-        </>
-      )}
-
-      <details className="photo">
-        <summary>Original photo</summary>
-        <a href={api.imageUrl(receipt.id)} target="_blank" rel="noreferrer">
-          <img src={api.imageUrl(receipt.id)} alt={`Uploaded photo ${receipt.originalFileName}`} loading="lazy" />
-        </a>
-      </details>
-
-      {extraction && (
-        <details className="diagnostics">
-          <summary>Extraction details</summary>
-          <p className="muted">
-            {extraction.model ?? 'Unknown model'}
-            {extraction.durationMs != null && ` · ${formatSeconds(extraction.durationMs)}`}
-            {extraction.promptTokens != null && ` · ${extraction.promptTokens} prompt + ${extraction.completionTokens} output tokens`}
-            {extraction.sentImageWidth != null && ` · image sent at ${extraction.sentImageWidth}×${extraction.sentImageHeight}`}
-          </p>
-          {extraction.modelOutput && <pre>{extraction.modelOutput}</pre>}
-        </details>
-      )}
-    </article>
+        </Accordion>
+      </Stack>
+    </Card>
   )
 }
