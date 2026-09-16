@@ -429,3 +429,7 @@ FodyWeavers.xsd
 *.msp
 
 .idea
+
+# ReceiptSplit local data: sample receipts and the app's database/uploads
+samples/
+ReceiptSplit/data/

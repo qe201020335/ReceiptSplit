@@ -1,7 +1,18 @@
-﻿services:
+services:
   receiptsplit:
     image: receiptsplit
     build:
       context: .
       dockerfile: ReceiptSplit/Dockerfile
+    ports:
+      - "${RECEIPTSPLIT_PORT:-8080}:8080"
+    environment:
+      # Set these in a .env file next to this compose file (gitignored).
+      Llm__BaseUrl: ${LLM_BASE_URL:-http://192.168.1.250:8000}
+      Llm__ApiKey: ${LLM_API_KEY:-}
+    volumes:
+      - receiptsplit-data:/app/data
+    restart: unless-stopped
 
+volumes:
+  receiptsplit-data:
