@@ -25,8 +25,29 @@ namespace ReceiptSplit.Data.Migrations
                 nullable: false,
                 defaultValue: false);
 
-            // Both stores seen so far print a tax code only on taxed lines.
-            migrationBuilder.Sql("UPDATE ReceiptLines SET IsTaxed = 1 WHERE TRIM(COALESCE(TaxCode, '')) <> '';");
+            // Backfill from the printed codes, using the same list as ReceiptTaxCodes so that exempt
+            // markers such as Costco US's "E" are not read as taxed.
+            migrationBuilder.Sql(
+                """
+                WITH taxed(code) AS (
+                    VALUES ('A'),('G'),('H'),('P'),('Q'),('S'),('T'),('GST'),('HST'),('PST'),('QST'),('TPS'),('TVQ'))
+                UPDATE ReceiptLines SET IsTaxed = 1
+                WHERE EXISTS (
+                    SELECT 1 FROM taxed
+                    WHERE ' ' || UPPER(REPLACE(REPLACE(COALESCE(ReceiptLines.TaxCode, ''), ',', ' '), '/', ' ')) || ' '
+                        LIKE '% ' || taxed.code || ' %');
+                """);
+
+            // Receipts extracted before the tax check ran keep a status that ignores it; re-check them here.
+            // Amounts are cents and the rate is thousandths of a percent, matching ReceiptChecks' one-cent tolerance.
+            migrationBuilder.Sql(
+                """
+                UPDATE Receipts SET Status = 'NeedsReview'
+                WHERE Status = 'Completed'
+                  AND ABS(COALESCE(Tax, 0) - CAST(ROUND(
+                      (SELECT COALESCE(SUM(Amount), 0) FROM ReceiptLines l WHERE l.ReceiptId = Receipts.Id AND l.IsTaxed = 1)
+                      * TaxRatePercent / 100000.0) AS INTEGER)) > 1;
+                """);
         }
 
         /// <inheritdoc />

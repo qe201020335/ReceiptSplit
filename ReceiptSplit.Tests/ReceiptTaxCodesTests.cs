@@ -11,6 +11,9 @@ public class ReceiptTaxCodesTests
     [InlineData("h", true)]
     [InlineData("G,P", true)]
     [InlineData("HST", true)]
+    // Costco US marks taxable lines A and exempt ones E.
+    [InlineData("A", true)]
+    [InlineData("E", false)]
     [InlineData(null, false)]
     [InlineData("", false)]
     [InlineData("   ", false)]

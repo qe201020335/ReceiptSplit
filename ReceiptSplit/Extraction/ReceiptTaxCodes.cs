@@ -3,15 +3,15 @@ using System.Text.RegularExpressions;
 namespace ReceiptSplit.Extraction;
 
 /// <summary>
-/// Reads the tax code letters printed next to an amount. Costco prints "H" on taxed lines and nothing
-/// on the rest; T&amp;T prints "G P". Codes are matched whole, so a non-taxable marker such as "N" or "NT"
-/// is not mistaken for the "T" of a tax code.
+/// Reads the tax code letters printed next to an amount. Costco Canada prints "H" on taxed lines and nothing
+/// on the rest, T&amp;T prints "G P", and Costco US prints "A" on taxable lines and "E" on exempt ones.
+/// Codes are matched whole, so an exempt marker such as "E", "N" or "NT" is not mistaken for a tax code.
 /// </summary>
 public static partial class ReceiptTaxCodes
 {
     private static readonly HashSet<string> Taxed = new(StringComparer.OrdinalIgnoreCase)
     {
-        "G", "H", "P", "Q", "S", "T", "GST", "HST", "PST", "QST", "TPS", "TVQ",
+        "A", "G", "H", "P", "Q", "S", "T", "GST", "HST", "PST", "QST", "TPS", "TVQ",
     };
 
     [GeneratedRegex("[A-Za-z]+")]
