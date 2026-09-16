@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ActionIcon, Alert, Button, Checkbox, Group, Stack, Table, Text, TextInput } from '@mantine/core'
+import { ActionIcon, Button, Checkbox, Group, Stack, Table, Text, TextInput } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
 import { api, errorMessage, type ReceiptDetail, type ReceiptLineEdit } from '../api.ts'
 import { formatMoney } from '../format.ts'
 
@@ -60,7 +61,6 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
   const [lines, setLines] = useState<LineDraft[]>(() => draftLines(receipt))
   const [nextKey, setNextKey] = useState(receipt.lines.length)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   function updateLine(key: number, change: Partial<LineDraft>) {
     setLines((current) => current.map((line) => (line.key === key ? { ...line, ...change } : line)))
@@ -97,7 +97,6 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
     }
 
     setSaving(true)
-    setError(null)
     try {
       const edit = {
         storeName: storeName.trim() === '' ? null : storeName.trim(),
@@ -119,7 +118,7 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
       }
       onSaved(await api.updateReceipt(receipt.id, edit))
     } catch (e) {
-      setError(errorMessage(e))
+      notifications.show({ title: "Couldn't save the corrections", message: errorMessage(e), color: 'red' })
       setSaving(false)
     }
   }
@@ -132,12 +131,6 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
       }}
     >
       <Stack gap="sm">
-        {error && (
-          <Alert color="red" variant="light">
-            {error}
-          </Alert>
-        )}
-
         <Group gap="sm" align="flex-end">
           <TextInput
             label="Store"

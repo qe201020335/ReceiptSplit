@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Alert, Button, Card, FileInput, NumberInput, Stack, Title } from '@mantine/core'
+import { Button, Card, FileInput, NumberInput, Stack, Title } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
 import { api, errorMessage, type ReceiptQueued } from '../api.ts'
 import { isValidTaxRate, lastTaxRatePercent, maxTaxRatePercent, minTaxRatePercent, rememberTaxRatePercent } from '../taxRate.ts'
 
@@ -11,7 +12,6 @@ export function UploadForm({ onUploaded }: UploadFormProps) {
   const [file, setFile] = useState<File | null>(null)
   const [taxRate, setTaxRate] = useState<string | number>(() => lastTaxRatePercent())
   const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const rate = Number(taxRate)
   const rateValid = String(taxRate).trim() !== '' && isValidTaxRate(rate)
@@ -22,14 +22,14 @@ export function UploadForm({ onUploaded }: UploadFormProps) {
     }
 
     setUploading(true)
-    setError(null)
     try {
       const receipt = await api.uploadReceipt(file, rate)
       rememberTaxRatePercent(rate)
       setFile(null)
       onUploaded(receipt)
+      notifications.show({ message: 'Photo uploaded, reading the receipt…', color: 'blue' })
     } catch (e) {
-      setError(errorMessage(e))
+      notifications.show({ title: "Couldn't upload the photo", message: errorMessage(e), color: 'red' })
     } finally {
       setUploading(false)
     }
@@ -68,11 +68,6 @@ export function UploadForm({ onUploaded }: UploadFormProps) {
           <Button type="submit" disabled={!file || !rateValid} loading={uploading}>
             Upload
           </Button>
-          {error && (
-            <Alert color="red" variant="light">
-              {error}
-            </Alert>
-          )}
         </Stack>
       </form>
     </Card>

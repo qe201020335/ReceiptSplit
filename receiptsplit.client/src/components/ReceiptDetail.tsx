@@ -15,6 +15,8 @@ import {
   Text,
   Title,
 } from '@mantine/core'
+import { modals } from '@mantine/modals'
+import { notifications } from '@mantine/notifications'
 import { api, errorMessage, inProgress, type ReceiptDetail as Receipt } from '../api.ts'
 import { formatDateTime, formatMoney, formatPercent, formatSeconds } from '../format.ts'
 import { isValidTaxRate, maxTaxRatePercent, minTaxRatePercent } from '../taxRate.ts'
@@ -83,41 +85,61 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
       setReceipt(updated)
       setTaxRateDraft(null)
       onChanged()
+      notifications.show({ message: `Sales tax set to ${formatPercent(rate)}`, color: 'green' })
     } catch (e) {
-      setError(errorMessage(e))
+      notifications.show({ title: "Couldn't change the tax rate", message: errorMessage(e), color: 'red' })
     } finally {
       setBusy(false)
     }
   }
 
-  async function rerun() {
-    if (receipt?.editedAt != null && !window.confirm('Reading the photo again replaces the corrections you made by hand. Continue?')) {
+  function confirmRerun() {
+    if (receipt?.editedAt == null) {
+      void rerun()
       return
     }
 
+    modals.openConfirmModal({
+      title: 'Read the photo again?',
+      centered: true,
+      children: <Text size="sm">This replaces the corrections you made by hand with whatever the model reads.</Text>,
+      labels: { confirm: 'Read again', cancel: 'Keep corrections' },
+      onConfirm: () => void rerun(),
+    })
+  }
+
+  async function rerun() {
     setBusy(true)
-    setError(null)
     try {
       await api.rerunExtraction(id)
       setVersion((v) => v + 1)
       onChanged()
     } catch (e) {
-      setError(errorMessage(e))
+      notifications.show({ title: "Couldn't start extraction", message: errorMessage(e), color: 'red' })
     } finally {
       setBusy(false)
     }
   }
 
+  function confirmRemove() {
+    modals.openConfirmModal({
+      title: 'Delete this receipt?',
+      centered: true,
+      children: <Text size="sm">The receipt and its photo are deleted for good.</Text>,
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => void remove(),
+    })
+  }
+
   async function remove() {
-    if (!window.confirm('Delete this receipt and its photo?')) {
-      return
-    }
     setBusy(true)
     try {
       await api.deleteReceipt(id)
       onDeleted()
+      notifications.show({ message: 'Receipt deleted', color: 'green' })
     } catch (e) {
-      setError(errorMessage(e))
+      notifications.show({ title: "Couldn't delete the receipt", message: errorMessage(e), color: 'red' })
       setBusy(false)
     }
   }
@@ -336,10 +358,10 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
               <Button variant="default" onClick={() => setEditing(true)} disabled={busy || waiting}>
                 Edit lines
               </Button>
-              <Button variant="default" onClick={() => void rerun()} disabled={busy || waiting}>
+              <Button variant="default" onClick={confirmRerun} disabled={busy || waiting}>
                 Re-run extraction
               </Button>
-              <Button variant="subtle" color="red" onClick={() => void remove()} disabled={busy || receipt.status === 'Processing'}>
+              <Button variant="subtle" color="red" onClick={confirmRemove} disabled={busy || receipt.status === 'Processing'}>
                 Delete
               </Button>
             </Group>
