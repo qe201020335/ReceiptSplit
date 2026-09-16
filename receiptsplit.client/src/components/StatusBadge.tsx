@@ -12,7 +12,7 @@ const colors: Record<ReceiptStatus, string> = {
 
 export function StatusBadge({ status }: { status: ReceiptStatus }) {
   return (
-    <Badge color={colors[status]} variant="light" size="sm">
+    <Badge color={colors[status]} variant="light" size="sm" tt="none" style={{ flexShrink: 0 }}>
       {statusLabels[status]}
     </Badge>
   )
