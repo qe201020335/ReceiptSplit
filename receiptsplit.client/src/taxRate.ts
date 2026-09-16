@@ -13,11 +13,13 @@ export function isValidTaxRate(value: number): boolean {
   return Number.isFinite(value) && value >= minTaxRatePercent && value <= maxTaxRatePercent
 }
 
-/** The rate used for the last upload in this browser, so a move province is typed once. */
+/** The rate used for the last upload in this browser, so another province's rate is typed once. */
 export function lastTaxRatePercent(): number {
   try {
-    const stored = Number(window.localStorage.getItem(storageKey))
-    return isValidTaxRate(stored) ? stored : defaultTaxRatePercent
+    // Nothing stored reads as Number(null) === 0, which is itself a valid rate, so check for the key first.
+    const stored = window.localStorage.getItem(storageKey)
+    const rate = stored === null ? Number.NaN : Number(stored)
+    return isValidTaxRate(rate) ? rate : defaultTaxRatePercent
   } catch {
     return defaultTaxRatePercent
   }
