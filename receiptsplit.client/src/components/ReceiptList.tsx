@@ -1,3 +1,4 @@
+import { Alert, Card, Group, NavLink, Stack, Text, Title } from '@mantine/core'
 import type { ReceiptSummary } from '../api.ts'
 import { formatDateTime, formatMoney } from '../format.ts'
 import { StatusBadge } from './StatusBadge.tsx'
@@ -11,28 +12,42 @@ interface ReceiptListProps {
 
 export function ReceiptList({ receipts, error, selectedId, onSelect }: ReceiptListProps) {
   return (
-    <nav className="card receipt-list" aria-label="Receipts">
-      <h2>Receipts</h2>
-      {error && <p className="error">{error}</p>}
-      {receipts === null && !error && <p className="muted">Loading…</p>}
-      {receipts?.length === 0 && <p className="muted">No receipts yet.</p>}
-      <ul>
-        {receipts?.map((receipt) => (
-          <li key={receipt.id}>
-            <button
+    <Card withBorder padding="md" component="nav" aria-label="Receipts">
+      <Stack gap="sm">
+        <Title order={2}>Receipts</Title>
+        {error && (
+          <Alert color="red" variant="light">
+            {error}
+          </Alert>
+        )}
+        {receipts === null && !error && <Text c="dimmed">Loading…</Text>}
+        {receipts?.length === 0 && <Text c="dimmed">No receipts yet.</Text>}
+        <Stack gap={2}>
+          {receipts?.map((receipt) => (
+            <NavLink
+              key={receipt.id}
+              component="button"
               type="button"
-              className={receipt.id === selectedId ? 'receipt-item selected' : 'receipt-item'}
-              aria-current={receipt.id === selectedId ? 'page' : undefined}
+              active={receipt.id === selectedId}
               onClick={() => onSelect(receipt.id)}
-            >
-              <span className="receipt-item-title">{receipt.storeName ?? 'Unknown store'}</span>
-              <span className="receipt-item-total">{formatMoney(receipt.total)}</span>
-              <span className="muted">{receipt.purchaseDate ?? formatDateTime(receipt.createdAt)}</span>
-              <StatusBadge status={receipt.status} />
-            </button>
-          </li>
-        ))}
-      </ul>
-    </nav>
+              label={
+                <Group justify="space-between" wrap="nowrap" gap="xs">
+                  <Text fw={500} truncate>
+                    {receipt.storeName ?? 'Unknown store'}
+                  </Text>
+                  <Text fw={500}>{formatMoney(receipt.total)}</Text>
+                </Group>
+              }
+              description={
+                <Group justify="space-between" wrap="nowrap" gap="xs">
+                  <span>{receipt.purchaseDate ?? formatDateTime(receipt.createdAt)}</span>
+                  <StatusBadge status={receipt.status} />
+                </Group>
+              }
+            />
+          ))}
+        </Stack>
+      </Stack>
+    </Card>
   )
 }
