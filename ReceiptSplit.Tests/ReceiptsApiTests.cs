@@ -49,11 +49,13 @@ public class ReceiptsApiTests
         Assert.Equal(
             new[]
             {
-                new ReceiptLineDto(0, "BANANAS", null, 1.25m, 1.99m, null),
-                new ReceiptLineDto(1, "MILK 2L", "4011", 1m, 5.49m, "H"),
+                new ReceiptLineDto(0, "BANANAS", null, 1.25m, 1.99m, null, IsTaxed: false),
+                new ReceiptLineDto(1, "MILK 2L", "4011", 1m, 5.49m, "H", IsTaxed: true),
             },
             receipt.Lines);
-        Assert.Equal(new ReceiptChecksDto(7.48m, LinesMatchSubtotal: true, TotalMatches: true), receipt.Checks);
+        Assert.Equal(
+            new ReceiptChecksDto(7.48m, LinesMatchSubtotal: true, TotalMatches: true, TaxedSum: 5.49m, ExpectedTax: 0.71m, TaxMatches: true),
+            receipt.Checks);
         Assert.Equal(("fake-model", 64, 48), (receipt.Extraction?.Model, receipt.Extraction?.SentImageWidth, receipt.Extraction?.SentImageHeight));
         Assert.Equal(photo, Assert.Single(factory.Llm.Requests).Data);
 

@@ -21,6 +21,7 @@ public sealed record ReceiptDetailDto(
     string? Error,
     string? StoreName,
     DateOnly? PurchaseDate,
+    decimal TaxRatePercent,
     decimal? Subtotal,
     decimal? Tax,
     decimal? Total,
@@ -28,9 +29,22 @@ public sealed record ReceiptDetailDto(
     IReadOnlyList<ReceiptLineDto> Lines,
     ExtractionDto? Extraction);
 
-public sealed record ReceiptLineDto(int Position, string Name, string? Code, decimal Quantity, decimal Amount, string? TaxCode);
+public sealed record ReceiptLineDto(
+    int Position,
+    string Name,
+    string? Code,
+    decimal Quantity,
+    decimal Amount,
+    string? TaxCode,
+    bool IsTaxed);
 
-public sealed record ReceiptChecksDto(decimal LinesSum, bool LinesMatchSubtotal, bool TotalMatches);
+public sealed record ReceiptChecksDto(
+    decimal LinesSum,
+    bool LinesMatchSubtotal,
+    bool TotalMatches,
+    decimal TaxedSum,
+    decimal ExpectedTax,
+    bool TaxMatches);
 
 public sealed record ExtractionDto(
     DateTime ExtractedAt,
@@ -48,14 +62,25 @@ public static class ReceiptMappings
     {
         var lines = receipt.Lines
             .OrderBy(l => l.Position)
-            .Select(l => new ReceiptLineDto(l.Position, l.Name, l.Code, l.Quantity, l.Amount, l.TaxCode))
+            .Select(l => new ReceiptLineDto(l.Position, l.Name, l.Code, l.Quantity, l.Amount, l.TaxCode, l.IsTaxed))
             .ToList();
 
         ReceiptChecksDto? checks = null;
         if (lines.Count > 0)
         {
-            var result = ReceiptChecks.Evaluate(lines.Select(l => l.Amount), receipt.Subtotal, receipt.Tax, receipt.Total);
-            checks = new ReceiptChecksDto(result.LinesSum, result.LinesMatchSubtotal, result.TotalMatches);
+            var result = ReceiptChecks.Evaluate(
+                lines.Select(l => (l.Amount, l.IsTaxed)),
+                receipt.Subtotal,
+                receipt.Tax,
+                receipt.Total,
+                receipt.TaxRatePercent);
+            checks = new ReceiptChecksDto(
+                result.LinesSum,
+                result.LinesMatchSubtotal,
+                result.TotalMatches,
+                result.TaxedSum,
+                result.ExpectedTax,
+                result.TaxMatches);
         }
 
         var extraction = receipt.ExtractedAt is { } extractedAt
@@ -78,6 +103,7 @@ public static class ReceiptMappings
             receipt.Error,
             receipt.StoreName,
             receipt.PurchaseDate,
+            receipt.TaxRatePercent,
             receipt.Subtotal,
             receipt.Tax,
             receipt.Total,
