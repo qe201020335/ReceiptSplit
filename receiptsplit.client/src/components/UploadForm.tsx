@@ -1,8 +1,12 @@
 import { useState } from 'react'
-import { Button, Card, FileInput, NumberInput, Stack, Title } from '@mantine/core'
+import { Button, Card, CloseButton, Group, NumberInput, Stack, Text, Title } from '@mantine/core'
+import { Dropzone, IMAGE_MIME_TYPE } from '@mantine/dropzone'
 import { notifications } from '@mantine/notifications'
 import { api, errorMessage, type ReceiptQueued } from '../api.ts'
 import { isValidTaxRate, lastTaxRatePercent, maxTaxRatePercent, minTaxRatePercent, rememberTaxRatePercent } from '../taxRate.ts'
+
+/** Matches ReceiptService.MaxUploadBytes, so an oversized photo is refused before it is sent. */
+const maxUploadBytes = 30 * 1024 * 1024
 
 interface UploadFormProps {
   onUploaded: (receipt: ReceiptQueued) => void
@@ -45,14 +49,51 @@ export function UploadForm({ onUploaded }: UploadFormProps) {
       >
         <Stack gap="sm">
           <Title order={2}>New receipt</Title>
-          <FileInput
-            label="Receipt photo"
-            placeholder="Choose a photo"
-            accept="image/*"
-            clearable
-            value={file}
-            onChange={setFile}
-          />
+          <div>
+            <Text size="sm" fw={500} mb={4}>
+              Receipt photo
+            </Text>
+            <Dropzone
+              onDrop={(files) => setFile(files[0] ?? null)}
+              onReject={(rejections) =>
+                notifications.show({
+                  title: "That file can't be used",
+                  message: rejections[0]?.errors[0]?.message ?? 'Choose a photo under 30 MB.',
+                  color: 'red',
+                })
+              }
+              accept={IMAGE_MIME_TYPE}
+              maxSize={maxUploadBytes}
+              maxFiles={1}
+              multiple={false}
+              py="lg"
+              px="md"
+            >
+              <Stack gap={4} align="center" style={{ pointerEvents: 'none' }}>
+                <Dropzone.Accept>
+                  <Text size="sm">Drop the photo</Text>
+                </Dropzone.Accept>
+                <Dropzone.Reject>
+                  <Text size="sm" c="red">
+                    Photos only, up to 30 MB
+                  </Text>
+                </Dropzone.Reject>
+                <Dropzone.Idle>
+                  <Text size="sm" ta="center">
+                    Drag a photo here or click to choose
+                  </Text>
+                </Dropzone.Idle>
+              </Stack>
+            </Dropzone>
+            {file && (
+              <Group gap="xs" mt="xs" wrap="nowrap">
+                <Text size="sm" truncate>
+                  {file.name}
+                </Text>
+                <CloseButton size="sm" aria-label="Clear the chosen photo" onClick={() => setFile(null)} />
+              </Group>
+            )}
+          </div>
           <NumberInput
             label="Sales tax"
             suffix="%"
