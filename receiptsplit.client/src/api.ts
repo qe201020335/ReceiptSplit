@@ -1,0 +1,115 @@
+// Types and calls for the ReceiptSplit backend (ReceiptSplit/Contracts/ReceiptDtos.cs).
+
+export type ReceiptStatus = 'Queued' | 'Processing' | 'Completed' | 'NeedsReview' | 'Failed'
+
+export interface ReceiptQueued {
+  id: string
+  status: ReceiptStatus
+}
+
+export interface ReceiptSummary {
+  id: string
+  createdAt: string
+  status: ReceiptStatus
+  storeName: string | null
+  purchaseDate: string | null
+  total: number | null
+}
+
+export interface ReceiptLine {
+  position: number
+  name: string
+  code: string | null
+  quantity: number
+  amount: number
+  taxCode: string | null
+}
+
+export interface ReceiptChecks {
+  linesSum: number
+  linesMatchSubtotal: boolean
+  totalMatches: boolean
+}
+
+export interface Extraction {
+  extractedAt: string
+  model: string | null
+  promptTokens: number | null
+  completionTokens: number | null
+  durationMs: number | null
+  sentImageWidth: number | null
+  sentImageHeight: number | null
+  modelOutput: string | null
+}
+
+export interface ReceiptDetail {
+  id: string
+  createdAt: string
+  originalFileName: string
+  status: ReceiptStatus
+  error: string | null
+  storeName: string | null
+  purchaseDate: string | null
+  subtotal: number | null
+  tax: number | null
+  total: number | null
+  checks: ReceiptChecks | null
+  lines: ReceiptLine[]
+  extraction: Extraction | null
+}
+
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+/** Queued and Processing receipts are still waiting on the model. */
+export function inProgress(status: ReceiptStatus): boolean {
+  return status === 'Queued' || status === 'Processing'
+}
+
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, init)
+  if (!response.ok) {
+    throw new ApiError(response.status, await problemMessage(response))
+  }
+
+  return response.status === 204 ? (undefined as T) : ((await response.json()) as T)
+}
+
+/** Reads an ASP.NET ProblemDetails body, falling back to the HTTP status. */
+async function problemMessage(response: Response): Promise<string> {
+  try {
+    const problem = (await response.json()) as { title?: string; detail?: string }
+    return problem.detail ?? problem.title ?? `${response.status} ${response.statusText}`
+  } catch {
+    return `${response.status} ${response.statusText}`
+  }
+}
+
+export const api = {
+  listReceipts: () => request<ReceiptSummary[]>('/api/receipts'),
+
+  getReceipt: (id: string) => request<ReceiptDetail>(`/api/receipts/${id}`),
+
+  uploadReceipt: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request<ReceiptQueued>('/api/receipts', { method: 'POST', body: form })
+  },
+
+  rerunExtraction: (id: string) => request<ReceiptQueued>(`/api/receipts/${id}/extract`, { method: 'POST' }),
+
+  deleteReceipt: (id: string) => request<void>(`/api/receipts/${id}`, { method: 'DELETE' }),
+
+  imageUrl: (id: string) => `/api/receipts/${id}/image`,
+}

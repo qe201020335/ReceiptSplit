@@ -42,6 +42,10 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// The built React app (receiptsplit.client) is published into wwwroot.
+app.UseDefaultFiles();
+app.MapStaticAssets();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -51,5 +55,9 @@ if (app.Environment.IsDevelopment())
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Unknown API paths stay 404; every other unmatched path is a client-side route of the React app.
+app.MapFallback("/api/{**path}", () => Results.NotFound());
+app.MapFallbackToFile("/index.html");
 
 app.Run();

@@ -26,3 +26,5 @@ README.md
 samples
 ReceiptSplit/data
 ReceiptSplit.Tests
+receiptsplit.client/dist
+receiptsplit.client/obj*

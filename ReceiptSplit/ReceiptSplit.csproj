@@ -6,16 +6,28 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <UserSecretsId>a9666efa-24bf-4dcd-ba0e-09bb4ac63e18</UserSecretsId>
+        <!-- In Development, SpaProxy starts the Vite dev server (if it isn't running) and sends the browser to it. -->
+        <SpaRoot>..\receiptsplit.client</SpaRoot>
+        <SpaProxyLaunchCommand>npm run dev</SpaProxyLaunchCommand>
+        <SpaProxyServerUrl>http://localhost:5173</SpaProxyServerUrl>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.17.1" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+        <PackageReference Include="Microsoft.AspNetCore.SpaProxy" Version="10.0.12" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
           <PrivateAssets>all</PrivateAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Publishing runs the client's npm build and ships its dist folder as wwwroot. -->
+        <ProjectReference Include="..\receiptsplit.client\receiptsplit.client.esproj">
+            <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+        </ProjectReference>
     </ItemGroup>
 
     <ItemGroup>

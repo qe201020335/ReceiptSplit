@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.6578810">
+  <PropertyGroup>
+    <StartupCommand>npm run dev</StartupCommand>
+    <!-- Vite only builds when publishing; normal builds just restore npm packages. -->
+    <ShouldRunBuildScript>false</ShouldRunBuildScript>
+    <!-- Folder where the production build is placed and picked up on publish. -->
+    <BuildOutputFolder>$(MSBuildProjectDirectory)\dist</BuildOutputFolder>
+  </PropertyGroup>
+</Project>
