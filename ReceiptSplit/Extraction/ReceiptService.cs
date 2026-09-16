@@ -19,10 +19,27 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
 {
     public const long MaxUploadBytes = 30 * 1024 * 1024;
 
+    /// <summary>Ontario's HST, the rate most of these receipts are printed at.</summary>
+    public const decimal DefaultTaxRatePercent = 13m;
+
+    public const decimal MinTaxRatePercent = 0m;
+
+    public const decimal MaxTaxRatePercent = 30m;
+
+    public static bool IsValidTaxRate(decimal percent) => percent is >= MinTaxRatePercent and <= MaxTaxRatePercent;
+
     /// <summary>Stores the original upload, creates a queued receipt, and queues it for extraction.</summary>
     /// <exception cref="InvalidImageException">The content is not a supported image.</exception>
-    public async Task<Receipt> CreateAsync(Stream content, string fileName, CancellationToken cancellationToken)
+    /// <exception cref="ArgumentOutOfRangeException">The tax rate is outside the accepted range.</exception>
+    public async Task<Receipt> CreateAsync(
+        Stream content,
+        string fileName,
+        decimal? taxRatePercent,
+        CancellationToken cancellationToken)
     {
+        var taxRate = taxRatePercent ?? DefaultTaxRatePercent;
+        ValidateTaxRate(taxRate);
+
         using var buffer = new MemoryStream();
         await content.CopyToAsync(buffer, cancellationToken);
         if (buffer.Length > MaxUploadBytes)
@@ -40,6 +57,7 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
             OriginalFileName = Path.GetFileName(fileName) is { Length: > 0 } name ? name : $"receipt{image.Extension}",
             StoredFileName = $"{id}{image.Extension}",
             ContentType = image.MimeType,
+            TaxRatePercent = taxRate,
         };
 
         var path = storage.Value.GetUploadPath(receipt.StoredFileName);
@@ -79,6 +97,44 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
         return ReceiptActionResult.Done;
     }
 
+    /// <summary>
+    /// Changes the tax rate the receipt is checked against. The checks are computed from the stored lines,
+    /// so an already extracted receipt is re-checked here instead of being sent to the model again.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The tax rate is outside the accepted range.</exception>
+    public async Task<ReceiptActionResult> UpdateTaxRateAsync(Guid id, decimal taxRatePercent, CancellationToken cancellationToken)
+    {
+        ValidateTaxRate(taxRatePercent);
+
+        var receipt = await db.Receipts.Include(r => r.Lines).FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+        if (receipt is null)
+        {
+            return ReceiptActionResult.NotFound;
+        }
+
+        if (receipt.Status == ReceiptStatus.Processing)
+        {
+            return ReceiptActionResult.Busy;
+        }
+
+        receipt.TaxRatePercent = taxRatePercent;
+
+        // A queued receipt is checked when it is extracted, and a failed one has no lines worth checking.
+        if (receipt.Error is null && receipt.Status is ReceiptStatus.Completed or ReceiptStatus.NeedsReview)
+        {
+            var checks = ReceiptChecks.Evaluate(
+                receipt.Lines.Select(l => (l.Amount, l.IsTaxed)),
+                receipt.Subtotal,
+                receipt.Tax,
+                receipt.Total,
+                taxRatePercent);
+            receipt.Status = ReceiptChecks.StatusFor(checks);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return ReceiptActionResult.Done;
+    }
+
     /// <summary>Deletes the receipt, its lines, and the stored photo. Refused while the model is reading it.</summary>
     public async Task<ReceiptActionResult> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
@@ -97,5 +153,14 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
         await db.SaveChangesAsync(cancellationToken);
         File.Delete(storage.Value.GetUploadPath(receipt.StoredFileName));
         return ReceiptActionResult.Done;
+    }
+
+    private static void ValidateTaxRate(decimal percent)
+    {
+        if (!IsValidTaxRate(percent))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(percent), percent, $"The tax rate must be between {MinTaxRatePercent} and {MaxTaxRatePercent} percent.");
+        }
     }
 }

@@ -5,6 +5,9 @@ namespace ReceiptSplit.Contracts;
 
 public sealed record ReceiptQueuedDto(Guid Id, ReceiptStatus Status);
 
+/// <summary>Body of the request that changes the rate a receipt's tax is checked against.</summary>
+public sealed record ReceiptTaxRateDto(decimal TaxRatePercent);
+
 public sealed record ReceiptSummaryDto(
     Guid Id,
     DateTime CreatedAt,

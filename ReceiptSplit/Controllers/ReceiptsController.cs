@@ -13,17 +13,23 @@ namespace ReceiptSplit.Controllers;
 public class ReceiptsController(AppDbContext db, ReceiptService receipts, IOptions<StorageOptions> storage) : ControllerBase
 {
     /// <summary>Uploads a receipt photo and queues it for extraction; poll the returned location for the result.</summary>
+    /// <param name="taxRatePercent">Sales tax rate the receipt was charged at; defaults to Ontario's 13%.</param>
     [HttpPost]
     [RequestSizeLimit(ReceiptService.MaxUploadBytes + 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = ReceiptService.MaxUploadBytes + 1024 * 1024)]
     [ProducesResponseType<ReceiptQueuedDto>(StatusCodes.Status202Accepted)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Upload(IFormFile file, CancellationToken cancellationToken)
+    public async Task<IActionResult> Upload(IFormFile file, [FromForm] decimal? taxRatePercent, CancellationToken cancellationToken)
     {
+        if (taxRatePercent is { } rate && !ReceiptService.IsValidTaxRate(rate))
+        {
+            return InvalidTaxRate();
+        }
+
         await using var stream = file.OpenReadStream();
         try
         {
-            var receipt = await receipts.CreateAsync(stream, file.FileName, cancellationToken);
+            var receipt = await receipts.CreateAsync(stream, file.FileName, taxRatePercent, cancellationToken);
             return AcceptedAtAction(nameof(Get), new { id = receipt.Id }, new ReceiptQueuedDto(receipt.Id, receipt.Status));
         }
         catch (InvalidImageException ex)
@@ -69,6 +75,33 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts, IOptio
         return System.IO.File.Exists(path) ? PhysicalFile(path, receipt.ContentType) : NotFound();
     }
 
+    /// <summary>Changes the tax rate the receipt is checked against and re-checks it, without calling the model.</summary>
+    [HttpPatch("{id:guid}")]
+    [ProducesResponseType<ReceiptDetailDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ReceiptDetailDto>> UpdateTaxRate(
+        Guid id,
+        ReceiptTaxRateDto request,
+        CancellationToken cancellationToken)
+    {
+        if (!ReceiptService.IsValidTaxRate(request.TaxRatePercent))
+        {
+            return InvalidTaxRate();
+        }
+
+        return await receipts.UpdateTaxRateAsync(id, request.TaxRatePercent, cancellationToken) switch
+        {
+            ReceiptActionResult.Done => await Get(id, cancellationToken),
+            ReceiptActionResult.Busy => Problem(
+                title: "Receipt is busy",
+                detail: "The receipt is being extracted; change the tax rate once extraction finishes.",
+                statusCode: StatusCodes.Status409Conflict),
+            _ => NotFound(),
+        };
+    }
+
     /// <summary>Discards the previous result and extracts the stored photo again.</summary>
     [HttpPost("{id:guid}/extract")]
     [ProducesResponseType<ReceiptQueuedDto>(StatusCodes.Status202Accepted)]
@@ -100,4 +133,9 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts, IOptio
                 statusCode: StatusCodes.Status409Conflict),
             _ => NotFound(),
         };
+
+    private ObjectResult InvalidTaxRate() => Problem(
+        title: "Invalid tax rate",
+        detail: $"The tax rate must be between {ReceiptService.MinTaxRatePercent} and {ReceiptService.MaxTaxRatePercent} percent.",
+        statusCode: StatusCodes.Status400BadRequest);
 }
