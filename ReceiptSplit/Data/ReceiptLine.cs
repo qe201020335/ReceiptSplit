@@ -20,6 +20,9 @@ public class ReceiptLine
     /// <summary>Line total; negative for discounts.</summary>
     public decimal Amount { get; set; }
 
-    /// <summary>Tax code letters as printed (e.g. "H", "G P"); null means untaxed.</summary>
+    /// <summary>Tax code letters as printed (e.g. "H", "G P"); null means nothing was printed.</summary>
     public string? TaxCode { get; set; }
+
+    /// <summary>Whether sales tax was charged on this line, read from <see cref="TaxCode"/> when the receipt is extracted.</summary>
+    public bool IsTaxed { get; set; }
 }
