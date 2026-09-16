@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, errorMessage, inProgress, type ReceiptDetail as Receipt } from '../api.ts'
 import { formatDateTime, formatMoney, formatPercent, formatSeconds } from '../format.ts'
 import { isValidTaxRate, maxTaxRatePercent, minTaxRatePercent } from '../taxRate.ts'
+import { ReceiptEditor } from './ReceiptEditor.tsx'
 import { StatusBadge } from './StatusBadge.tsx'
 
 const pollIntervalMs = 2000
@@ -19,6 +20,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
   const [busy, setBusy] = useState(false)
   // The rate being typed, or null when it is only being displayed.
   const [taxRateDraft, setTaxRateDraft] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
   // Bumping this reloads the receipt.
   const [version, setVersion] = useState(0)
 
@@ -73,6 +75,10 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
   }
 
   async function rerun() {
+    if (receipt?.editedAt != null && !window.confirm('Reading the photo again replaces the corrections you made by hand. Continue?')) {
+      return
+    }
+
     setBusy(true)
     setError(null)
     try {
@@ -114,6 +120,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
           <p className="muted">
             {receipt.purchaseDate ?? 'No purchase date'} · uploaded {formatDateTime(receipt.createdAt)} ·{' '}
             {receipt.originalFileName}
+            {receipt.editedAt && ` · corrected by hand ${formatDateTime(receipt.editedAt)}`}
           </p>
           {taxRateDraft === null ? (
             <p className="tax-rate">
@@ -175,89 +182,106 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
         </p>
       )}
 
-      {receipt.lines.length > 0 && (
-        <div className="table-scroll">
-          <table className="lines">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Item</th>
-                <th className="num">Qty</th>
-                <th className="num">Amount</th>
-                <th>Tax</th>
-              </tr>
-            </thead>
-            <tbody>
-              {receipt.lines.map((line) => (
-                <tr key={line.position}>
-                  <td className="muted">{line.position + 1}</td>
-                  <td>
-                    {line.name}
-                    {line.code && <span className="muted item-code"> {line.code}</span>}
-                  </td>
-                  <td className="num">{line.quantity}</td>
-                  <td className="num">{formatMoney(line.amount)}</td>
-                  <td className="tax">
-                    {line.taxCode}
-                    {line.isTaxed && <span className="taxed" title={`Taxed at ${formatPercent(receipt.taxRatePercent)}`}> ✓</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <th colSpan={3}>Subtotal</th>
-                <td className="num">{formatMoney(receipt.subtotal)}</td>
-                <td />
-              </tr>
-              {checks && (
+      {editing ? (
+        <ReceiptEditor
+          receipt={receipt}
+          onSaved={(corrected) => {
+            setReceipt(corrected)
+            setEditing(false)
+            onChanged()
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      ) : (
+        <>
+        {receipt.lines.length > 0 && (
+          <div className="table-scroll">
+            <table className="lines">
+              <thead>
                 <tr>
-                  <th colSpan={3}>Taxed items</th>
-                  <td className="num">{formatMoney(checks.taxedSum)}</td>
+                  <th>#</th>
+                  <th>Item</th>
+                  <th className="num">Qty</th>
+                  <th className="num">Amount</th>
+                  <th>Tax</th>
+                </tr>
+              </thead>
+              <tbody>
+                {receipt.lines.map((line) => (
+                  <tr key={line.position}>
+                    <td className="muted">{line.position + 1}</td>
+                    <td>
+                      {line.name}
+                      {line.code && <span className="muted item-code"> {line.code}</span>}
+                    </td>
+                    <td className="num">{line.quantity}</td>
+                    <td className="num">{formatMoney(line.amount)}</td>
+                    <td className="tax">
+                      {line.taxCode}
+                      {line.isTaxed && <span className="taxed" title={`Taxed at ${formatPercent(receipt.taxRatePercent)}`}> ✓</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th colSpan={3}>Subtotal</th>
+                  <td className="num">{formatMoney(receipt.subtotal)}</td>
                   <td />
                 </tr>
-              )}
-              <tr>
-                <th colSpan={3}>Tax</th>
-                <td className="num">{formatMoney(receipt.tax)}</td>
-                <td />
-              </tr>
-              <tr className="total">
-                <th colSpan={3}>Total</th>
-                <td className="num">{formatMoney(receipt.total)}</td>
-                <td />
-              </tr>
-            </tfoot>
-          </table>
+                {checks && (
+                  <tr>
+                    <th colSpan={3}>Taxed items</th>
+                    <td className="num">{formatMoney(checks.taxedSum)}</td>
+                    <td />
+                  </tr>
+                )}
+                <tr>
+                  <th colSpan={3}>Tax</th>
+                  <td className="num">{formatMoney(receipt.tax)}</td>
+                  <td />
+                </tr>
+                <tr className="total">
+                  <th colSpan={3}>Total</th>
+                  <td className="num">{formatMoney(receipt.total)}</td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+
+        {checks && (
+          <ul className="checks">
+            <li className={checks.linesMatchSubtotal ? 'ok' : 'bad'}>
+              {checks.linesMatchSubtotal
+                ? `✓ Lines add up to the subtotal (${formatMoney(checks.linesSum)})`
+                : `✗ Lines add up to ${formatMoney(checks.linesSum)}, but the subtotal is ${formatMoney(receipt.subtotal)}`}
+            </li>
+            <li className={checks.totalMatches ? 'ok' : 'bad'}>
+              {checks.totalMatches ? '✓ Subtotal + tax equals the total' : "✗ Subtotal + tax doesn't equal the total"}
+            </li>
+            <li className={checks.taxMatches ? 'ok' : 'bad'}>
+              {checks.taxMatches ? '✓' : '✗'} {formatPercent(receipt.taxRatePercent)} tax on {formatMoney(checks.taxedSum)} of
+              taxed items is {formatMoney(checks.expectedTax)}
+              {checks.taxMatches ? '' : `, but the receipt shows ${formatMoney(receipt.tax)}`}
+            </li>
+          </ul>
+        )}
+
+        <div className="actions">
+          <button type="button" onClick={() => setEditing(true)} disabled={busy || waiting}>
+            Edit lines
+          </button>
+          <button type="button" onClick={() => void rerun()} disabled={busy || waiting}>
+            Re-run extraction
+          </button>
+          <button type="button" className="danger" onClick={() => void remove()} disabled={busy || receipt.status === 'Processing'}>
+            Delete
+          </button>
         </div>
+        </>
       )}
-
-      {checks && (
-        <ul className="checks">
-          <li className={checks.linesMatchSubtotal ? 'ok' : 'bad'}>
-            {checks.linesMatchSubtotal
-              ? `✓ Lines add up to the subtotal (${formatMoney(checks.linesSum)})`
-              : `✗ Lines add up to ${formatMoney(checks.linesSum)}, but the subtotal is ${formatMoney(receipt.subtotal)}`}
-          </li>
-          <li className={checks.totalMatches ? 'ok' : 'bad'}>
-            {checks.totalMatches ? '✓ Subtotal + tax equals the total' : "✗ Subtotal + tax doesn't equal the total"}
-          </li>
-          <li className={checks.taxMatches ? 'ok' : 'bad'}>
-            {checks.taxMatches ? '✓' : '✗'} {formatPercent(receipt.taxRatePercent)} tax on {formatMoney(checks.taxedSum)} of
-            taxed items is {formatMoney(checks.expectedTax)}
-            {checks.taxMatches ? '' : `, but the receipt shows ${formatMoney(receipt.tax)}`}
-          </li>
-        </ul>
-      )}
-
-      <div className="actions">
-        <button type="button" onClick={() => void rerun()} disabled={busy || waiting}>
-          Re-run extraction
-        </button>
-        <button type="button" className="danger" onClick={() => void remove()} disabled={busy || receipt.status === 'Processing'}>
-          Delete
-        </button>
-      </div>
 
       <details className="photo">
         <summary>Original photo</summary>

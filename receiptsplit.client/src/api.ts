@@ -46,6 +46,25 @@ export interface Extraction {
   modelOutput: string | null
 }
 
+/** The editable part of a receipt: what a person can correct when the model misreads the photo. */
+export interface ReceiptEdit {
+  storeName: string | null
+  purchaseDate: string | null
+  subtotal: number | null
+  tax: number | null
+  total: number | null
+  lines: ReceiptLineEdit[]
+}
+
+export interface ReceiptLineEdit {
+  name: string
+  code: string | null
+  quantity: number
+  amount: number
+  taxCode: string | null
+  isTaxed: boolean
+}
+
 export interface ReceiptDetail {
   id: string
   createdAt: string
@@ -54,6 +73,7 @@ export interface ReceiptDetail {
   error: string | null
   storeName: string | null
   purchaseDate: string | null
+  editedAt: string | null
   taxRatePercent: number
   subtotal: number | null
   tax: number | null
@@ -112,6 +132,14 @@ export const api = {
     form.append('taxRatePercent', String(taxRatePercent))
     return request<ReceiptQueued>('/api/receipts', { method: 'POST', body: form })
   },
+
+  /** Replaces the extracted lines and totals with corrected ones; no new extraction. */
+  updateReceipt: (id: string, edit: ReceiptEdit) =>
+    request<ReceiptDetail>(`/api/receipts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(edit),
+    }),
 
   /** Re-checks the receipt against a different sales tax rate; no new extraction. */
   updateTaxRate: (id: string, taxRatePercent: number) =>

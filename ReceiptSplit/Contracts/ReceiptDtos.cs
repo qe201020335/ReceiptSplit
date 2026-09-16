@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ReceiptSplit.Data;
 using ReceiptSplit.Extraction;
 
@@ -7,6 +8,23 @@ public sealed record ReceiptQueuedDto(Guid Id, ReceiptStatus Status);
 
 /// <summary>Body of the request that changes the rate a receipt's tax is checked against.</summary>
 public sealed record ReceiptTaxRateDto(decimal TaxRatePercent);
+
+/// <summary>Body of the request that replaces a receipt's extracted result with hand corrected values.</summary>
+public sealed record ReceiptEditDto(
+    [StringLength(200)] string? StoreName,
+    DateOnly? PurchaseDate,
+    [Range(-1_000_000, 1_000_000)] decimal? Subtotal,
+    [Range(-1_000_000, 1_000_000)] decimal? Tax,
+    [Range(-1_000_000, 1_000_000)] decimal? Total,
+    [Required, MinLength(1), MaxLength(500)] IReadOnlyList<ReceiptLineEditDto> Lines);
+
+public sealed record ReceiptLineEditDto(
+    [Required, StringLength(200, MinimumLength = 1)] string Name,
+    [StringLength(50)] string? Code,
+    [Range(-100_000, 100_000)] decimal Quantity,
+    [Range(-1_000_000, 1_000_000)] decimal Amount,
+    [StringLength(16)] string? TaxCode,
+    bool IsTaxed);
 
 public sealed record ReceiptSummaryDto(
     Guid Id,
@@ -24,6 +42,7 @@ public sealed record ReceiptDetailDto(
     string? Error,
     string? StoreName,
     DateOnly? PurchaseDate,
+    DateTime? EditedAt,
     decimal TaxRatePercent,
     decimal? Subtotal,
     decimal? Tax,
@@ -61,6 +80,14 @@ public sealed record ExtractionDto(
 
 public static class ReceiptMappings
 {
+    public static ReceiptEdit ToEdit(this ReceiptEditDto dto) => new(
+        dto.StoreName,
+        dto.PurchaseDate,
+        dto.Subtotal,
+        dto.Tax,
+        dto.Total,
+        dto.Lines.Select(l => new ReceiptLineEdit(l.Name, l.Code, l.Quantity, l.Amount, l.TaxCode, l.IsTaxed)).ToList());
+
     public static ReceiptDetailDto ToDetailDto(this Receipt receipt)
     {
         var lines = receipt.Lines
@@ -106,6 +133,7 @@ public static class ReceiptMappings
             receipt.Error,
             receipt.StoreName,
             receipt.PurchaseDate,
+            receipt.EditedAt,
             receipt.TaxRatePercent,
             receipt.Subtotal,
             receipt.Tax,

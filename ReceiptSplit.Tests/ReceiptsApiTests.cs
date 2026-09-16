@@ -136,6 +136,118 @@ public class ReceiptsApiTests
     }
 
     [Fact]
+    public async Task Hand_corrections_replace_the_lines_and_re_check_the_receipt()
+    {
+        await using var factory = new ReceiptApiFactory();
+        // A misread amount: the lines no longer add up to the printed subtotal.
+        factory.Llm.Content = FakeLlamaClient.ValidOutput.Replace("\"5.49\"", "\"5.09\"");
+        using var client = factory.CreateClient();
+        var receipt = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Jpeg));
+        Assert.Equal(ReceiptStatus.NeedsReview, receipt.Status);
+        Assert.Null(receipt.EditedAt);
+
+        var edit = new ReceiptEditDto(
+            "Corner Market",
+            new DateOnly(2026, 9, 14),
+            Subtotal: 7.48m,
+            Tax: 0.71m,
+            Total: 8.19m,
+            [
+                new ReceiptLineEditDto("BANANAS", null, 1.25m, 1.99m, null, IsTaxed: false),
+                new ReceiptLineEditDto("MILK 2L", "4011", 1m, 5.49m, "H", IsTaxed: true),
+            ]);
+        var corrected = await PutEditAsync(client, receipt.Id, edit);
+
+        Assert.Equal(ReceiptStatus.Completed, corrected.Status);
+        Assert.NotNull(corrected.EditedAt);
+        Assert.Equal(5.49m, corrected.Lines[1].Amount);
+        Assert.True(corrected.Checks!.LinesMatchSubtotal);
+        Assert.True(corrected.Checks.TaxMatches);
+        // The photo is untouched, so the raw model output stays available next to the correction.
+        Assert.Equal(factory.Llm.Content, corrected.Extraction?.ModelOutput);
+        Assert.Single(factory.Llm.Requests);
+    }
+
+    [Fact]
+    public async Task Hand_corrections_renumber_lines_and_clear_the_extraction_error()
+    {
+        await using var factory = new ReceiptApiFactory();
+        factory.Llm.Content = "I can't read this receipt.";
+        using var client = factory.CreateClient();
+        var receipt = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Jpeg));
+        Assert.Equal(ReceiptStatus.Failed, receipt.Status);
+        Assert.NotNull(receipt.Error);
+
+        var typedByHand = await PutEditAsync(client, receipt.Id, new ReceiptEditDto(
+            "  Corner Market  ",
+            new DateOnly(2026, 9, 14),
+            Subtotal: 3.00m,
+            Tax: null,
+            Total: 3.00m,
+            [
+                new ReceiptLineEditDto("  APPLES  ", "  ", 1m, 1.00m, "  ", IsTaxed: false),
+                new ReceiptLineEditDto("PEARS", null, 1m, 2.00m, null, IsTaxed: false),
+            ]));
+
+        Assert.Equal(ReceiptStatus.Completed, typedByHand.Status);
+        Assert.Null(typedByHand.Error);
+        Assert.Equal("Corner Market", typedByHand.StoreName);
+        Assert.Equal([0, 1], typedByHand.Lines.Select(l => l.Position));
+        Assert.Equal(("APPLES", null, null), (typedByHand.Lines[0].Name, typedByHand.Lines[0].Code, typedByHand.Lines[0].TaxCode));
+    }
+
+    [Fact]
+    public async Task Re_running_extraction_discards_hand_corrections()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var client = factory.CreateClient();
+        var receipt = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Jpeg));
+        await PutEditAsync(client, receipt.Id, new ReceiptEditDto(
+            "By hand", null, 1.00m, null, 1.00m, [new ReceiptLineEditDto("TYPED", null, 1m, 1.00m, null, IsTaxed: false)]));
+
+        using (var rerun = await client.PostAsync($"/api/receipts/{receipt.Id}/extract", null, Ct))
+        {
+            Assert.Equal(HttpStatusCode.Accepted, rerun.StatusCode);
+        }
+
+        var extracted = await WaitForResultAsync(client, receipt.Id);
+
+        Assert.Null(extracted.EditedAt);
+        Assert.Equal("Corner Market", extracted.StoreName);
+        Assert.Equal(2, extracted.Lines.Count);
+    }
+
+    [Fact]
+    public async Task Refuses_edits_while_the_model_is_reading_and_rejects_empty_ones()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var client = factory.CreateClient();
+        factory.Llm.Block();
+        using var upload = await client.PostAsync("/api/receipts", PhotoForm(TestImages.Create(64, 48, MagickFormat.Jpeg), "receipt.jpg"), Ct);
+        var queued = (await upload.Content.ReadFromJsonAsync<ReceiptQueuedDto>(Json, Ct))!;
+        var oneLine = new ReceiptEditDto("Corner Market", null, 1.00m, null, 1.00m,
+            [new ReceiptLineEditDto("TYPED", null, 1m, 1.00m, null, IsTaxed: false)]);
+
+        using (var busy = await client.PutAsJsonAsync($"/api/receipts/{queued.Id}", oneLine, Json, Ct))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, busy.StatusCode);
+        }
+
+        factory.Llm.Release();
+        await WaitForResultAsync(client, queued.Id);
+
+        using var noLines = await client.PutAsJsonAsync($"/api/receipts/{queued.Id}", oneLine with { Lines = [] }, Json, Ct);
+        using var noName = await client.PutAsJsonAsync(
+            $"/api/receipts/{queued.Id}",
+            oneLine with { Lines = [new ReceiptLineEditDto(" ", null, 1m, 1.00m, null, IsTaxed: false)] },
+            Json,
+            Ct);
+
+        Assert.All([noLines, noName], r => Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode));
+        Assert.Null((await client.GetFromJsonAsync<ReceiptDetailDto>($"/api/receipts/{queued.Id}", Json, Ct))!.EditedAt);
+    }
+
+    [Fact]
     public async Task Rejects_tax_rates_outside_the_accepted_range()
     {
         await using var factory = new ReceiptApiFactory();
@@ -209,9 +321,22 @@ public class ReceiptsApiTests
         using var image = await client.GetAsync($"/api/receipts/{id}/image", Ct);
         using var extract = await client.PostAsync($"/api/receipts/{id}/extract", null, Ct);
         using var patch = await client.PatchAsJsonAsync($"/api/receipts/{id}", new ReceiptTaxRateDto(13m), Json, Ct);
+        using var put = await client.PutAsJsonAsync(
+            $"/api/receipts/{id}",
+            new ReceiptEditDto("Corner Market", null, 1.00m, null, 1.00m, [new ReceiptLineEditDto("TYPED", null, 1m, 1.00m, null, false)]),
+            Json,
+            Ct);
         using var delete = await client.DeleteAsync($"/api/receipts/{id}", Ct);
 
-        Assert.All([get, image, extract, patch, delete], r => Assert.Equal(HttpStatusCode.NotFound, r.StatusCode));
+        Assert.All([get, image, extract, patch, put, delete], r => Assert.Equal(HttpStatusCode.NotFound, r.StatusCode));
+    }
+
+    private static async Task<ReceiptDetailDto> PutEditAsync(HttpClient client, Guid id, ReceiptEditDto edit)
+    {
+        using var response = await client.PutAsJsonAsync($"/api/receipts/{id}", edit, Json, Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<ReceiptDetailDto>(Json, Ct))!;
     }
 
     private static async Task<ReceiptDetailDto> PatchTaxRateAsync(HttpClient client, Guid id, decimal taxRatePercent)

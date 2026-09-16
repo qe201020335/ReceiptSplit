@@ -50,7 +50,10 @@ public class Receipt
 
     public DateTime? ExtractedAt { get; set; }
 
-    /// <summary>Drops all extraction results and puts the receipt back in the queue state.
+    /// <summary>When someone last corrected the extracted lines or totals by hand; null when untouched.</summary>
+    public DateTime? EditedAt { get; set; }
+
+    /// <summary>Drops all extraction results, hand corrections included, and puts the receipt back in the queue state.
     /// The tax rate is entered by the person uploading, not extracted, so it survives.</summary>
     public void ResetExtraction()
     {
@@ -70,5 +73,6 @@ public class Receipt
         SentImageWidth = null;
         SentImageHeight = null;
         ExtractedAt = null;
+        EditedAt = null;
     }
 }
