@@ -57,9 +57,15 @@ public sealed class ReceiptExtractor(
                 Quantity = line.Quantity,
                 Amount = line.Amount,
                 TaxCode = line.TaxCode,
+                IsTaxed = ReceiptTaxCodes.IsTaxed(line.TaxCode),
             }));
 
-            var checks = ReceiptChecks.Evaluate(parsed.Lines.Select(l => l.Amount), parsed.Subtotal, parsed.Tax, parsed.Total);
+            var checks = ReceiptChecks.Evaluate(
+                receipt.Lines.Select(l => (l.Amount, l.IsTaxed)),
+                parsed.Subtotal,
+                parsed.Tax,
+                parsed.Total,
+                receipt.TaxRatePercent);
             if (parsed.Lines.Count == 0)
             {
                 receipt.Status = ReceiptStatus.Failed;
@@ -72,7 +78,7 @@ public sealed class ReceiptExtractor(
             }
             else
             {
-                receipt.Status = checks.Passed ? ReceiptStatus.Completed : ReceiptStatus.NeedsReview;
+                receipt.Status = ReceiptChecks.StatusFor(checks);
             }
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)

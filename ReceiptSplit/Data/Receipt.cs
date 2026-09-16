@@ -22,6 +22,9 @@ public class Receipt
 
     public DateOnly? PurchaseDate { get; set; }
 
+    /// <summary>Sales tax rate that applied to this purchase, in percent (13 = Ontario HST).</summary>
+    public decimal TaxRatePercent { get; set; } = 13m;
+
     public decimal? Subtotal { get; set; }
 
     public decimal? Tax { get; set; }
@@ -47,7 +50,8 @@ public class Receipt
 
     public DateTime? ExtractedAt { get; set; }
 
-    /// <summary>Drops all extraction results and puts the receipt back in the queue state.</summary>
+    /// <summary>Drops all extraction results and puts the receipt back in the queue state.
+    /// The tax rate is entered by the person uploading, not extracted, so it survives.</summary>
     public void ResetExtraction()
     {
         Status = ReceiptStatus.Queued;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, errorMessage, inProgress, type ReceiptDetail as Receipt } from '../api.ts'
-import { formatDateTime, formatMoney, formatSeconds } from '../format.ts'
+import { formatDateTime, formatMoney, formatPercent, formatSeconds } from '../format.ts'
+import { isValidTaxRate, maxTaxRatePercent, minTaxRatePercent } from '../taxRate.ts'
 import { StatusBadge } from './StatusBadge.tsx'
 
 const pollIntervalMs = 2000
@@ -16,6 +17,8 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // The rate being typed, or null when it is only being displayed.
+  const [taxRateDraft, setTaxRateDraft] = useState<string | null>(null)
   // Bumping this reloads the receipt.
   const [version, setVersion] = useState(0)
 
@@ -48,6 +51,26 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
     const timer = setTimeout(() => setVersion((v) => v + 1), pollIntervalMs)
     return () => clearTimeout(timer)
   }, [receipt, waiting])
+
+  async function saveTaxRate(draft: string) {
+    const rate = Number(draft)
+    if (draft.trim() === '' || !isValidTaxRate(rate)) {
+      return
+    }
+
+    setBusy(true)
+    setError(null)
+    try {
+      const updated = await api.updateTaxRate(id, rate)
+      setReceipt(updated)
+      setTaxRateDraft(null)
+      onChanged()
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function rerun() {
     setBusy(true)
@@ -92,6 +115,48 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
             {receipt.purchaseDate ?? 'No purchase date'} · uploaded {formatDateTime(receipt.createdAt)} ·{' '}
             {receipt.originalFileName}
           </p>
+          {taxRateDraft === null ? (
+            <p className="tax-rate">
+              Sales tax {formatPercent(receipt.taxRatePercent)}
+              <button
+                type="button"
+                className="link"
+                onClick={() => setTaxRateDraft(String(receipt.taxRatePercent))}
+                disabled={busy || receipt.status === 'Processing'}
+              >
+                Change
+              </button>
+            </p>
+          ) : (
+            <form
+              className="tax-rate"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void saveTaxRate(taxRateDraft)
+              }}
+            >
+              <label className="tax-rate-field">
+                Sales tax
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  autoFocus
+                  min={minTaxRatePercent}
+                  max={maxTaxRatePercent}
+                  step={0.001}
+                  value={taxRateDraft}
+                  onChange={(event) => setTaxRateDraft(event.target.value)}
+                />
+                %
+              </label>
+              <button type="submit" disabled={busy || taxRateDraft.trim() === '' || !isValidTaxRate(Number(taxRateDraft))}>
+                Save
+              </button>
+              <button type="button" onClick={() => setTaxRateDraft(null)} disabled={busy}>
+                Cancel
+              </button>
+            </form>
+          )}
         </div>
         <StatusBadge status={receipt.status} />
       </header>
@@ -104,7 +169,10 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
       )}
       {receipt.error && <p className="error">{receipt.error}</p>}
       {receipt.status === 'NeedsReview' && !receipt.error && (
-        <p className="warning">The lines don't agree with the receipt's printed totals. Check them against the photo.</p>
+        <p className="warning">
+          The lines don't agree with the receipt's printed totals. Check them against the photo, and check that the sales tax
+          rate is right for where you shopped.
+        </p>
       )}
 
       {receipt.lines.length > 0 && (
@@ -129,7 +197,10 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
                   </td>
                   <td className="num">{line.quantity}</td>
                   <td className="num">{formatMoney(line.amount)}</td>
-                  <td className="tax">{line.taxCode}</td>
+                  <td className="tax">
+                    {line.taxCode}
+                    {line.isTaxed && <span className="taxed" title={`Taxed at ${formatPercent(receipt.taxRatePercent)}`}> ✓</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -139,6 +210,13 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
                 <td className="num">{formatMoney(receipt.subtotal)}</td>
                 <td />
               </tr>
+              {checks && (
+                <tr>
+                  <th colSpan={3}>Taxed items</th>
+                  <td className="num">{formatMoney(checks.taxedSum)}</td>
+                  <td />
+                </tr>
+              )}
               <tr>
                 <th colSpan={3}>Tax</th>
                 <td className="num">{formatMoney(receipt.tax)}</td>
@@ -163,6 +241,11 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
           </li>
           <li className={checks.totalMatches ? 'ok' : 'bad'}>
             {checks.totalMatches ? '✓ Subtotal + tax equals the total' : "✗ Subtotal + tax doesn't equal the total"}
+          </li>
+          <li className={checks.taxMatches ? 'ok' : 'bad'}>
+            {checks.taxMatches ? '✓' : '✗'} {formatPercent(receipt.taxRatePercent)} tax on {formatMoney(checks.taxedSum)} of
+            taxed items is {formatMoney(checks.expectedTax)}
+            {checks.taxMatches ? '' : `, but the receipt shows ${formatMoney(receipt.tax)}`}
           </li>
         </ul>
       )}

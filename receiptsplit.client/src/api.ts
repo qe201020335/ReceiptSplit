@@ -23,12 +23,16 @@ export interface ReceiptLine {
   quantity: number
   amount: number
   taxCode: string | null
+  isTaxed: boolean
 }
 
 export interface ReceiptChecks {
   linesSum: number
   linesMatchSubtotal: boolean
   totalMatches: boolean
+  taxedSum: number
+  expectedTax: number
+  taxMatches: boolean
 }
 
 export interface Extraction {
@@ -50,6 +54,7 @@ export interface ReceiptDetail {
   error: string | null
   storeName: string | null
   purchaseDate: string | null
+  taxRatePercent: number
   subtotal: number | null
   tax: number | null
   total: number | null
@@ -101,11 +106,20 @@ export const api = {
 
   getReceipt: (id: string) => request<ReceiptDetail>(`/api/receipts/${id}`),
 
-  uploadReceipt: (file: File) => {
+  uploadReceipt: (file: File, taxRatePercent: number) => {
     const form = new FormData()
     form.append('file', file)
+    form.append('taxRatePercent', String(taxRatePercent))
     return request<ReceiptQueued>('/api/receipts', { method: 'POST', body: form })
   },
+
+  /** Re-checks the receipt against a different sales tax rate; no new extraction. */
+  updateTaxRate: (id: string, taxRatePercent: number) =>
+    request<ReceiptDetail>(`/api/receipts/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taxRatePercent }),
+    }),
 
   rerunExtraction: (id: string) => request<ReceiptQueued>(`/api/receipts/${id}/extract`, { method: 'POST' }),
 

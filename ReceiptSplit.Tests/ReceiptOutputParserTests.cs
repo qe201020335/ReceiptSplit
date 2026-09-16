@@ -188,6 +188,12 @@ public class ReceiptOutputParserTests
         Assert.Equal(truth.Subtotal, parsed.Subtotal);
         Assert.Equal(truth.Tax, parsed.Tax);
         Assert.Equal(truth.Total, parsed.Total);
-        Assert.True(ReceiptChecks.Evaluate(parsed.Lines.Select(l => l.Amount), parsed.Subtotal, parsed.Tax, parsed.Total).Passed);
+        // Ontario 13%: the printed tax on both sample stores is exactly 13% of their taxed lines.
+        Assert.True(ReceiptChecks.Evaluate(
+            parsed.Lines.Select(l => (l.Amount, ReceiptTaxCodes.IsTaxed(l.TaxCode))),
+            parsed.Subtotal,
+            parsed.Tax,
+            parsed.Total,
+            taxRatePercent: 13m).Passed);
     }
 }
