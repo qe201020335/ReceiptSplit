@@ -40,6 +40,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             line.HasIndex(l => new { l.ReceiptId, l.Position }).IsUnique();
             line.Property(l => l.Amount).HasConversion(cents);
+            line.Property(l => l.Discount).HasConversion(cents);
         });
     }
 

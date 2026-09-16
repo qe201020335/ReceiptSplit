@@ -11,6 +11,14 @@ public sealed class FakeLlamaClient : ILlamaClient
         {"s": "7.48", "t": "0.71", "T": "8.19", "store": "Corner Market", "date": "2026-09-14"}
         """;
 
+    /// <summary>A Costco style receipt: a promotion under a taxed item, priced at Ontario's 13% on the net 10.99.</summary>
+    public const string PromotionOutput = """
+        ["WAGON", "1872234", 1, "13.99", "H"]
+        ["TPD/1872234", "2108345", 1, "-3.00", null]
+        ["KS ORG OAT", "1272413", 1, "12.99", null]
+        {"s": "23.98", "t": "1.43", "T": "25.41", "store": "Costco Wholesale", "date": "2026-09-13"}
+        """;
+
     private volatile TaskCompletionSource _gate = CompletedGate();
 
     public string Content { get; set; } = ValidOutput;

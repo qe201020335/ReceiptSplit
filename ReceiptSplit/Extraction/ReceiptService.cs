@@ -128,6 +128,7 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
             Code = Trimmed(line.Code),
             Quantity = line.Quantity,
             Amount = line.Amount,
+            Discount = line.Discount,
             TaxCode = Trimmed(line.TaxCode),
             IsTaxed = line.IsTaxed,
         }));

@@ -213,6 +213,11 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
                     <td>
                       {line.name}
                       {line.code && <span className="muted item-code"> {line.code}</span>}
+                      {line.discount !== 0 && (
+                        <div className="muted promotion">
+                          was {formatMoney(line.amount - line.discount)}, promotion {formatMoney(line.discount)}
+                        </div>
+                      )}
                     </td>
                     <td className="num">{line.quantity}</td>
                     <td className="num">{formatMoney(line.amount)}</td>

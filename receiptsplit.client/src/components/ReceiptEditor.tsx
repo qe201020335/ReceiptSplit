@@ -11,6 +11,7 @@ interface LineDraft {
   amount: string
   taxCode: string
   isTaxed: boolean
+  discount: string
 }
 
 interface ReceiptEditorProps {
@@ -37,6 +38,7 @@ function toText(value: number | null, decimals = 2): string {
 function draftLines(receipt: ReceiptDetail): LineDraft[] {
   return receipt.lines.map((line, index) => ({
     key: index,
+    discount: line.discount === 0 ? '' : line.discount.toFixed(2),
     name: line.name,
     code: line.code ?? '',
     quantity: String(line.quantity),
@@ -64,7 +66,7 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
   function addLine() {
     setLines((current) => [
       ...current,
-      { key: nextKey, name: '', code: '', quantity: '1', amount: '', taxCode: '', isTaxed: false },
+      { key: nextKey, name: '', code: '', quantity: '1', amount: '', taxCode: '', isTaxed: false, discount: '' },
     ])
     setNextKey((key) => key + 1)
   }
@@ -76,7 +78,14 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
 
   const invalid =
     lines.length === 0 ||
-    lines.some((line) => line.name.trim() === '' || toNumber(line.amount) == null || toNumber(line.quantity) == null) ||
+    lines.some(
+      (line) =>
+        line.name.trim() === '' ||
+        toNumber(line.amount) == null ||
+        toNumber(line.quantity) == null ||
+        toNumber(line.discount) === undefined ||
+        (toNumber(line.discount) ?? 0) > 0,
+    ) ||
     [subtotal, tax, total].some((value) => toNumber(value) === undefined)
 
   async function save() {
@@ -99,6 +108,7 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
             code: line.code.trim() === '' ? null : line.code.trim(),
             quantity: toNumber(line.quantity) ?? 1,
             amount: toNumber(line.amount) ?? 0,
+            discount: toNumber(line.discount) ?? 0,
             taxCode: line.taxCode.trim() === '' ? null : line.taxCode.trim(),
             isTaxed: line.isTaxed,
           }),
@@ -141,6 +151,7 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
               <th>Code</th>
               <th className="num">Qty</th>
               <th className="num">Amount</th>
+              <th className="num">Discount</th>
               <th>Tax code</th>
               <th>Taxed</th>
               <th>
@@ -190,6 +201,17 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
                     aria-label={`Item ${index + 1} amount`}
                     value={line.amount}
                     onChange={(event) => updateLine(line.key, { amount: event.target.value })}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className="amount-input"
+                    aria-label={`Item ${index + 1} discount`}
+                    value={line.discount}
+                    placeholder="0.00"
+                    onChange={(event) => updateLine(line.key, { discount: event.target.value })}
                   />
                 </td>
                 <td>

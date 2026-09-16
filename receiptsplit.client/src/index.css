@@ -305,7 +305,7 @@ button.link {
 }
 
 .editor-lines .name-input {
-  width: 14rem;
+  width: 13rem;
 }
 
 .editor-lines .code-input {
@@ -314,7 +314,7 @@ button.link {
 
 .editor-lines .qty-input,
 .editor-lines .amount-input {
-  width: 5rem;
+  width: 4.5rem;
   text-align: right;
 }
 
@@ -393,6 +393,10 @@ button.link {
 
 .taxed {
   color: var(--ok);
+}
+
+.promotion {
+  font-size: 0.8rem;
 }
 
 .checks {
