@@ -188,9 +188,14 @@ public class ReceiptOutputParserTests
         Assert.Equal(truth.Subtotal, parsed.Subtotal);
         Assert.Equal(truth.Tax, parsed.Tax);
         Assert.Equal(truth.Total, parsed.Total);
+        // Folding Costco's promotions into their item keeps the receipt's total intact.
+        var baked = ReceiptPromotions.Bake(parsed.Lines);
+        Assert.Equal(parsed.Lines.Sum(l => l.Amount), baked.Sum(b => b.Line.Amount));
+        Assert.All(baked, line => Assert.True(line.Discount <= 0m));
+
         // Ontario 13%: the printed tax on both sample stores is exactly 13% of their taxed lines.
         Assert.True(ReceiptChecks.Evaluate(
-            parsed.Lines.Select(l => (l.Amount, ReceiptTaxCodes.IsTaxed(l.TaxCode))),
+            baked.Select(b => (b.Line.Amount, ReceiptTaxCodes.IsTaxed(b.Line.TaxCode))),
             parsed.Subtotal,
             parsed.Tax,
             parsed.Total,

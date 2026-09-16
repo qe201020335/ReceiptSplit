@@ -48,16 +48,19 @@ public sealed class ReceiptExtractor(
             receipt.Subtotal = parsed.Subtotal;
             receipt.Tax = parsed.Tax;
             receipt.Total = parsed.Total;
+            // Costco's promotion lines belong to the item above them, not on a line of their own.
+            var baked = ReceiptPromotions.Bake(parsed.Lines);
             receipt.Lines.Clear();
-            receipt.Lines.AddRange(parsed.Lines.Select((line, position) => new ReceiptLine
+            receipt.Lines.AddRange(baked.Select((baked, position) => new ReceiptLine
             {
                 Position = position,
-                Name = line.Name,
-                Code = line.Code,
-                Quantity = line.Quantity,
-                Amount = line.Amount,
-                TaxCode = line.TaxCode,
-                IsTaxed = ReceiptTaxCodes.IsTaxed(line.TaxCode),
+                Name = baked.Line.Name,
+                Code = baked.Line.Code,
+                Quantity = baked.Line.Quantity,
+                Amount = baked.Line.Amount,
+                Discount = baked.Discount,
+                TaxCode = baked.Line.TaxCode,
+                IsTaxed = ReceiptTaxCodes.IsTaxed(baked.Line.TaxCode),
             }));
 
             var checks = ReceiptChecks.Evaluate(
@@ -66,7 +69,7 @@ public sealed class ReceiptExtractor(
                 parsed.Tax,
                 parsed.Total,
                 receipt.TaxRatePercent);
-            if (parsed.Lines.Count == 0)
+            if (receipt.Lines.Count == 0)
             {
                 receipt.Status = ReceiptStatus.Failed;
                 receipt.Error = "The model output contained no receipt lines.";

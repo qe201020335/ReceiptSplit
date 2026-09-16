@@ -23,6 +23,7 @@ public sealed record ReceiptLineEditDto(
     [StringLength(50)] string? Code,
     [Range(-100_000, 100_000)] decimal Quantity,
     [Range(-1_000_000, 1_000_000)] decimal Amount,
+    [Range(-1_000_000, 0)] decimal Discount,
     [StringLength(16)] string? TaxCode,
     bool IsTaxed);
 
@@ -57,6 +58,7 @@ public sealed record ReceiptLineDto(
     string? Code,
     decimal Quantity,
     decimal Amount,
+    decimal Discount,
     string? TaxCode,
     bool IsTaxed);
 
@@ -86,13 +88,15 @@ public static class ReceiptMappings
         dto.Subtotal,
         dto.Tax,
         dto.Total,
-        dto.Lines.Select(l => new ReceiptLineEdit(l.Name, l.Code, l.Quantity, l.Amount, l.TaxCode, l.IsTaxed)).ToList());
+        dto.Lines
+            .Select(l => new ReceiptLineEdit(l.Name, l.Code, l.Quantity, l.Amount, l.Discount, l.TaxCode, l.IsTaxed))
+            .ToList());
 
     public static ReceiptDetailDto ToDetailDto(this Receipt receipt)
     {
         var lines = receipt.Lines
             .OrderBy(l => l.Position)
-            .Select(l => new ReceiptLineDto(l.Position, l.Name, l.Code, l.Quantity, l.Amount, l.TaxCode, l.IsTaxed))
+            .Select(l => new ReceiptLineDto(l.Position, l.Name, l.Code, l.Quantity, l.Amount, l.Discount, l.TaxCode, l.IsTaxed))
             .ToList();
 
         ReceiptChecksDto? checks = null;
