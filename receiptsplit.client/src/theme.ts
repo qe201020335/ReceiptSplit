@@ -6,6 +6,8 @@ export const theme = createTheme({
   primaryShade: { light: 6, dark: 4 },
   colors: {
     brand: ['#eef3fe', '#dbe5fb', '#b7c9f7', '#90adf2', '#6b9bff', '#4a81f0', '#2f6fed', '#2a63d4', '#2456bb', '#1d47a0'],
+    // Mantine builds dark surfaces from this scale: 4 borders, 5 hover, 6 cards, 7 the page.
+    dark: ['#f1f3f5', '#e6e8eb', '#c5cbd3', '#9aa3af', '#39414f', '#2b323d', '#1a1e24', '#111418', '#0c0f13', '#08090b'],
   },
   defaultRadius: 'md',
   fontFamily: 'system-ui, "Segoe UI", Roboto, sans-serif',
@@ -23,13 +25,19 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     '--mantine-color-body': '#ffffff',
     '--mantine-color-text': '#1d2330',
     '--mantine-color-dimmed': '#667085',
-    '--mantine-color-default-border': '#e2e5ea',
+    '--mantine-color-default-border': '#d7dce4',
+    // Buttons and inputs sit on a card of the same color, so the border is what separates them.
+    '--mantine-color-default': '#ffffff',
+    '--mantine-color-default-hover': '#eef0f4',
+    '--app-hover': '#eef0f4',
   },
   dark: {
     '--app-bg': '#111418',
-    '--mantine-color-body': '#1a1e24',
     '--mantine-color-text': '#e6e8eb',
     '--mantine-color-dimmed': '#9aa3af',
-    '--mantine-color-default-border': '#2b313a',
+    // Buttons and inputs lift slightly off the card they sit on.
+    '--mantine-color-default': '#222831',
+    '--mantine-color-default-hover': '#2b323d',
+    '--app-hover': '#2b323d',
   },
 })

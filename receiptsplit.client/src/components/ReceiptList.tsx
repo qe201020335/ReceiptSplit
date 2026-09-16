@@ -2,6 +2,7 @@ import { Alert, Card, Group, NavLink, Stack, Text, Title } from '@mantine/core'
 import type { ReceiptSummary } from '../api.ts'
 import { formatDateTime, formatMoney } from '../format.ts'
 import { StatusBadge } from './StatusBadge.tsx'
+import classes from './ReceiptList.module.css'
 
 interface ReceiptListProps {
   receipts: ReceiptSummary[] | null
@@ -23,13 +24,17 @@ export function ReceiptList({ receipts, error, selectedId, onSelect }: ReceiptLi
         {receipts === null && !error && <Text c="dimmed">Loading…</Text>}
         {receipts?.length === 0 && <Text c="dimmed">No receipts yet.</Text>}
         <Stack gap={2}>
-          {receipts?.map((receipt) => (
+          {receipts?.map((receipt) => {
+            const open = receipt.id === selectedId
+            return (
             <NavLink
               key={receipt.id}
-              component="button"
-              type="button"
-              active={receipt.id === selectedId}
-              onClick={() => onSelect(receipt.id)}
+              component={open ? 'div' : 'button'}
+              type={open ? undefined : 'button'}
+              active={open}
+              aria-current={open ? 'page' : undefined}
+              classNames={{ root: classes.item }}
+              onClick={open ? undefined : () => onSelect(receipt.id)}
               label={
                 <Group justify="space-between" wrap="nowrap" gap="xs">
                   <Text fw={500} truncate>
@@ -45,7 +50,8 @@ export function ReceiptList({ receipts, error, selectedId, onSelect }: ReceiptLi
                 </Group>
               }
             />
-          ))}
+            )
+          })}
         </Stack>
       </Stack>
     </Card>

@@ -1,0 +1,4 @@
+/* Mantine paints the body with the surface color; the page behind the cards is tinted instead. */
+body {
+  background-color: var(--app-bg);
+}

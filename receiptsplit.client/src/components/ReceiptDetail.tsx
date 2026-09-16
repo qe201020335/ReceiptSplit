@@ -361,7 +361,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
               <Button variant="default" onClick={confirmRerun} disabled={busy || waiting}>
                 Re-run extraction
               </Button>
-              <Button variant="subtle" color="red" onClick={confirmRemove} disabled={busy || receipt.status === 'Processing'}>
+              <Button variant="default" c="red" onClick={confirmRemove} disabled={busy || receipt.status === 'Processing'}>
                 Delete
               </Button>
             </Group>
