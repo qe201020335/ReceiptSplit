@@ -48,8 +48,8 @@ function App() {
   }, [receipts, anyInProgress, reloadList])
 
   return (
-    <Box mih="100vh" bg="var(--mantine-color-body)">
-      <Paper component="header" withBorder radius={0} py="sm" px="md">
+    <Box mih="100vh" bg="var(--app-bg)">
+      <Paper component="header" radius={0} py="sm" px="md" bd="0 0 1px 0 solid var(--mantine-color-default-border)">
         <Anchor
           href="/"
           fw={600}
