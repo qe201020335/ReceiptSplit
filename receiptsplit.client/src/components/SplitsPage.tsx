@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Alert, Button, Card, Group, Stack, Text, Title } from '@mantine/core'
 import { api, errorMessage, type ReceiptDetail } from '../api.ts'
 import { formatMoney } from '../format.ts'
+import { splitLines } from '../splits.ts'
+import { useSplitState } from '../useSplitState.ts'
+import { SplitPeople } from './SplitPeople.tsx'
+import { SplitTable } from './SplitTable.tsx'
 
 interface SplitsPageProps {
   id: string
@@ -63,6 +67,19 @@ export function SplitsPage({ id, onBack }: SplitsPageProps) {
           check or correct it.
         </Alert>
       )}
+      {receipt?.status === 'Completed' && <SplitBoard receipt={receipt} />}
     </Stack>
+  )
+}
+
+function SplitBoard({ receipt }: { receipt: ReceiptDetail }) {
+  const lines = useMemo(() => splitLines(receipt), [receipt])
+  const [state, actions] = useSplitState()
+
+  return (
+    <>
+      <SplitPeople state={state} actions={actions} />
+      <SplitTable lines={lines} state={state} actions={actions} />
+    </>
   )
 }
