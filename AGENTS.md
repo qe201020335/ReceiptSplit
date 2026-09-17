@@ -85,7 +85,7 @@ server. What was learned from real receipts:
 ### Migrations
 
 There is no data worth preserving yet. Editing, replacing or collapsing migrations is fine and backfill SQL isn't
-needed; collapsing migrations means deleting the dev database (`ReceiptSplit/data/receiptsplit.db` and `uploads/`)
+needed; collapsing migrations means deleting the dev database (`data/receiptsplit.db` and `data/uploads/` in the repository root)
 first, so ask before doing that. Migrations are applied at startup by `DatabaseInitializer`.
 
 ## Backend conventions
