@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Anchor, Box, Card, Container, Grid, Paper, Stack, Text } from '@mantine/core'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Anchor, Box, Card, Container, Grid, Paper, Stack, Text, Title } from '@mantine/core'
 import { api, errorMessage, inProgress, type ReceiptSummary } from './api.ts'
 import { ReceiptDetail } from './components/ReceiptDetail.tsx'
 import { ReceiptList } from './components/ReceiptList.tsx'
@@ -14,10 +14,34 @@ function App() {
   const [listError, setListError] = useState<string | null>(null)
   // Bumping this reloads the list.
   const [listVersion, setListVersion] = useState(0)
-  const [route, navigate] = useRoute()
+  const [route, navigate, goBack] = useRoute()
   const selectedId = route.receiptId
 
   const reloadList = useCallback(() => setListVersion((version) => version + 1), [])
+
+  // On a phone the detail sits below the upload form and the list, so opening a receipt scrolls down to it.
+  const detailRef = useRef<HTMLDivElement>(null)
+  const revealDetail = useRef(false)
+  const openReceipt = useCallback(
+    (id: string) => {
+      revealDetail.current = true
+      navigate(id)
+    },
+    [navigate],
+  )
+
+  useEffect(() => {
+    const detail = detailRef.current
+    if (!revealDetail.current || !detail) {
+      return
+    }
+    revealDetail.current = false
+    // Side by side (from Mantine's sm breakpoint up) the detail is already in view.
+    if (window.matchMedia('(max-width: 47.99em)').matches) {
+      const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      detail.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' })
+    }
+  }, [selectedId])
 
   useEffect(() => {
     let current = true
@@ -49,42 +73,56 @@ function App() {
     return () => clearTimeout(timer)
   }, [receipts, anyInProgress, reloadList])
 
+  const showSplits = selectedId !== null && route.view === 'splits'
+  // The splits page has a wide table beside its summary, so it gets a wider page.
+  const containerSize = showSplits ? 'xl' : 'lg'
+
   return (
     <Box mih="100vh" bg="var(--app-bg)">
-      <Paper component="header" radius={0} py="sm" px="md" bd="0 0 1px 0 solid var(--mantine-color-default-border)">
-        <Anchor
-          href="/"
-          fw={600}
-          size="lg"
-          underline="never"
-          c="var(--mantine-color-text)"
-          onClick={(event) => {
-            event.preventDefault()
-            navigate(null)
-          }}
-        >
-          ReceiptSplit
-        </Anchor>
+      <Paper component="header" radius={0} py="sm" bd="0 0 1px 0 solid var(--mantine-color-default-border)">
+        {/* The same container as the page below, so the name lines up with the cards' left edge. */}
+        <Container size={containerSize} px="md">
+          <Title order={1} fz="lg" fw={600} lh={1.55}>
+            <Anchor
+              href="/"
+              inherit
+              underline="never"
+              c="var(--mantine-color-text)"
+              onClick={(event) => {
+                event.preventDefault()
+                navigate(null)
+              }}
+            >
+              ReceiptSplit
+            </Anchor>
+          </Title>
+        </Container>
       </Paper>
-      {selectedId && route.view === 'splits' ? (
-        <Container size="xl" py="md" px="md">
-          <SplitsPage key={selectedId} id={selectedId} onBack={() => navigate(selectedId)} />
+      {showSplits ? (
+        <Container size={containerSize} py="md" px="md">
+          <SplitsPage key={selectedId} id={selectedId} onBack={() => goBack(selectedId)} />
         </Container>
       ) : (
-        <Container size="lg" py="md" px="md">
+        <Container size={containerSize} py="md" px="md">
           <Grid gap="md" align="flex-start">
             <Grid.Col span={{ base: 12, sm: 5, md: 4 }}>
               <Stack gap="md">
                 <UploadForm
                   onUploaded={(receipt) => {
                     reloadList()
-                    navigate(receipt.id)
+                    openReceipt(receipt.id)
                   }}
                 />
-                <ReceiptList receipts={receipts} error={listError} selectedId={selectedId} onSelect={navigate} />
+                <ReceiptList receipts={receipts} error={listError} selectedId={selectedId} onSelect={openReceipt} />
               </Stack>
             </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 7, md: 8 }}>
+            <Grid.Col
+              span={{ base: 12, sm: 7, md: 8 }}
+              ref={detailRef}
+              // At least a screen tall while stacked, so there is room to scroll it to the top before it has loaded.
+              mih={selectedId ? { base: '100dvh', sm: 0 } : undefined}
+              style={{ scrollMarginTop: 16 }}
+            >
               {selectedId ? (
                 <ReceiptDetail
                   key={selectedId}

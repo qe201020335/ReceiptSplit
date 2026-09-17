@@ -16,11 +16,13 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core'
+import { useMediaQuery } from '@mantine/hooks'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
 import { api, errorMessage, inProgress, type ReceiptDetail as Receipt } from '../api.ts'
 import { formatDateTime, formatMoney, formatPercent, formatSeconds } from '../format.ts'
 import { isValidTaxRate, maxTaxRatePercent, minTaxRatePercent } from '../taxRate.ts'
+import { usePageTitle } from '../usePageTitle.ts'
 import { ReceiptEditor } from './ReceiptEditor.tsx'
 import { StatusBadge } from './StatusBadge.tsx'
 
@@ -44,6 +46,9 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
   const [editing, setEditing] = useState(false)
   // Bumping this reloads the receipt.
   const [version, setVersion] = useState(0)
+  // On a phone the line numbers go, so the amounts fit without scrolling the table sideways.
+  usePageTitle(receipt ? (receipt.storeName ?? 'Unknown store') : null)
+  const compact = useMediaQuery('(max-width: 36em)', undefined, { getInitialValueInEffect: false })
 
   useEffect(() => {
     let current = true
@@ -201,7 +206,6 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                     label="Sales tax"
                     size="xs"
                     w={110}
-                    data-autofocus
                     autoFocus
                     suffix="%"
                     min={minTaxRatePercent}
@@ -259,11 +263,11 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
         ) : (
           <>
             {receipt.lines.length > 0 && (
-              <Table.ScrollContainer minWidth={420}>
+              <Table.ScrollContainer minWidth={compact ? 0 : 420}>
                 <Table striped="odd" highlightOnHover verticalSpacing="xs" style={{ fontVariantNumeric: 'tabular-nums' }}>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th w={40}>#</Table.Th>
+                      {!compact && <Table.Th w={40}>#</Table.Th>}
                       <Table.Th>Item</Table.Th>
                       <Table.Th ta="right">Qty</Table.Th>
                       <Table.Th ta="right">Amount</Table.Th>
@@ -273,7 +277,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                   <Table.Tbody>
                     {receipt.lines.map((line) => (
                       <Table.Tr key={line.position}>
-                        <Table.Td c="dimmed">{line.position + 1}</Table.Td>
+                        {!compact && <Table.Td c="dimmed">{line.position + 1}</Table.Td>}
                         <Table.Td>
                           {line.name}
                           {line.code && (
@@ -304,7 +308,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                   </Table.Tbody>
                   <Table.Tfoot>
                     <Table.Tr>
-                      <Table.Th colSpan={3} ta="right">
+                      <Table.Th colSpan={compact ? 2 : 3} ta="right">
                         Subtotal
                       </Table.Th>
                       <Table.Td ta="right">{formatMoney(receipt.subtotal)}</Table.Td>
@@ -312,7 +316,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                     </Table.Tr>
                     {checks && (
                       <Table.Tr>
-                        <Table.Th colSpan={3} ta="right">
+                        <Table.Th colSpan={compact ? 2 : 3} ta="right">
                           Taxed items
                         </Table.Th>
                         <Table.Td ta="right">{formatMoney(checks.taxedSum)}</Table.Td>
@@ -320,14 +324,14 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                       </Table.Tr>
                     )}
                     <Table.Tr>
-                      <Table.Th colSpan={3} ta="right">
+                      <Table.Th colSpan={compact ? 2 : 3} ta="right">
                         Tax
                       </Table.Th>
                       <Table.Td ta="right">{formatMoney(receipt.tax)}</Table.Td>
                       <Table.Td />
                     </Table.Tr>
                     <Table.Tr>
-                      <Table.Th colSpan={3} ta="right">
+                      <Table.Th colSpan={compact ? 2 : 3} ta="right">
                         Total
                       </Table.Th>
                       <Table.Td ta="right" fw={700}>
@@ -380,7 +384,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
           </>
         )}
 
-        <Accordion variant="separated" chevronPosition="left" multiple>
+        <Accordion variant="contained" chevronPosition="left" multiple>
           <Accordion.Item value="photo">
             <Accordion.Control>Original photo</Accordion.Control>
             <Accordion.Panel>

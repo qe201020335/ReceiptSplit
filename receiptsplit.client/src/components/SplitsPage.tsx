@@ -3,6 +3,7 @@ import { Alert, Button, Card, Grid, Group, Stack, Text, Title } from '@mantine/c
 import { api, errorMessage, type ReceiptDetail } from '../api.ts'
 import { formatMoney } from '../format.ts'
 import { splitLines, summarize, summaryText } from '../splits.ts'
+import { usePageTitle } from '../usePageTitle.ts'
 import { useSplitState } from '../useSplitState.ts'
 import { SplitPeople } from './SplitPeople.tsx'
 import { SplitSummary } from './SplitSummary.tsx'
@@ -17,6 +18,7 @@ interface SplitsPageProps {
 export function SplitsPage({ id, onBack }: SplitsPageProps) {
   const [receipt, setReceipt] = useState<ReceiptDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
+  usePageTitle(receipt ? `Split ${receipt.storeName ?? 'Unknown store'}` : 'Split')
 
   useEffect(() => {
     let current = true

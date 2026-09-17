@@ -27,30 +27,30 @@ export function ReceiptList({ receipts, error, selectedId, onSelect }: ReceiptLi
           {receipts?.map((receipt) => {
             const open = receipt.id === selectedId
             return (
-            <NavLink
-              key={receipt.id}
-              component={open ? 'div' : 'button'}
-              type={open ? undefined : 'button'}
-              active={open}
-              aria-current={open ? 'page' : undefined}
-              classNames={{ root: classes.item }}
-              onClick={open ? undefined : () => onSelect(receipt.id)}
-              label={
-                <Group justify="space-between" wrap="nowrap" gap="xs">
-                  <Text fw={500} truncate>
-                    {receipt.storeName ?? 'Unknown store'}
-                  </Text>
-                  <Text fw={500}>{formatMoney(receipt.total)}</Text>
-                </Group>
-              }
-              description={
-                <Group justify="space-between" wrap="nowrap" gap="xs">
-                  <span>{receipt.purchaseDate ?? formatDateTime(receipt.createdAt)}</span>
-                  <StatusBadge status={receipt.status} />
-                </Group>
-              }
-            />
-            )
+              <NavLink
+                key={receipt.id}
+                component={open ? 'div' : 'button'}
+                type={open ? undefined : 'button'}
+                active={open}
+                aria-current={open ? 'page' : undefined}
+                classNames={{ root: classes.item }}
+                onClick={open ? undefined : () => onSelect(receipt.id)}
+                label={
+                  <Group justify="space-between" wrap="nowrap" gap="xs">
+                    <Text fw={500} truncate>
+                      {receipt.storeName ?? 'Unknown store'}
+                    </Text>
+                    <Text fw={500}>{formatMoney(receipt.total)}</Text>
+                  </Group>
+                }
+                description={
+                  <Group justify="space-between" wrap="nowrap" gap="xs">
+                    <span>{receipt.purchaseDate ?? formatDateTime(receipt.createdAt)}</span>
+                    <StatusBadge status={receipt.status} />
+                  </Group>
+                }
+              />
+              )
           })}
         </Stack>
       </Stack>

@@ -34,14 +34,6 @@ export function SplitSummary({ summary }: { summary: Summary }) {
               </Table.Tr>
             ))}
           </Table.Tbody>
-          <Table.Tfoot>
-            <Table.Tr>
-              <Table.Th>Assigned</Table.Th>
-              <Table.Td ta="right" fw={700}>
-                {formatCents(people.reduce((sum, person) => sum + person.cents, 0))}
-              </Table.Td>
-            </Table.Tr>
-          </Table.Tfoot>
         </Table>
       )}
       <Text size="sm" mt="sm" c={done ? 'green' : 'dimmed'}>

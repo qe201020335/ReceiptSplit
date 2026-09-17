@@ -2,3 +2,9 @@
 body {
   background-color: var(--app-bg);
 }
+
+/* Mantine drops the border from disabled buttons, and in dark mode their fill matches the card, so a disabled
+   Upload or All read as plain text. Keep a faint outline so they still look like buttons. */
+.mantine-Button-root:where(:disabled, [data-disabled]):not([data-loading]) {
+  border-color: var(--mantine-color-disabled-border);
+}

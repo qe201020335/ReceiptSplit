@@ -1,5 +1,5 @@
-import { Fragment, type ReactNode } from 'react'
-import { Button, Card, Group, Table, Text } from '@mantine/core'
+import { Fragment } from 'react'
+import { ActionIcon, Button, Card, Group, Indicator, Menu, Table, Text } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { modals } from '@mantine/modals'
 import { formatMoney } from '../format.ts'
@@ -12,6 +12,7 @@ import {
   type SplitLine,
   type SplitState,
 } from '../splits.ts'
+import { useSecondaryPress } from '../useSecondaryPress.ts'
 import type { SplitActions } from '../useSplitState.ts'
 import { SplitAmountForm } from './SplitAmountForm.tsx'
 import classes from './SplitTable.module.css'
@@ -23,21 +24,23 @@ interface SplitTableProps {
 }
 
 // Filled buttons use fixed dark shades: the theme's dark-mode shade 4 is too light for white text.
-// Faint enough to keep the buttons readable in both color schemes.
+// Row tints are faint enough to keep the buttons readable in both color schemes.
 const problemColors: Record<LineProblem, string> = {
   unassigned: 'color-mix(in srgb, var(--mantine-color-yellow-5) 18%, transparent)',
   mismatch: 'color-mix(in srgb, var(--mantine-color-red-6) 22%, transparent)',
 }
 
 export function SplitTable({ lines, state, actions }: SplitTableProps) {
-  // On a phone the share buttons get a full-width row under their item instead of a squeezed column.
-  const stacked = useMediaQuery('(max-width: 48em)') ?? false
+  // On a phone the share buttons get a full-width row under their item instead of a squeezed column. Read the
+  // query while rendering, not after, so a phone doesn't paint the wide layout first.
+  const stacked = useMediaQuery('(max-width: 48em)', undefined, { getInitialValueInEffect: false })
 
   return (
     <Card withBorder padding="md">
       <Text size="sm" c="dimmed" mb="xs">
-        Click a name to give them a share of an item; − or a right click takes one away. Shares split the item's total,
-        tax included, evenly. Turn on $ Amounts to enter what each person pays instead.
+        Click or tap a name to give them a share of an item; right click or long-press to take one away. Shares split
+        the item's total, tax included, evenly. An item's ⋯ menu splits it by dollar amounts instead, gives everyone a
+        share, or clears it.
       </Text>
       <Table.ScrollContainer minWidth={stacked ? 0 : 640}>
         <Table verticalSpacing="xs" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -48,6 +51,9 @@ export function SplitTable({ lines, state, actions }: SplitTableProps) {
               <Table.Th ta="right">Qty</Table.Th>
               <Table.Th ta="right">Total</Table.Th>
               {!stacked && <Table.Th>Shares</Table.Th>}
+              <Table.Th w={1}>
+                <span className={classes.visuallyHidden}>More</span>
+              </Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -58,6 +64,10 @@ export function SplitTable({ lines, state, actions }: SplitTableProps) {
               const shares = (
                 <ShareButtons line={line} assignment={assignment} people={state.people} actions={actions} />
               )
+              const mismatch =
+                split.problem === 'mismatch'
+                  ? `Amounts add up to ${formatCents(split.assignedCents)}, but the item is ${formatCents(line.cents)}`
+                  : undefined
 
               return (
                 <Fragment key={line.position}>
@@ -78,27 +88,32 @@ export function SplitTable({ lines, state, actions }: SplitTableProps) {
                       )}
                     </Table.Td>
                     <Table.Td ta="right">{line.quantity}</Table.Td>
-                    <Table.Td
-                      ta="right"
-                      style={{ whiteSpace: 'nowrap' }}
-                      title={
-                        split.problem === 'mismatch'
-                          ? `Amounts add up to ${formatCents(split.assignedCents)}, but the item is ${formatCents(line.cents)}`
-                          : undefined
-                      }
-                    >
+                    <Table.Td ta="right" style={{ whiteSpace: 'nowrap' }} title={mismatch}>
                       {formatCents(line.cents)}
                       {line.isTaxed && (
                         <Text size="xs" c="dimmed">
                           incl. tax
                         </Text>
                       )}
+                      {assignment.mode === 'amounts' && (
+                        <Text size="xs" c="brand">
+                          $ amounts
+                        </Text>
+                      )}
                     </Table.Td>
                     {!stacked && <Table.Td>{shares}</Table.Td>}
+                    <Table.Td>
+                      <RowMenu
+                        line={line}
+                        assignment={assignment}
+                        hasPeople={state.people.length > 0}
+                        actions={actions}
+                      />
+                    </Table.Td>
                   </Table.Tr>
                   {stacked && (
                     <Table.Tr bg={background}>
-                      <Table.Td colSpan={3} pt={0}>
+                      <Table.Td colSpan={4} pt={0}>
                         {shares}
                       </Table.Td>
                     </Table.Tr>
@@ -110,6 +125,46 @@ export function SplitTable({ lines, state, actions }: SplitTableProps) {
         </Table>
       </Table.ScrollContainer>
     </Card>
+  )
+}
+
+interface RowMenuProps {
+  line: SplitLine
+  assignment: LineAssignment
+  hasPeople: boolean
+  actions: SplitActions
+}
+
+/** The less frequent per-item actions, kept out of the row so the name buttons have the room. */
+function RowMenu({ line, assignment, hasPeople, actions }: RowMenuProps) {
+  const byAmounts = assignment.mode === 'amounts'
+
+  return (
+    <Menu position="bottom-end">
+      <Menu.Target>
+        <ActionIcon variant="subtle" color="gray" aria-label={`More ways to split ${line.name}`}>
+          ⋯
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item
+          leftSection={<span className={classes.check}>{byAmounts ? '✓' : ''}</span>}
+          onClick={() => actions.setMode(line.position, byAmounts ? 'shares' : 'amounts')}
+        >
+          Split by $ amounts
+        </Menu.Item>
+        <Menu.Item
+          leftSection={<span className={classes.check} />}
+          disabled={byAmounts || !hasPeople}
+          onClick={() => actions.addEveryone(line.position)}
+        >
+          Give everyone a share
+        </Menu.Item>
+        <Menu.Item leftSection={<span className={classes.check} />} onClick={() => actions.clearLine(line.position)}>
+          Clear
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
   )
 }
 
@@ -166,88 +221,71 @@ function ShareButtons({ line, assignment, people, actions }: ShareButtonsProps) 
         if (byAmounts) {
           const cents = assignment.amounts[person]
           return (
-            <PersonSlot key={person} person={person}>
-              <Button
-                size="xs"
-                className={classes.fill}
-                variant={cents != null ? 'filled' : 'default'}
-                color="green.9"
-                onClick={() => enterAmount(person)}
-                onContextMenu={(event) => {
-                  event.preventDefault()
-                  actions.setAmount(line.position, person, null)
-                }}
-              >
-                {cents != null ? `${person} $${formatCents(cents)}` : person}
-              </Button>
-            </PersonSlot>
+            <PersonButton
+              key={person}
+              active={cents != null}
+              label={cents != null ? `${person} $${formatCents(cents)}` : person}
+              onPress={() => enterAmount(person)}
+              onSecondary={() => actions.setAmount(line.position, person, null)}
+            />
           )
         }
 
         const count = assignment.shares[person] ?? 0
         return (
-          <PersonSlot key={person} person={person}>
-            <Button.Group className={classes.fill}>
-              <Button
-                size="xs"
-                variant={count > 0 ? 'filled' : 'default'}
-                color="green.9"
-                onClick={() => actions.changeShare(line.position, person, 1)}
-                onContextMenu={(event) => {
-                  event.preventDefault()
-                  actions.changeShare(line.position, person, -1)
-                }}
-              >
-                {count > 1 ? `${person} ×${count}` : person}
-              </Button>
-              {count > 0 && (
-                <Button
-                  size="xs"
-                  px={8}
-                  color="green.8"
-                  aria-label={`Take a share of ${line.name} from ${person}`}
-                  onClick={() => actions.changeShare(line.position, person, -1)}
-                >
-                  −
-                </Button>
-              )}
-            </Button.Group>
-          </PersonSlot>
+          <PersonButton
+            key={person}
+            active={count > 0}
+            count={count}
+            label={person}
+            onPress={() => actions.changeShare(line.position, person, 1)}
+            onSecondary={() => actions.changeShare(line.position, person, -1)}
+          />
         )
       })}
-      <Button
-        size="xs"
-        ml="xs"
-        variant={byAmounts ? 'filled' : 'default'}
-        color="brand.6"
-        aria-pressed={byAmounts}
-        onClick={() => actions.setMode(line.position, byAmounts ? 'shares' : 'amounts')}
-      >
-        $ Amounts
-      </Button>
-      <Button size="xs" variant="default" disabled={byAmounts} onClick={() => actions.addEveryone(line.position)}>
-        All
-      </Button>
-      <Button size="xs" variant="default" onClick={() => actions.clearLine(line.position)}>
-        Clear
-      </Button>
     </Group>
   )
 }
 
-/** Holds a person's buttons at the width of "Alice ×9" with its − button, whatever state they are in. */
-function PersonSlot({ person, children }: { person: string; children: ReactNode }) {
+interface PersonButtonProps {
+  active: boolean
+  /** Shares held, shown as a corner badge from two up so the button never changes width. */
+  count?: number
+  label: string
+  onPress: () => void
+  /** Right click, long press, or Delete: take a share or the amount away. */
+  onSecondary: () => void
+}
+
+function PersonButton({ active, count = 0, label, onPress, onSecondary }: PersonButtonProps) {
+  const secondary = useSecondaryPress(() => {
+    if (active) {
+      onSecondary()
+    }
+  })
+
   return (
-    <span className={classes.slot}>
-      <Button.Group className={classes.sizer} aria-hidden>
-        <Button component="span" size="xs" miw={64}>
-          {person} ×9
-        </Button>
-        <Button component="span" size="xs" px={8}>
-          −
-        </Button>
-      </Button.Group>
-      {children}
-    </span>
+    <Indicator
+      inline
+      label={count}
+      disabled={count < 2}
+      size={16}
+      offset={2}
+      classNames={{ indicator: classes.count }}
+    >
+      <Button
+        size="xs"
+        className={classes.person}
+        variant={active ? 'filled' : 'default'}
+        // Color alone doesn't tell a screen reader who already has a share.
+        aria-pressed={active}
+        aria-label={count > 1 ? `${label}, ${count} shares` : undefined}
+        color="green.9"
+        onClick={onPress}
+        {...secondary}
+      >
+        {label}
+      </Button>
+    </Indicator>
   )
 }
