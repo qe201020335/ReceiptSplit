@@ -21,6 +21,46 @@ public class ReceiptPromotionsTests
     public void Reads_the_item_number_a_promotion_discounts(string name, double amount, string? expected) =>
         Assert.Equal(expected, ReceiptPromotions.DiscountedCode(name, (decimal)amount));
 
+    [Theory]
+    // Costco also prints the kind of deal instead of the item number, with the promotion's own number in front.
+    [InlineData("TPD/CANDY", -3.00, true)]
+    [InlineData("TPD/SPORTS", -4.00, true)]
+    [InlineData("/HERSHEY", -3.50, true)]
+    [InlineData("TPD/339054", -3.00, true)]
+    // Not promotions.
+    [InlineData("TPD/CANDY", 3.00, false)]
+    [InlineData("N/A ITEM", -1.00, false)]
+    [InlineData("KS ORG OAT", -1.00, false)]
+    public void Reads_a_promotion_that_names_the_deal_rather_than_the_item(string name, double amount, bool expected)
+    {
+        Assert.Equal(expected, ReceiptPromotions.IsPromotion(name, (decimal)amount));
+        Assert.Null(ReceiptPromotions.DiscountedCode("TPD/CANDY", (decimal)amount));
+    }
+
+    [Fact]
+    public void Deducts_a_promotion_that_names_no_item_from_the_line_above_it()
+    {
+        var baked = ReceiptPromotions.Bake([
+            Line("HALLS XS SFR", "115050", 22.99m, "H"),
+            Line("TPD/CANDY", "1831695", -3.00m, "H"),
+            Line("RITTER MINIS", "5858000", 29.99m, "H"),
+            Line("TPD/SPORTS", "1831409", -4.00m, "H"),
+        ]);
+
+        Assert.Equal(["HALLS XS SFR", "RITTER MINIS"], baked.Select(b => b.Line.Name));
+        Assert.Equal([19.99m, 25.99m], baked.Select(b => b.Line.Amount));
+        Assert.Equal([-3.00m, -4.00m], baked.Select(b => b.Discount));
+    }
+
+    [Fact]
+    public void Keeps_a_promotion_printed_before_any_item_as_its_own_line()
+    {
+        var baked = ReceiptPromotions.Bake([Line("TPD/CANDY", "1831695", -3.00m), Line("HALLS XS SFR", "115050", 22.99m)]);
+
+        Assert.Equal(["TPD/CANDY", "HALLS XS SFR"], baked.Select(b => b.Line.Name));
+        Assert.All(baked, line => Assert.Equal(0m, line.Discount));
+    }
+
     [Fact]
     public void Deducts_each_promotion_from_the_item_it_names()
     {
