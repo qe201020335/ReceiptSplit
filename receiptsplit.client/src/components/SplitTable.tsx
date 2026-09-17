@@ -22,6 +22,7 @@ interface SplitTableProps {
   actions: SplitActions
 }
 
+// Filled buttons use fixed dark shades: the theme's dark-mode shade 4 is too light for white text.
 // Faint enough to keep the buttons readable in both color schemes.
 const problemColors: Record<LineProblem, string> = {
   unassigned: 'color-mix(in srgb, var(--mantine-color-yellow-5) 18%, transparent)',
@@ -170,7 +171,7 @@ function ShareButtons({ line, assignment, people, actions }: ShareButtonsProps) 
                 size="xs"
                 className={classes.fill}
                 variant={cents != null ? 'filled' : 'default'}
-                color="green"
+                color="green.9"
                 onClick={() => enterAmount(person)}
                 onContextMenu={(event) => {
                   event.preventDefault()
@@ -190,7 +191,7 @@ function ShareButtons({ line, assignment, people, actions }: ShareButtonsProps) 
               <Button
                 size="xs"
                 variant={count > 0 ? 'filled' : 'default'}
-                color="green"
+                color="green.9"
                 onClick={() => actions.changeShare(line.position, person, 1)}
                 onContextMenu={(event) => {
                   event.preventDefault()
@@ -218,6 +219,7 @@ function ShareButtons({ line, assignment, people, actions }: ShareButtonsProps) 
         size="xs"
         ml="xs"
         variant={byAmounts ? 'filled' : 'default'}
+        color="brand.6"
         aria-pressed={byAmounts}
         onClick={() => actions.setMode(line.position, byAmounts ? 'shares' : 'amounts')}
       >
