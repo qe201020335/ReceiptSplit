@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Net.Http.Headers;
 using ReceiptSplit.Contracts;
 using ReceiptSplit.Data;
 using ReceiptSplit.Extraction;
@@ -61,10 +62,20 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
     [HttpGet("{id:guid}/image")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Image(Guid id, CancellationToken cancellationToken) =>
-        await receipts.GetImageAsync(id, cancellationToken) is { } image
-            ? PhysicalFile(image.Path, image.ContentType)
-            : NotFound();
+    public async Task<IActionResult> Image(Guid id, CancellationToken cancellationToken)
+    {
+        if (await receipts.GetImageAsync(id, cancellationToken) is not { } image)
+        {
+            return NotFound();
+        }
+
+        // Inline, or the page would download the photo instead of showing it; the name is what saving it offers,
+        // in place of the "image" every browser falls back to.
+        var disposition = new ContentDispositionHeaderValue("inline");
+        disposition.SetHttpFileName(image.FileName);
+        Response.Headers.ContentDisposition = disposition.ToString();
+        return PhysicalFile(image.Path, image.ContentType);
+    }
 
     /// <summary>Replaces the extracted lines and totals with hand corrected ones and re-checks the receipt.</summary>
     [HttpPut("{id:guid}")]

@@ -395,6 +395,38 @@ public class ReceiptsApiTests
     }
 
     [Fact]
+    public async Task The_photo_is_served_inline_under_the_name_it_was_uploaded_with()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var client = factory.CreateClient();
+        using var upload = await client.PostAsync(
+            "/api/receipts", PhotoForm(TestImages.Create(64, 48, MagickFormat.Jpeg), "Costco reçu.jpg"), Ct);
+        var queued = (await upload.Content.ReadFromJsonAsync<ReceiptQueuedDto>(Json, Ct))!;
+        await WaitForResultAsync(client, queued.Id);
+
+        using var image = await client.GetAsync($"/api/receipts/{queued.Id}/image", Ct);
+
+        var disposition = image.Content.Headers.ContentDisposition;
+        Assert.Equal("inline", disposition?.DispositionType);
+        Assert.Equal("Costco reçu.jpg", disposition?.FileNameStar);
+    }
+
+    [Fact]
+    public async Task A_converted_photo_is_named_after_the_upload_with_the_jpeg_extension()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var client = factory.CreateClient();
+        using var upload = await client.PostAsync(
+            "/api/receipts", PhotoForm(TestImages.Create(64, 48, MagickFormat.Tiff), "receipt.tiff"), Ct);
+        var queued = (await upload.Content.ReadFromJsonAsync<ReceiptQueuedDto>(Json, Ct))!;
+        await WaitForResultAsync(client, queued.Id);
+
+        using var image = await client.GetAsync($"/api/receipts/{queued.Id}/image", Ct);
+
+        Assert.Equal("receipt.jpg", image.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
+    }
+
+    [Fact]
     public async Task Serves_a_jpeg_copy_of_photos_browsers_cannot_display()
     {
         await using var factory = new ReceiptApiFactory();

@@ -5,13 +5,6 @@ using ReceiptSplit.Options;
 
 namespace ReceiptSplit.Extraction;
 
-public enum ReceiptActionResult
-{
-    Done,
-    NotFound,
-    Busy,
-}
-
 /// <summary>
 /// Receipt operations shared by the HTTP API and future entry points such as a Discord bot.
 /// </summary>
@@ -190,8 +183,9 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
     /// <summary>
     /// The stored photo as a file a browser can display: the original, or for HEIC and TIFF uploads a JPEG copy,
     /// converted on first request and kept next to the original. Null when the receipt or its photo is missing.
+    /// <see cref="ReceiptImage.FileName"/> is what saving the photo should name it.
     /// </summary>
-    public async Task<(string Path, string ContentType)?> GetImageAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<ReceiptImage?> GetImageAsync(Guid id, CancellationToken cancellationToken)
     {
         var receipt = await db.Receipts.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
         var original = receipt is null ? null : storage.Value.GetUploadPath(receipt.StoredFileName);
@@ -202,7 +196,7 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
 
         if (ImagePreparer.BrowsersCanShow(receipt.ContentType))
         {
-            return (original, receipt.ContentType);
+            return new ReceiptImage(original, receipt.ContentType, receipt.OriginalFileName);
         }
 
         var copy = storage.Value.GetDisplayCopyPath(receipt.StoredFileName);
@@ -215,7 +209,8 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
             File.Move(partial, copy, overwrite: true);
         }
 
-        return (copy, "image/jpeg");
+        // The copy is a JPEG whatever the upload was, so the saved file gets the extension of what is served.
+        return new ReceiptImage(copy, "image/jpeg", Path.ChangeExtension(receipt.OriginalFileName, ".jpg"));
     }
 
     /// <summary>Deletes the receipt, its lines, and the stored photo. Refused while the model is reading it.</summary>
