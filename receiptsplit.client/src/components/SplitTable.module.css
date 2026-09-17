@@ -1,21 +1,33 @@
-/* A person's buttons on one line. A hidden copy of the widest usual state ("Alice ×9" plus its − button) sits in
-   the same grid cell and sets the width, so adding a share doesn't resize the buttons or push the others along. */
-.slot {
-  display: inline-grid;
+/* Holding a name on a phone takes a share away, so it mustn't select the text or open the iOS callout instead. */
+.person {
+  min-width: 56px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
-.slot > * {
-  grid-area: 1 / 1;
+/* The share count sits on the button's corner, so it takes no width. A neutral bubble with a green ring reads on
+   both a filled and an outlined button, in either color scheme. Mantine paints the bubble from --indicator-color;
+   the doubled class outranks its own rule for the text color. */
+.count.count {
+  --indicator-color: var(--mantine-color-body);
+  color: var(--mantine-color-text);
+  border: 1px solid var(--mantine-color-green-9);
+  font-weight: 700;
 }
 
-.sizer {
-  visibility: hidden;
+/* Keeps the ⋯ menu's items lined up whether or not "Split by $ amounts" is checked. */
+.check {
+  display: inline-block;
+  width: 1ch;
 }
 
-.fill {
-  width: 100%;
-}
-
-.fill > :first-child {
-  flex: 1;
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
