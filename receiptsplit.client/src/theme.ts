@@ -57,5 +57,7 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     '--mantine-color-default': '#222831',
     '--mantine-color-default-hover': '#2b323d',
     '--app-hover': '#2b323d',
+    // Fainter than an enabled button's #39414f border.
+    '--mantine-color-disabled-border': '#2b323d',
   },
 })
