@@ -100,6 +100,26 @@ public class ReceiptOutputParserTests
         Assert.Equal(new ParsedLine("12\" PIZZA", "4011", 2m, 19.98m, null), Assert.Single(ReceiptOutputParser.Parse(output).Lines));
     }
 
+    /// <summary>From a real T&amp;T photo, where all but the first row came back in these shapes.</summary>
+    [Fact]
+    public void Reads_names_given_with_their_printed_translation_and_rows_without_a_code()
+    {
+        const string output = """
+            [["TTL DA HONG PAO OOLONG","040663446",1,"26.99","U"],[["MM NO ADDED SUGAR APPLE SODA","美粒果0加糖苹果苏打"],null,1,"2.49","G P"],[["CARROT","紅蘿蔔"],0.375,"1.23","U"],[["STRAWBERRY","草莓"],null,1,"6.99","U"],["ONION",2,"3.49",null]]
+            """;
+
+        Assert.Equal(
+            new[]
+            {
+                new ParsedLine("TTL DA HONG PAO OOLONG", "040663446", 1m, 26.99m, "U"),
+                new ParsedLine("MM NO ADDED SUGAR APPLE SODA", null, 1m, 2.49m, "G P"),
+                new ParsedLine("CARROT", null, 0.375m, 1.23m, "U"),
+                new ParsedLine("STRAWBERRY", null, 1m, 6.99m, "U"),
+                new ParsedLine("ONION", null, 2m, 3.49m, null),
+            },
+            ReceiptOutputParser.Parse(output).Lines);
+    }
+
     [Theory]
     [InlineData("4.99", "4.99")]
     [InlineData("$1,234.50", "1234.50")]

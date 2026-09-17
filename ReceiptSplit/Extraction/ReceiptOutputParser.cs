@@ -25,9 +25,13 @@ public static partial class ReceiptOutputParser
         "(?:[^"\\]|\\.)*"
         """;
 
+    /// <summary>
+    /// A name, or a list of the name's printed lines (T&amp;T prints a Chinese line under each English one). The code
+    /// may be left out entirely; the amount is always quoted, so a quantity is never taken for a code.
+    /// </summary>
     private const string RowPattern =
         $$"""
-        (?<name>{{JsonString}})\s*,\s*(?<code>{{JsonString}}|null|-?\d+)\s*,\s*(?<qty>"?-?\d+(?:\.\d+)?"?|null)\s*,\s*"(?<amount>\(?-?\$?-?[\d,]*\.\d{2}-?\)?)"\s*,\s*(?<tax>{{JsonString}}|null)
+        (?<name>{{JsonString}}|\[\s*{{JsonString}}(?:\s*,\s*{{JsonString}})*\s*\])\s*,\s*(?:(?<code>{{JsonString}}|null|-?\d+)\s*,\s*)?(?<qty>"?-?\d+(?:\.\d+)?"?|null)\s*,\s*"(?<amount>\(?-?\$?-?[\d,]*\.\d{2}-?\)?)"\s*,\s*(?<tax>{{JsonString}}|null)
         """;
 
     [GeneratedRegex(RowPattern)]
@@ -48,8 +52,8 @@ public static partial class ReceiptOutputParser
             }
 
             lines.Add(new ParsedLine(
-                Name: ReadToken(row.Groups["name"].Value)?.Trim() ?? "",
-                Code: NullIfBlank(ReadToken(row.Groups["code"].Value)),
+                Name: ReadName(row.Groups["name"].Value),
+                Code: row.Groups["code"].Success ? NullIfBlank(ReadToken(row.Groups["code"].Value)) : null,
                 Quantity: ParseQuantity(row.Groups["qty"].Value),
                 Amount: amount.Value,
                 TaxCode: NullIfBlank(ReadToken(row.Groups["tax"].Value))));
@@ -127,6 +131,20 @@ public static partial class ReceiptOutputParser
         DateOnly.TryParseExact(text.Trim()[..10], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
             ? date
             : null;
+
+    /// <summary>Keeps the first printed line of a name given as a list, which is the one other rows are read as.</summary>
+    private static string ReadName(string token)
+    {
+        if (token.StartsWith('['))
+        {
+            token = JsonStringRegex().Match(token).Value;
+        }
+
+        return ReadToken(token)?.Trim() ?? "";
+    }
+
+    [GeneratedRegex(JsonString)]
+    private static partial Regex JsonStringRegex();
 
     /// <summary>Reads a matched JSON string, <c>null</c>, or bare number token.</summary>
     private static string? ReadToken(string token)
