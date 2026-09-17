@@ -22,6 +22,7 @@ import { notifications } from '@mantine/notifications'
 import { api, errorMessage, inProgress, type ReceiptDetail as Receipt } from '../api.ts'
 import { formatDateTime, formatMoney, formatPercent, formatSeconds } from '../format.ts'
 import { isValidTaxRate, maxTaxRatePercent, minTaxRatePercent } from '../taxRate.ts'
+import { usePageTitle } from '../usePageTitle.ts'
 import { ReceiptEditor } from './ReceiptEditor.tsx'
 import { StatusBadge } from './StatusBadge.tsx'
 
@@ -46,6 +47,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
   // Bumping this reloads the receipt.
   const [version, setVersion] = useState(0)
   // On a phone the line numbers go, so the amounts fit without scrolling the table sideways.
+  usePageTitle(receipt ? (receipt.storeName ?? 'Unknown store') : null)
   const compact = useMediaQuery('(max-width: 36em)', undefined, { getInitialValueInEffect: false })
 
   useEffect(() => {

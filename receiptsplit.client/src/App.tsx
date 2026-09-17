@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Anchor, Box, Card, Container, Grid, Paper, Stack, Text } from '@mantine/core'
+import { Anchor, Box, Card, Container, Grid, Paper, Stack, Text, Title } from '@mantine/core'
 import { api, errorMessage, inProgress, type ReceiptSummary } from './api.ts'
 import { ReceiptDetail } from './components/ReceiptDetail.tsx'
 import { ReceiptList } from './components/ReceiptList.tsx'
@@ -82,19 +82,20 @@ function App() {
       <Paper component="header" radius={0} py="sm" bd="0 0 1px 0 solid var(--mantine-color-default-border)">
         {/* The same container as the page below, so the name lines up with the cards' left edge. */}
         <Container size={containerSize} px="md">
-          <Anchor
-            href="/"
-            fw={600}
-            size="lg"
-            underline="never"
-            c="var(--mantine-color-text)"
-            onClick={(event) => {
-              event.preventDefault()
-              navigate(null)
-            }}
-          >
-            ReceiptSplit
-          </Anchor>
+          <Title order={1} fz="lg" fw={600} lh={1.55}>
+            <Anchor
+              href="/"
+              inherit
+              underline="never"
+              c="var(--mantine-color-text)"
+              onClick={(event) => {
+                event.preventDefault()
+                navigate(null)
+              }}
+            >
+              ReceiptSplit
+            </Anchor>
+          </Title>
         </Container>
       </Paper>
       {showSplits ? (
