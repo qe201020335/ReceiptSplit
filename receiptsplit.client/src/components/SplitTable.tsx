@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import { Button, Card, Group, Table, Text } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { modals } from '@mantine/modals'
@@ -14,6 +14,7 @@ import {
 } from '../splits.ts'
 import type { SplitActions } from '../useSplitState.ts'
 import { SplitAmountForm } from './SplitAmountForm.tsx'
+import classes from './SplitTable.module.css'
 
 interface SplitTableProps {
   lines: SplitLine[]
@@ -164,51 +165,53 @@ function ShareButtons({ line, assignment, people, actions }: ShareButtonsProps) 
         if (byAmounts) {
           const cents = assignment.amounts[person]
           return (
-            <Button
-              key={person}
-              size="xs"
-              miw={64}
-              variant={cents != null ? 'filled' : 'default'}
-              color="green"
-              onClick={() => enterAmount(person)}
-              onContextMenu={(event) => {
-                event.preventDefault()
-                actions.setAmount(line.position, person, null)
-              }}
-            >
-              {cents != null ? `${person} $${formatCents(cents)}` : person}
-            </Button>
+            <PersonSlot key={person} person={person}>
+              <Button
+                size="xs"
+                className={classes.fill}
+                variant={cents != null ? 'filled' : 'default'}
+                color="green"
+                onClick={() => enterAmount(person)}
+                onContextMenu={(event) => {
+                  event.preventDefault()
+                  actions.setAmount(line.position, person, null)
+                }}
+              >
+                {cents != null ? `${person} $${formatCents(cents)}` : person}
+              </Button>
+            </PersonSlot>
           )
         }
 
         const count = assignment.shares[person] ?? 0
         return (
-          <Button.Group key={person}>
-            <Button
-              size="xs"
-              miw={64}
-              variant={count > 0 ? 'filled' : 'default'}
-              color="green"
-              onClick={() => actions.changeShare(line.position, person, 1)}
-              onContextMenu={(event) => {
-                event.preventDefault()
-                actions.changeShare(line.position, person, -1)
-              }}
-            >
-              {count > 1 ? `${person} ×${count}` : person}
-            </Button>
-            {count > 0 && (
+          <PersonSlot key={person} person={person}>
+            <Button.Group className={classes.fill}>
               <Button
                 size="xs"
-                px={8}
-                color="green.8"
-                aria-label={`Take a share of ${line.name} from ${person}`}
-                onClick={() => actions.changeShare(line.position, person, -1)}
+                variant={count > 0 ? 'filled' : 'default'}
+                color="green"
+                onClick={() => actions.changeShare(line.position, person, 1)}
+                onContextMenu={(event) => {
+                  event.preventDefault()
+                  actions.changeShare(line.position, person, -1)
+                }}
               >
-                −
+                {count > 1 ? `${person} ×${count}` : person}
               </Button>
-            )}
-          </Button.Group>
+              {count > 0 && (
+                <Button
+                  size="xs"
+                  px={8}
+                  color="green.8"
+                  aria-label={`Take a share of ${line.name} from ${person}`}
+                  onClick={() => actions.changeShare(line.position, person, -1)}
+                >
+                  −
+                </Button>
+              )}
+            </Button.Group>
+          </PersonSlot>
         )
       })}
       <Button
@@ -227,5 +230,22 @@ function ShareButtons({ line, assignment, people, actions }: ShareButtonsProps) 
         Clear
       </Button>
     </Group>
+  )
+}
+
+/** Holds a person's buttons at the width of "Alice ×9" with its − button, whatever state they are in. */
+function PersonSlot({ person, children }: { person: string; children: ReactNode }) {
+  return (
+    <span className={classes.slot}>
+      <Button.Group className={classes.sizer} aria-hidden>
+        <Button component="span" size="xs" miw={64}>
+          {person} ×9
+        </Button>
+        <Button component="span" size="xs" px={8}>
+          −
+        </Button>
+      </Button.Group>
+      {children}
+    </span>
   )
 }

@@ -1,0 +1,21 @@
+/* A person's buttons on one line. A hidden copy of the widest usual state ("Alice ×9" plus its − button) sits in
+   the same grid cell and sets the width, so adding a share doesn't resize the buttons or push the others along. */
+.slot {
+  display: inline-grid;
+}
+
+.slot > * {
+  grid-area: 1 / 1;
+}
+
+.sizer {
+  visibility: hidden;
+}
+
+.fill {
+  width: 100%;
+}
+
+.fill > :first-child {
+  flex: 1;
+}
