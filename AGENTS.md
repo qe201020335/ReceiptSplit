@@ -1,0 +1,131 @@
+# AGENTS.md
+
+Guidance for coding agents working in this repository. See [README.md](README.md) for what the app does, how to run
+it and how to configure it.
+
+## Layout
+
+```
+ReceiptSplit/                 ASP.NET Core 10 backend (also serves the built client from wwwroot)
+  Controllers/                Thin HTTP layer; ReceiptsController maps results to status codes and ProblemDetails
+  Contracts/ReceiptDtos.cs    Request/response records and the entity → DTO mapping
+  Data/                       EF Core model, migrations, Precision (cents and tax rate rounding)
+  Extraction/                 Upload handling, the extraction queue and worker, model client, parsing and checks
+  Options/                    Llm and Storage settings
+ReceiptSplit.Tests/           xUnit v3 tests on Microsoft.Testing.Platform, with a fake model client
+receiptsplit.client/          React 19 + TypeScript + Vite 8 + Mantine 9
+  src/api.ts                  Types and calls mirroring ReceiptDtos.cs
+  src/splits.ts               Split calculations, all in integer cents
+  src/theme.ts                Mantine theme and color tokens
+  src/components/             Page parts; *.module.css for component styles
+samples/                      Real photos, truth files and model outputs; gitignored, tests skip without it
+```
+
+## Commands
+
+```sh
+dotnet build ReceiptSplit.sln
+dotnet test --project ReceiptSplit.Tests                      # all backend tests
+dotnet test --project ReceiptSplit.Tests --filter-class ReceiptSplit.Tests.ReceiptChecksTests
+cd receiptsplit.client && npm run build && npm run lint       # type check, build, oxlint
+dotnet ef migrations add <Name> --project ReceiptSplit --output-dir Data/Migrations
+```
+
+`dotnet ef` is a local tool (`dotnet tool restore`). There is no test runner for the client; verify UI changes in a
+browser.
+
+## How the backend works
+
+- **Upload → queue → worker.** `ReceiptService.CreateAsync` stores the photo and a `Queued` receipt, then enqueues
+  its id on the in-memory `ExtractionQueue`. `ExtractionWorker` processes one receipt at a time (the model server
+  has a single slot) and re-queues unfinished receipts on startup; the database status is the source of truth.
+- **One extraction** (`ReceiptExtractor`): prepare the image, call the model, parse, fold promotions, flag taxed
+  lines, check, save. Failures become `Failed` with a plain message from `ExtractionErrors`; never store raw
+  exception text on a receipt.
+- **Statuses.** `Completed` when all three checks in `ReceiptChecks` pass (lines = subtotal, subtotal + tax = total,
+  expected tax within a cent), otherwise `NeedsReview`. Hand edits (`PUT`) and tax rate changes (`PATCH`) recheck
+  without calling the model. Actions that would clash with an extraction return `ReceiptActionResult.Busy` (409);
+  which statuses count as busy differs per action, see `ReceiptService`.
+- **Business logic lives in `ReceiptService`**, not in the controller, so other entry points can reuse it.
+- **No authentication in the app yet.** It will first be deployed behind an identity-aware proxy (IAP), with sign-in
+  and users (each receipt belonging to one) added later. Don't assume a trusted home network.
+
+### Money and precision
+
+- Money is `decimal` in C# and stored as integer cents; tax rates are stored as thousandths of a percent (Quebec's
+  14.975%). The converters are in `AppDbContext`.
+- Round with `Precision.Cents` / `Precision.Rate` **before** running checks, so a status never disagrees with the
+  values read back from the database.
+- `ReceiptLine.Amount` is the price actually paid, with any promotion already deducted; `Discount` is the negative
+  promotion amount, so the printed price is `Amount - Discount`.
+
+### Images
+
+- `ImagePreparer.DetectFormat` recognises uploads by their leading bytes. Only recognised formats reach ImageMagick,
+  and every read passes the detected format in `MagickReadSettings`; don't let ImageMagick guess a format.
+- JPEG/PNG within the image token budget are sent to the model unchanged; anything else is auto-oriented, shrunk
+  and re-encoded as JPEG. Browsers get a cached JPEG copy of HEIC, HEIF and TIFF photos.
+- The accepted formats are listed in both `ImagePreparer.SupportedFormats` and
+  `receiptsplit.client/src/uploadTypes.ts`; change them together.
+
+### The model
+
+The endpoint is llama.cpp's OpenAI-compatible `llama-server`, developed against Qwen3.8 27B on a shared LAN
+server. What was learned from real receipts:
+
+- The prompt in `ExtractionPrompt` was validated on real Costco and T&T photos. Change it only with evidence from
+  sample outputs.
+- Don't use `response_format` / JSON schema: grammar-constrained output flipped the sign of every amount.
+- Thinking is turned off (`chat_template_kwargs.enable_thinking = false`) and temperature is 0, but output is still
+  not fully deterministic between runs.
+- The model gets values right but slips on structure, so `ReceiptOutputParser` matches each row on its own instead
+  of parsing the whole output as JSON. Keep it tolerant; the totals checks catch real misreads.
+- Live model tests are opt-in (`RECEIPTSPLIT_LIVE_TESTS=1`) because they load a model on a shared server.
+
+### Migrations
+
+There is no data worth preserving yet. Editing, replacing or collapsing migrations is fine and backfill SQL isn't
+needed; collapsing migrations means deleting the dev database (`ReceiptSplit/data/receiptsplit.db` and `uploads/`)
+first, so ask before doing that. Migrations are applied at startup by `DatabaseInitializer`.
+
+## Backend conventions
+
+- File-scoped namespaces, primary constructors, `sealed` where possible, nullable enabled.
+- DTOs are positional records. Put DataAnnotations on the constructor parameters, not with `[property: ...]`: MVC
+  throws at runtime for validation attributes on record properties.
+- Doc comments explain why, not what. Keep lines around 120 characters.
+- Tests are named as sentences (`Hand_corrections_are_checked_at_the_precision_they_are_stored`). API tests use
+  `ReceiptApiFactory` with `FakeLlamaClient` (`Content`, `Failure`, `Block()`/`Release()`), and images come from
+  `TestImages.Create`.
+
+## Frontend conventions
+
+- TypeScript without semicolons, single quotes, two-space indent, lines up to 120 characters. There is no Prettier
+  config: don't run Prettier, it reformats whole files.
+- Use Mantine components instead of hand-rolled ones, including `@mantine/modals` for confirmations and
+  `@mantine/notifications` for results and errors. Component styles go in a `*.module.css` next to the component;
+  colors come from `theme.ts` tokens and CSS variables so light and dark mode both work.
+- Keep the original palette: primary `#2f6fed` in light mode and `#6b9bff` in dark mode (with dark text on filled
+  primary buttons). Check contrast in both color schemes.
+- Routing is a small hook, `useRoute.ts`, over the History API (`/receipts/:id`, `/receipts/:id/splits`); the
+  backend serves `index.html` for any non-API path.
+- Every layout must work at phone width (390px) without sideways page scroll.
+- `api.ts` types mirror `ReceiptDtos.cs`; update both together. Split math stays in integer cents in `splits.ts`.
+- Oxlint enforces the React hooks rules, including no `setState` directly in effects: load data in an effect with
+  a `current` flag, as `ReceiptDetail` does.
+- Choose libraries on fit, not bundle size; don't report bundle size.
+
+## Verifying changes
+
+- Backend: `dotnet test --project ReceiptSplit.Tests`. Add or update tests with the change.
+- Client: `npm run build` and `npm run lint`, then check the change in a real browser (headless Chromium over the
+  DevTools protocol works) at desktop and phone widths, in light and dark mode.
+- The owner often has the dev stack running on ports 5015 (backend) and 5173 (Vite). Don't use those ports or that
+  database: run a scratch backend on another port with `Storage__Root` pointing at a copy of the data, and Vite on
+  another port with `ASPNETCORE_URLS` set to that backend. Stop what you started when done.
+
+## Git
+
+- Work on a branch. When implementing a plan, make one commit per step, and make sure every commit builds.
+- Don't push unless asked.
+- Commit messages: a short imperative subject, then a body explaining why the change was made.
