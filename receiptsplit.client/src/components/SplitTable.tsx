@@ -30,8 +30,9 @@ const problemColors: Record<LineProblem, string> = {
 }
 
 export function SplitTable({ lines, state, actions }: SplitTableProps) {
-  // On a phone the share buttons get a full-width row under their item instead of a squeezed column.
-  const stacked = useMediaQuery('(max-width: 48em)') ?? false
+  // On a phone the share buttons get a full-width row under their item instead of a squeezed column. Read the
+  // query while rendering, not after, so a phone doesn't paint the wide layout first.
+  const stacked = useMediaQuery('(max-width: 48em)', undefined, { getInitialValueInEffect: false })
 
   return (
     <Card withBorder padding="md">
