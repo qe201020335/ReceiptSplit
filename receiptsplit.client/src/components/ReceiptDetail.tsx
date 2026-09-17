@@ -14,6 +14,7 @@ import {
   Table,
   Text,
   Title,
+  Tooltip,
 } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
@@ -30,9 +31,11 @@ interface ReceiptDetailProps {
   /** Called after an action that changes how the receipt appears in the list. */
   onChanged: () => void
   onDeleted: () => void
+  /** Opens the splits page; only offered once the receipt passes its checks. */
+  onSplit: () => void
 }
 
-export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) {
+export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDetailProps) {
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -159,6 +162,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
   }
 
   const { checks, extraction } = receipt
+  const canSplit = receipt.status === 'Completed' && !busy
   const taxRateValid = taxRateDraft !== null && String(taxRateDraft).trim() !== '' && isValidTaxRate(Number(taxRateDraft))
 
   return (
@@ -355,6 +359,14 @@ export function ReceiptDetail({ id, onChanged, onDeleted }: ReceiptDetailProps) 
             )}
 
             <Group gap="xs">
+              <Tooltip label="Available once the receipt is read and its totals check out" disabled={canSplit}>
+                {/* A disabled button fires no pointer events, so the tooltip hangs off a wrapper. */}
+                <span>
+                  <Button onClick={onSplit} disabled={!canSplit}>
+                    Split
+                  </Button>
+                </span>
+              </Tooltip>
               <Button variant="default" onClick={() => setEditing(true)} disabled={busy || waiting}>
                 Edit lines
               </Button>

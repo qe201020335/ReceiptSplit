@@ -4,7 +4,8 @@ import { api, errorMessage, inProgress, type ReceiptSummary } from './api.ts'
 import { ReceiptDetail } from './components/ReceiptDetail.tsx'
 import { ReceiptList } from './components/ReceiptList.tsx'
 import { UploadForm } from './components/UploadForm.tsx'
-import { useSelectedReceipt } from './useSelectedReceipt.ts'
+import { SplitsPage } from './components/SplitsPage.tsx'
+import { useRoute } from './useRoute.ts'
 
 const pollIntervalMs = 2000
 
@@ -13,7 +14,8 @@ function App() {
   const [listError, setListError] = useState<string | null>(null)
   // Bumping this reloads the list.
   const [listVersion, setListVersion] = useState(0)
-  const [selectedId, selectReceipt] = useSelectedReceipt()
+  const [route, navigate] = useRoute()
+  const selectedId = route.receiptId
 
   const reloadList = useCallback(() => setListVersion((version) => version + 1), [])
 
@@ -58,46 +60,53 @@ function App() {
           c="var(--mantine-color-text)"
           onClick={(event) => {
             event.preventDefault()
-            selectReceipt(null)
+            navigate(null)
           }}
         >
           ReceiptSplit
         </Anchor>
       </Paper>
-      <Container size="lg" py="md" px="md">
-        <Grid gap="md" align="flex-start">
-          <Grid.Col span={{ base: 12, sm: 5, md: 4 }}>
-            <Stack gap="md">
-              <UploadForm
-                onUploaded={(receipt) => {
-                  reloadList()
-                  selectReceipt(receipt.id)
-                }}
-              />
-              <ReceiptList receipts={receipts} error={listError} selectedId={selectedId} onSelect={selectReceipt} />
-            </Stack>
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 7, md: 8 }}>
-            {selectedId ? (
-              <ReceiptDetail
-                key={selectedId}
-                id={selectedId}
-                onChanged={reloadList}
-                onDeleted={() => {
-                  selectReceipt(null)
-                  reloadList()
-                }}
-              />
-            ) : (
-              <Card withBorder padding="xl">
-                <Text c="dimmed" ta="center">
-                  Upload a receipt photo, or pick a receipt from the list.
-                </Text>
-              </Card>
-            )}
-          </Grid.Col>
-        </Grid>
-      </Container>
+      {selectedId && route.view === 'splits' ? (
+        <Container size="xl" py="md" px="md">
+          <SplitsPage key={selectedId} id={selectedId} onBack={() => navigate(selectedId)} />
+        </Container>
+      ) : (
+        <Container size="lg" py="md" px="md">
+          <Grid gap="md" align="flex-start">
+            <Grid.Col span={{ base: 12, sm: 5, md: 4 }}>
+              <Stack gap="md">
+                <UploadForm
+                  onUploaded={(receipt) => {
+                    reloadList()
+                    navigate(receipt.id)
+                  }}
+                />
+                <ReceiptList receipts={receipts} error={listError} selectedId={selectedId} onSelect={navigate} />
+              </Stack>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 7, md: 8 }}>
+              {selectedId ? (
+                <ReceiptDetail
+                  key={selectedId}
+                  id={selectedId}
+                  onChanged={reloadList}
+                  onSplit={() => navigate(selectedId, 'splits')}
+                  onDeleted={() => {
+                    navigate(null)
+                    reloadList()
+                  }}
+                />
+              ) : (
+                <Card withBorder padding="xl">
+                  <Text c="dimmed" ta="center">
+                    Upload a receipt photo, or pick a receipt from the list.
+                  </Text>
+                </Card>
+              )}
+            </Grid.Col>
+          </Grid>
+        </Container>
+      )}
     </Box>
   )
 }
