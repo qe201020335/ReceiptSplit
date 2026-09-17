@@ -8,6 +8,10 @@ export interface Route {
   view: View
 }
 
+interface HistoryState {
+  previous: string
+}
+
 const receiptPath = /^\/receipts\/([^/]+)(\/splits)?\/?$/
 
 function readRoute(): Route {
@@ -39,10 +43,26 @@ export function useRoute() {
     const next: Route = { receiptId, view: receiptId ? view : 'detail' }
     const path = pathFor(next)
     if (window.location.pathname !== path) {
-      window.history.pushState(null, '', path)
+      // Remember where we came from, so goBack can return there instead of stacking another entry.
+      window.history.pushState({ previous: window.location.pathname } satisfies HistoryState, '', path)
     }
     setRoute(next)
   }, [])
 
-  return [route, navigate] as const
+  /**
+   * Goes back to the given page: a real history step when that is where the user came from, otherwise (opened by a
+   * link or a reload) it replaces the current entry, so the browser's back button doesn't return here either way.
+   */
+  const goBack = useCallback((receiptId: string | null, view: View = 'detail') => {
+    const next: Route = { receiptId, view: receiptId ? view : 'detail' }
+    const path = pathFor(next)
+    if ((window.history.state as HistoryState | null)?.previous === path) {
+      window.history.back()
+      return
+    }
+    window.history.replaceState(null, '', path)
+    setRoute(next)
+  }, [])
+
+  return [route, navigate, goBack] as const
 }

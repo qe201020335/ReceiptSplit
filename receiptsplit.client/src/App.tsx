@@ -14,7 +14,7 @@ function App() {
   const [listError, setListError] = useState<string | null>(null)
   // Bumping this reloads the list.
   const [listVersion, setListVersion] = useState(0)
-  const [route, navigate] = useRoute()
+  const [route, navigate, goBack] = useRoute()
   const selectedId = route.receiptId
 
   const reloadList = useCallback(() => setListVersion((version) => version + 1), [])
@@ -68,7 +68,7 @@ function App() {
       </Paper>
       {selectedId && route.view === 'splits' ? (
         <Container size="xl" py="md" px="md">
-          <SplitsPage key={selectedId} id={selectedId} onBack={() => navigate(selectedId)} />
+          <SplitsPage key={selectedId} id={selectedId} onBack={() => goBack(selectedId)} />
         </Container>
       ) : (
         <Container size="lg" py="md" px="md">
