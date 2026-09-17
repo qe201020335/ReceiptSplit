@@ -206,7 +206,6 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                     label="Sales tax"
                     size="xs"
                     w={110}
-                    data-autofocus
                     autoFocus
                     suffix="%"
                     min={minTaxRatePercent}
