@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Anchor, Box, Card, Container, Grid, Paper, Stack, Text } from '@mantine/core'
 import { api, errorMessage, inProgress, type ReceiptSummary } from './api.ts'
 import { ReceiptDetail } from './components/ReceiptDetail.tsx'
@@ -18,6 +18,30 @@ function App() {
   const selectedId = route.receiptId
 
   const reloadList = useCallback(() => setListVersion((version) => version + 1), [])
+
+  // On a phone the detail sits below the upload form and the list, so opening a receipt scrolls down to it.
+  const detailRef = useRef<HTMLDivElement>(null)
+  const revealDetail = useRef(false)
+  const openReceipt = useCallback(
+    (id: string) => {
+      revealDetail.current = true
+      navigate(id)
+    },
+    [navigate],
+  )
+
+  useEffect(() => {
+    const detail = detailRef.current
+    if (!revealDetail.current || !detail) {
+      return
+    }
+    revealDetail.current = false
+    // Side by side (from Mantine's sm breakpoint up) the detail is already in view.
+    if (window.matchMedia('(max-width: 47.99em)').matches) {
+      const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      detail.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' })
+    }
+  }, [selectedId])
 
   useEffect(() => {
     let current = true
@@ -78,13 +102,19 @@ function App() {
                 <UploadForm
                   onUploaded={(receipt) => {
                     reloadList()
-                    navigate(receipt.id)
+                    openReceipt(receipt.id)
                   }}
                 />
-                <ReceiptList receipts={receipts} error={listError} selectedId={selectedId} onSelect={navigate} />
+                <ReceiptList receipts={receipts} error={listError} selectedId={selectedId} onSelect={openReceipt} />
               </Stack>
             </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 7, md: 8 }}>
+            <Grid.Col
+              span={{ base: 12, sm: 7, md: 8 }}
+              ref={detailRef}
+              // At least a screen tall while stacked, so there is room to scroll it to the top before it has loaded.
+              mih={selectedId ? { base: '100dvh', sm: 0 } : undefined}
+              style={{ scrollMarginTop: 16 }}
+            >
               {selectedId ? (
                 <ReceiptDetail
                   key={selectedId}
