@@ -1,15 +1,11 @@
 services:
   receiptsplit:
-    image: receiptsplit
-    build:
-      # Built straight from GitHub, so deploying needs only this file and a .env. The repository is private: put a
-      # GitHub token that can read it (a fine-grained token with Contents: read) in RECEIPTSPLIT_GITHUB_TOKEN.
-      # Set RECEIPTSPLIT_SOURCE=. to build a local checkout instead.
-      context: ${RECEIPTSPLIT_SOURCE:-https://github.com/qe201020335/ReceiptSplit.git#master}
-      dockerfile: ReceiptSplit/Dockerfile
-      # Passed as a build secret rather than written into the URL, so the token stays out of the image metadata.
-      secrets:
-        - GIT_AUTH_TOKEN
+    # Built and pushed by the CI workflow, so deploying needs only this file and a .env. The package is private
+    # while the repository is: log the host in first with a token that has read:packages.
+    #   echo <token> | docker login ghcr.io -u <user> --password-stdin
+    # Set RECEIPTSPLIT_IMAGE to pin a version (a v1.2.3 tag publishes 1.2.3 and 1.2).
+    image: ${RECEIPTSPLIT_IMAGE:-ghcr.io/qe201020335/receiptsplit:latest}
+    pull_policy: always
     ports:
       - "${RECEIPTSPLIT_PORT:-8080}:8080"
     environment:
@@ -23,7 +19,3 @@ services:
       # owned by root and the app can't write to it.
       - ${RECEIPTSPLIT_DATA:-./data}:/app/data
     restart: unless-stopped
-
-secrets:
-  GIT_AUTH_TOKEN:
-    environment: RECEIPTSPLIT_GITHUB_TOKEN
