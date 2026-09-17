@@ -73,29 +73,36 @@ function App() {
     return () => clearTimeout(timer)
   }, [receipts, anyInProgress, reloadList])
 
+  const showSplits = selectedId !== null && route.view === 'splits'
+  // The splits page has a wide table beside its summary, so it gets a wider page.
+  const containerSize = showSplits ? 'xl' : 'lg'
+
   return (
     <Box mih="100vh" bg="var(--app-bg)">
-      <Paper component="header" radius={0} py="sm" px="md" bd="0 0 1px 0 solid var(--mantine-color-default-border)">
-        <Anchor
-          href="/"
-          fw={600}
-          size="lg"
-          underline="never"
-          c="var(--mantine-color-text)"
-          onClick={(event) => {
-            event.preventDefault()
-            navigate(null)
-          }}
-        >
-          ReceiptSplit
-        </Anchor>
+      <Paper component="header" radius={0} py="sm" bd="0 0 1px 0 solid var(--mantine-color-default-border)">
+        {/* The same container as the page below, so the name lines up with the cards' left edge. */}
+        <Container size={containerSize} px="md">
+          <Anchor
+            href="/"
+            fw={600}
+            size="lg"
+            underline="never"
+            c="var(--mantine-color-text)"
+            onClick={(event) => {
+              event.preventDefault()
+              navigate(null)
+            }}
+          >
+            ReceiptSplit
+          </Anchor>
+        </Container>
       </Paper>
-      {selectedId && route.view === 'splits' ? (
-        <Container size="xl" py="md" px="md">
+      {showSplits ? (
+        <Container size={containerSize} py="md" px="md">
           <SplitsPage key={selectedId} id={selectedId} onBack={() => goBack(selectedId)} />
         </Container>
       ) : (
-        <Container size="lg" py="md" px="md">
+        <Container size={containerSize} py="md" px="md">
           <Grid gap="md" align="flex-start">
             <Grid.Col span={{ base: 12, sm: 5, md: 4 }}>
               <Stack gap="md">
