@@ -2,13 +2,14 @@ services:
   receiptsplit:
     image: receiptsplit
     build:
-      # Built straight from GitHub, so deploying needs only this file and a .env. The repository is private: the
-      # machine running compose needs an SSH agent holding a key with read access (for example a deploy key).
+      # Built straight from GitHub, so deploying needs only this file and a .env. The repository is private: put a
+      # GitHub token that can read it (a fine-grained token with Contents: read) in RECEIPTSPLIT_GITHUB_TOKEN.
       # Set RECEIPTSPLIT_SOURCE=. to build a local checkout instead.
-      context: ${RECEIPTSPLIT_SOURCE:-git@github.com:qe201020335/ReceiptSplit.git#master}
+      context: ${RECEIPTSPLIT_SOURCE:-https://github.com/qe201020335/ReceiptSplit.git#master}
       dockerfile: ReceiptSplit/Dockerfile
-      ssh:
-        - default
+      # Passed as a build secret rather than written into the URL, so the token stays out of the image metadata.
+      secrets:
+        - GIT_AUTH_TOKEN
     ports:
       - "${RECEIPTSPLIT_PORT:-8080}:8080"
     environment:
@@ -22,3 +23,7 @@ services:
       # owned by root and the app can't write to it.
       - ${RECEIPTSPLIT_DATA:-./data}:/app/data
     restart: unless-stopped
+
+secrets:
+  GIT_AUTH_TOKEN:
+    environment: RECEIPTSPLIT_GITHUB_TOKEN
