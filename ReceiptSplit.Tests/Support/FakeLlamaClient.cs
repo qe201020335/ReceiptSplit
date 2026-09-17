@@ -23,6 +23,9 @@ public sealed class FakeLlamaClient : ILlamaClient
 
     public string Content { get; set; } = ValidOutput;
 
+    /// <summary>When set, extraction requests throw this instead of answering.</summary>
+    public Exception? Failure { get; set; }
+
     public ConcurrentQueue<PreparedImage> Requests { get; } = new();
 
     /// <summary>Holds extraction requests until <see cref="Release"/> is called.</summary>
@@ -34,6 +37,11 @@ public sealed class FakeLlamaClient : ILlamaClient
     {
         await _gate.Task.WaitAsync(cancellationToken);
         Requests.Enqueue(image);
+        if (Failure is not null)
+        {
+            throw Failure;
+        }
+
         return new LlmCompletion(Content, "fake-model", "stop", 100, 50, TimeSpan.FromMilliseconds(5));
     }
 

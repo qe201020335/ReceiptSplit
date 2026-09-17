@@ -366,6 +366,20 @@ public class ReceiptsApiTests
     }
 
     [Fact]
+    public async Task A_model_server_error_fails_with_a_plain_message()
+    {
+        await using var factory = new ReceiptApiFactory();
+        factory.Llm.Failure = new HttpRequestException(
+            "llama-server returned 500: {\"error\":\"out of memory at /models/qwen.gguf\"}", null, HttpStatusCode.InternalServerError);
+        using var client = factory.CreateClient();
+
+        var receipt = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Jpeg));
+
+        Assert.Equal(ReceiptStatus.Failed, receipt.Status);
+        Assert.Equal("The model server returned an error (500). Try running extraction again.", receipt.Error);
+    }
+
+    [Fact]
     public async Task Output_without_lines_fails_and_keeps_the_raw_output()
     {
         await using var factory = new ReceiptApiFactory();

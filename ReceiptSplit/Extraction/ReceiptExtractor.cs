@@ -11,6 +11,7 @@ public sealed class ReceiptExtractor(
     ImagePreparer imagePreparer,
     ILlamaClient llm,
     IOptions<StorageOptions> storage,
+    IOptions<LlmOptions> llmOptions,
     ILogger<ReceiptExtractor> logger)
 {
     public async Task RunAsync(Guid receiptId, CancellationToken cancellationToken)
@@ -89,7 +90,7 @@ public sealed class ReceiptExtractor(
         {
             logger.LogWarning(ex, "Extraction failed for receipt {ReceiptId}", receipt.Id);
             receipt.Status = ReceiptStatus.Failed;
-            receipt.Error = ex.Message;
+            receipt.Error = ExtractionErrors.Describe(ex, llmOptions.Value.Timeout);
         }
 
         receipt.ExtractedAt = DateTime.UtcNow;
