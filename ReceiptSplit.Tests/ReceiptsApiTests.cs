@@ -381,6 +381,29 @@ public class ReceiptsApiTests
     }
 
     [Fact]
+    public async Task Serves_a_jpeg_copy_of_photos_browsers_cannot_display()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var client = factory.CreateClient();
+        var receipt = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Tiff));
+
+        foreach (var _ in new[] { "converted", "cached" })
+        {
+            using var image = await client.GetAsync($"/api/receipts/{receipt.Id}/image", Ct);
+            Assert.Equal("image/jpeg", image.Content.Headers.ContentType?.MediaType);
+            var info = new MagickImageInfo(await image.Content.ReadAsByteArrayAsync(Ct));
+            Assert.Equal((MagickFormat.Jpeg, 64u, 48u), (info.Format, info.Width, info.Height));
+        }
+
+        var uploads = Path.Combine(factory.StorageRoot, "uploads");
+        Assert.Equal(2, Directory.GetFiles(uploads).Length);
+
+        using var delete = await client.DeleteAsync($"/api/receipts/{receipt.Id}", Ct);
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        Assert.Empty(Directory.GetFiles(uploads));
+    }
+
+    [Fact]
     public async Task Rejects_files_that_are_not_images()
     {
         await using var factory = new ReceiptApiFactory();

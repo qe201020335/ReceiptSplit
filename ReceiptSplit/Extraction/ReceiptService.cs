@@ -187,6 +187,37 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
         return ReceiptActionResult.Done;
     }
 
+    /// <summary>
+    /// The stored photo as a file a browser can display: the original, or for HEIC and TIFF uploads a JPEG copy,
+    /// converted on first request and kept next to the original. Null when the receipt or its photo is missing.
+    /// </summary>
+    public async Task<(string Path, string ContentType)?> GetImageAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var receipt = await db.Receipts.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+        var original = receipt is null ? null : storage.Value.GetUploadPath(receipt.StoredFileName);
+        if (receipt is null || !File.Exists(original))
+        {
+            return null;
+        }
+
+        if (ImagePreparer.BrowsersCanShow(receipt.ContentType))
+        {
+            return (original, receipt.ContentType);
+        }
+
+        var copy = storage.Value.GetDisplayCopyPath(receipt.StoredFileName);
+        if (!File.Exists(copy))
+        {
+            var jpeg = ImagePreparer.ToDisplayJpeg(await File.ReadAllBytesAsync(original, cancellationToken));
+            // Written under a temporary name and moved into place, so a concurrent request never serves half a file.
+            var partial = $"{copy}.{Guid.NewGuid():N}.tmp";
+            await File.WriteAllBytesAsync(partial, jpeg, cancellationToken);
+            File.Move(partial, copy, overwrite: true);
+        }
+
+        return (copy, "image/jpeg");
+    }
+
     /// <summary>Deletes the receipt, its lines, and the stored photo. Refused while the model is reading it.</summary>
     public async Task<ReceiptActionResult> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
@@ -204,6 +235,7 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
         db.Receipts.Remove(receipt);
         await db.SaveChangesAsync(cancellationToken);
         File.Delete(storage.Value.GetUploadPath(receipt.StoredFileName));
+        File.Delete(storage.Value.GetDisplayCopyPath(receipt.StoredFileName));
         return ReceiptActionResult.Done;
     }
 

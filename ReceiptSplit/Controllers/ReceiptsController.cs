@@ -1,16 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using ReceiptSplit.Contracts;
 using ReceiptSplit.Data;
 using ReceiptSplit.Extraction;
-using ReceiptSplit.Options;
 
 namespace ReceiptSplit.Controllers;
 
 [ApiController]
 [Route("api/receipts")]
-public class ReceiptsController(AppDbContext db, ReceiptService receipts, IOptions<StorageOptions> storage) : ControllerBase
+public class ReceiptsController(AppDbContext db, ReceiptService receipts) : ControllerBase
 {
     /// <summary>Uploads a receipt photo and queues it for extraction; poll the returned location for the result.</summary>
     /// <param name="taxRatePercent">Sales tax rate the receipt was charged at; defaults to Ontario's 13%.</param>
@@ -59,21 +57,14 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts, IOptio
         return receipt is null ? NotFound() : receipt.ToDetailDto();
     }
 
-    /// <summary>Returns the original uploaded photo.</summary>
+    /// <summary>Returns the uploaded photo, as a JPEG copy when browsers can't display the original format.</summary>
     [HttpGet("{id:guid}/image")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Image(Guid id, CancellationToken cancellationToken)
-    {
-        var receipt = await db.Receipts.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
-        if (receipt is null)
-        {
-            return NotFound();
-        }
-
-        var path = storage.Value.GetUploadPath(receipt.StoredFileName);
-        return System.IO.File.Exists(path) ? PhysicalFile(path, receipt.ContentType) : NotFound();
-    }
+    public async Task<IActionResult> Image(Guid id, CancellationToken cancellationToken) =>
+        await receipts.GetImageAsync(id, cancellationToken) is { } image
+            ? PhysicalFile(image.Path, image.ContentType)
+            : NotFound();
 
     /// <summary>Replaces the extracted lines and totals with hand corrected ones and re-checks the receipt.</summary>
     [HttpPut("{id:guid}")]

@@ -35,6 +35,24 @@ public sealed class ImagePreparer(IOptions<LlmOptions> options)
         [MagickFormat.Tiff] = ("image/tiff", ".tiff"),
     };
 
+    /// <summary>Formats every current browser can display; the rest (HEIC, HEIF, TIFF) are shown as a JPEG copy.</summary>
+    private static readonly HashSet<string> BrowserMimeTypes =
+        ["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif", "image/bmp"];
+
+    public static bool BrowsersCanShow(string mimeType) => BrowserMimeTypes.Contains(mimeType);
+
+    /// <summary>Re-encodes a photo as a full size JPEG for viewing, turned upright.</summary>
+    public static byte[] ToDisplayJpeg(byte[] original)
+    {
+        using var image = new MagickImage(original);
+        image.AutoOrient();
+        image.BackgroundColor = MagickColors.White;
+        image.Alpha(AlphaOption.Remove);
+        image.Strip();
+        image.Quality = 90;
+        return image.ToByteArray(MagickFormat.Jpeg);
+    }
+
     /// <exception cref="InvalidImageException">The data is not an image in a supported format.</exception>
     public static ImageDetails Identify(byte[] data)
     {

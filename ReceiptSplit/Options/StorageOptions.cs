@@ -13,4 +13,8 @@ public sealed class StorageOptions
     public string UploadsPath => Path.Combine(Root, "uploads");
 
     public string GetUploadPath(string storedFileName) => Path.Combine(UploadsPath, storedFileName);
+
+    /// <summary>JPEG copy of an upload in a format browsers can't show (HEIC, TIFF), made the first time it's viewed.</summary>
+    public string GetDisplayCopyPath(string storedFileName) =>
+        Path.Combine(UploadsPath, Path.GetFileNameWithoutExtension(storedFileName) + ".display.jpg");
 }
