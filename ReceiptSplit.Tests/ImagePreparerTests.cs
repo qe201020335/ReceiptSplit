@@ -78,6 +78,58 @@ public class ImagePreparerTests
     }
 
     [Theory]
+    [InlineData(MagickFormat.Jpeg)]
+    [InlineData(MagickFormat.Png)]
+    [InlineData(MagickFormat.Gif)]
+    [InlineData(MagickFormat.Bmp)]
+    [InlineData(MagickFormat.Tiff)]
+    [InlineData(MagickFormat.WebP)]
+    [InlineData(MagickFormat.Avif)]
+    public void Recognises_supported_formats_by_their_signature(MagickFormat format)
+    {
+        var data = TestImages.Create(64, 48, format);
+
+        Assert.Equal(format, ImagePreparer.DetectFormat(data));
+        Assert.Equal((64u, 48u), (ImagePreparer.Identify(data).Width, ImagePreparer.Identify(data).Height));
+    }
+
+    [Theory]
+    // Magick.NET can't write HEIC to build a real one, so these are the leading "ftyp" boxes of iPhone and camera files.
+    [InlineData("heic", "mif1", MagickFormat.Heic)]
+    [InlineData("mif1", "heic", MagickFormat.Heic)]
+    [InlineData("mif1", "miaf", MagickFormat.Heif)]
+    [InlineData("mif1", "avif", MagickFormat.Avif)]
+    [InlineData("isom", "mp42", null)]
+    public void Recognises_iso_media_photos_by_their_brands(string majorBrand, string compatibleBrand, MagickFormat? expected)
+    {
+        byte[] header = [0, 0, 0, 24, .. "ftyp"u8, .. Encoding.ASCII.GetBytes(majorBrand), 0, 0, 0, 0, .. Encoding.ASCII.GetBytes(compatibleBrand), 0, 0, 0, 0];
+
+        Assert.Equal(expected, ImagePreparer.DetectFormat(header));
+    }
+
+    [Theory]
+    // ImageMagick scripts and vector formats that can read local files or fetch URLs when decoded.
+    [InlineData("push graphic-context\nviewbox 0 0 64 64\nimage over 0,0 0,0 'text:/etc/passwd'\npop graphic-context")]
+    [InlineData("""<?xml version="1.0"?><image><read filename="/etc/passwd"/></image>""")]
+    [InlineData("""<svg xmlns="http://www.w3.org/2000/svg"><image href="file:///etc/passwd"/></svg>""")]
+    public void Never_hands_unrecognised_content_to_image_magick(string content)
+    {
+        var data = Encoding.UTF8.GetBytes(content);
+
+        Assert.Null(ImagePreparer.DetectFormat(data));
+        Assert.Throws<InvalidImageException>(() => ImagePreparer.Identify(data));
+    }
+
+    [Fact]
+    public void Rejects_a_known_signature_that_is_not_really_that_image()
+    {
+        byte[] fakePng = [0x89, (byte)'P', (byte)'N', (byte)'G', 0x0D, 0x0A, 0x1A, 0x0A, .. "<svg xmlns='http://www.w3.org/2000/svg'/>"u8];
+
+        Assert.Equal(MagickFormat.Png, ImagePreparer.DetectFormat(fakePng));
+        Assert.Throws<InvalidImageException>(() => ImagePreparer.Identify(fakePng));
+    }
+
+    [Theory]
     [InlineData("definitely not an image")]
     [InlineData("""<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>""")]
     public void Identify_rejects_non_photos(string content)
