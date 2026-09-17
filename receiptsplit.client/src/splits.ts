@@ -230,9 +230,18 @@ function updateLine(
   return { ...state, lines: { ...state.lines, [position]: change(assignmentFor(state, position)) } }
 }
 
-/** Sets the list of names, trimmed and without repeats; anyone dropped loses their assignments. */
+/**
+ * Sets the list of names, split on commas, trimmed and without repeats; anyone dropped loses their assignments.
+ */
 export function setPeople(state: SplitState, names: string[]): SplitState {
-  const people = [...new Set(names.map((name) => name.trim()).filter((name) => name !== ''))]
+  const people = [
+    ...new Set(
+      names
+        .flatMap((name) => name.split(','))
+        .map((name) => name.trim())
+        .filter((name) => name !== ''),
+    ),
+  ]
   const removed = state.people.filter((person) => !people.includes(person))
   const lines = Object.fromEntries(
     Object.entries(state.lines).map(([position, assignment]) => [
