@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Button, Card, Group, Stack, Text, Title } from '@mantine/core'
+import { Alert, Button, Card, Grid, Group, Stack, Text, Title } from '@mantine/core'
 import { api, errorMessage, type ReceiptDetail } from '../api.ts'
 import { formatMoney } from '../format.ts'
-import { splitLines } from '../splits.ts'
+import { splitLines, summarize, summaryText } from '../splits.ts'
 import { useSplitState } from '../useSplitState.ts'
 import { SplitPeople } from './SplitPeople.tsx'
+import { SplitSummary } from './SplitSummary.tsx'
 import { SplitTable } from './SplitTable.tsx'
+import { SplitText } from './SplitText.tsx'
 
 interface SplitsPageProps {
   id: string
@@ -39,8 +41,8 @@ export function SplitsPage({ id, onBack }: SplitsPageProps) {
   return (
     <Stack gap="md">
       <Card withBorder padding="md">
-        <Group gap="md" wrap="nowrap" align="center">
-          <Button variant="default" onClick={onBack}>
+        <Group gap="md" align="center">
+          <Button variant="default" onClick={onBack} style={{ flexShrink: 0 }}>
             ← Back to receipt
           </Button>
           {receipt && (
@@ -75,11 +77,22 @@ export function SplitsPage({ id, onBack }: SplitsPageProps) {
 function SplitBoard({ receipt }: { receipt: ReceiptDetail }) {
   const lines = useMemo(() => splitLines(receipt), [receipt])
   const [state, actions] = useSplitState()
+  const summary = summarize(lines, state, receipt.total)
 
   return (
     <>
       <SplitPeople state={state} actions={actions} />
-      <SplitTable lines={lines} state={state} actions={actions} />
+      <Grid gap="md" align="flex-start">
+        <Grid.Col span={{ base: 12, lg: 8 }}>
+          <SplitTable lines={lines} state={state} actions={actions} />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 4 }}>
+          <Stack gap="md">
+            <SplitSummary summary={summary} />
+            <SplitText text={summaryText(summary)} />
+          </Stack>
+        </Grid.Col>
+      </Grid>
     </>
   )
 }
