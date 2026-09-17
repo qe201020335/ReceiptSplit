@@ -64,6 +64,7 @@ public sealed class ReceiptExtractor(
                 TaxCode = baked.Line.TaxCode,
                 IsTaxed = ReceiptTaxCodes.IsTaxed(baked.Line.TaxCode),
             }));
+            ReceiptTaxCodes.AssumeAllTaxedWhenNoneAre(receipt.Lines, receipt.Tax);
 
             var checks = ReceiptChecks.Evaluate(
                 receipt.Lines.Select(l => (l.Amount, l.IsTaxed)),
