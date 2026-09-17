@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import { Button, Card, CloseButton, Group, NumberInput, Stack, Text, Title } from '@mantine/core'
-import { Dropzone, IMAGE_MIME_TYPE } from '@mantine/dropzone'
+import { Dropzone } from '@mantine/dropzone'
 import { notifications } from '@mantine/notifications'
 import { api, errorMessage, type ReceiptQueued } from '../api.ts'
 import { isValidTaxRate, lastTaxRatePercent, maxTaxRatePercent, minTaxRatePercent, rememberTaxRatePercent } from '../taxRate.ts'
-
-/** Matches ReceiptService.MaxUploadBytes, so an oversized photo is refused before it is sent. */
-const maxUploadBytes = 30 * 1024 * 1024
+import { acceptedPhotoFormats, acceptedPhotoTypes, maxUploadBytes } from '../uploadTypes.ts'
 
 interface UploadFormProps {
   onUploaded: (receipt: ReceiptQueued) => void
@@ -58,11 +56,14 @@ export function UploadForm({ onUploaded }: UploadFormProps) {
               onReject={(rejections) =>
                 notifications.show({
                   title: "That file can't be used",
-                  message: rejections[0]?.errors[0]?.message ?? 'Choose a photo under 30 MB.',
+                  message:
+                    rejections[0]?.errors[0]?.code === 'file-too-large'
+                      ? 'The photo is larger than 30 MB.'
+                      : `Choose a ${acceptedPhotoFormats} photo.`,
                   color: 'red',
                 })
               }
-              accept={IMAGE_MIME_TYPE}
+              accept={acceptedPhotoTypes}
               maxSize={maxUploadBytes}
               maxFiles={1}
               multiple={false}

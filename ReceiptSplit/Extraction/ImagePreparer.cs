@@ -21,6 +21,7 @@ public sealed class ImagePreparer(IOptions<LlmOptions> options)
     /// <summary>Refuse decompression bombs; a 200 MP photo is far beyond any phone camera.</summary>
     private const long MaxSourcePixels = 200_000_000;
 
+    // The upload box offers the same formats: keep receiptsplit.client/src/uploadTypes.ts in step.
     private static readonly Dictionary<MagickFormat, (string MimeType, string Extension)> SupportedFormats = new()
     {
         [MagickFormat.Jpeg] = ("image/jpeg", ".jpg"),
