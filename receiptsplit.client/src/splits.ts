@@ -231,17 +231,19 @@ function updateLine(
 }
 
 /**
- * Sets the list of names, split on commas, trimmed and without repeats; anyone dropped loses their assignments.
+ * Sets the list of names, split on commas and trimmed. A name repeated in any letter case is one person, spelled as
+ * first entered. Anyone dropped loses their assignments.
  */
 export function setPeople(state: SplitState, names: string[]): SplitState {
-  const people = [
-    ...new Set(
-      names
-        .flatMap((name) => name.split(','))
-        .map((name) => name.trim())
-        .filter((name) => name !== ''),
-    ),
-  ]
+  const byKey = new Map<string, string>()
+  for (const name of names.flatMap((entry) => entry.split(','))) {
+    const trimmed = name.trim()
+    const key = trimmed.toLocaleLowerCase()
+    if (trimmed !== '' && !byKey.has(key)) {
+      byKey.set(key, trimmed)
+    }
+  }
+  const people = [...byKey.values()]
   const removed = state.people.filter((person) => !people.includes(person))
   const lines = Object.fromEntries(
     Object.entries(state.lines).map(([position, assignment]) => [
