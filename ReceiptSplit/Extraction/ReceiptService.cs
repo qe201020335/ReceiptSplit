@@ -37,7 +37,7 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
         decimal? taxRatePercent,
         CancellationToken cancellationToken)
     {
-        var taxRate = taxRatePercent ?? DefaultTaxRatePercent;
+        var taxRate = Precision.Rate(taxRatePercent ?? DefaultTaxRatePercent);
         ValidateTaxRate(taxRate);
 
         using var buffer = new MemoryStream();
@@ -116,9 +116,10 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
 
         receipt.StoreName = Trimmed(edit.StoreName);
         receipt.PurchaseDate = edit.PurchaseDate;
-        receipt.Subtotal = edit.Subtotal;
-        receipt.Tax = edit.Tax;
-        receipt.Total = edit.Total;
+        // Rounded to what is stored before checking, or a stray third decimal would decide the status.
+        receipt.Subtotal = Precision.Cents(edit.Subtotal);
+        receipt.Tax = Precision.Cents(edit.Tax);
+        receipt.Total = Precision.Cents(edit.Total);
 
         receipt.Lines.Clear();
         receipt.Lines.AddRange(edit.Lines.Select((line, position) => new ReceiptLine
@@ -127,8 +128,8 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
             Name = line.Name.Trim(),
             Code = Trimmed(line.Code),
             Quantity = line.Quantity,
-            Amount = line.Amount,
-            Discount = line.Discount,
+            Amount = Precision.Cents(line.Amount),
+            Discount = Precision.Cents(line.Discount),
             TaxCode = Trimmed(line.TaxCode),
             IsTaxed = line.IsTaxed,
         }));
@@ -154,6 +155,7 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
     /// <exception cref="ArgumentOutOfRangeException">The tax rate is outside the accepted range.</exception>
     public async Task<ReceiptActionResult> UpdateTaxRateAsync(Guid id, decimal taxRatePercent, CancellationToken cancellationToken)
     {
+        taxRatePercent = Precision.Rate(taxRatePercent);
         ValidateTaxRate(taxRatePercent);
 
         var receipt = await db.Receipts.Include(r => r.Lines).FirstOrDefaultAsync(r => r.Id == id, cancellationToken);

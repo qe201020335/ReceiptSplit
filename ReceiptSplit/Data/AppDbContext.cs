@@ -18,9 +18,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // SQLite stores decimal as TEXT, which breaks SQL sums and ordering, so money is stored as integer cents.
-        var cents = new ValueConverter<decimal, long>(v => (long)Math.Round(v * 100m), v => v / 100m);
+        var cents = new ValueConverter<decimal, long>(v => (long)(Precision.Cents(v) * 100m), v => v / 100m);
         // Tax rates need three decimals of a percent for Quebec's combined 14.975%.
-        var rate = new ValueConverter<decimal, long>(v => (long)Math.Round(v * 1000m), v => v / 1000m);
+        var rate = new ValueConverter<decimal, long>(v => (long)(Precision.Rate(v) * 1000m), v => v / 1000m);
 
         modelBuilder.Entity<Receipt>(receipt =>
         {

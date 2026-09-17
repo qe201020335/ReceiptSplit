@@ -212,6 +212,46 @@ public class ReceiptsApiTests
     }
 
     [Fact]
+    public async Task Hand_corrections_are_checked_at_the_precision_they_are_stored()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var client = factory.CreateClient();
+        var receipt = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Jpeg));
+
+        // 1.994 is stored as 1.99, which matches the 7.48 subtotal; the status must not be decided on the extra digit.
+        var corrected = await PutEditAsync(client, receipt.Id, new ReceiptEditDto(
+            receipt.StoreName,
+            receipt.PurchaseDate,
+            Subtotal: 7.48m,
+            Tax: 0.714m,
+            Total: 8.19m,
+            [
+                new ReceiptLineEditDto("BANANAS", null, 1.25m, 1.994m, Discount: 0m, null, IsTaxed: false),
+                new ReceiptLineEditDto("MILK 2L", "4011", 1m, 5.49m, Discount: 0m, "H", IsTaxed: true),
+            ]));
+
+        Assert.Equal(ReceiptStatus.Completed, corrected.Status);
+        Assert.Equal((1.99m, 0.71m), (corrected.Lines[0].Amount, corrected.Tax!.Value));
+        Assert.True(corrected.Checks!.LinesMatchSubtotal);
+
+        var rated = await PatchTaxRateAsync(client, receipt.Id, 13.0004m);
+        Assert.Equal((13m, ReceiptStatus.Completed), (rated.TaxRatePercent, rated.Status));
+    }
+
+    [Fact]
+    public async Task Extracted_totals_are_checked_at_the_precision_they_are_stored()
+    {
+        await using var factory = new ReceiptApiFactory();
+        factory.Llm.Content = FakeLlamaClient.ValidOutput.Replace("\"7.48\"", "\"7.481\"");
+        using var client = factory.CreateClient();
+
+        var receipt = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Jpeg));
+
+        Assert.Equal(7.48m, receipt.Subtotal);
+        Assert.Equal(ReceiptStatus.Completed, receipt.Status);
+    }
+
+    [Fact]
     public async Task Hand_corrections_renumber_lines_and_clear_the_extraction_error()
     {
         await using var factory = new ReceiptApiFactory();

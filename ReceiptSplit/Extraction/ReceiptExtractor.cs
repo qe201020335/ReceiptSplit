@@ -45,9 +45,10 @@ public sealed class ReceiptExtractor(
             var parsed = ReceiptOutputParser.Parse(completion.Content);
             receipt.StoreName = parsed.StoreName;
             receipt.PurchaseDate = parsed.PurchaseDate;
-            receipt.Subtotal = parsed.Subtotal;
-            receipt.Tax = parsed.Tax;
-            receipt.Total = parsed.Total;
+            // Rounded to what is stored, so the status below agrees with the totals read back later.
+            receipt.Subtotal = Precision.Cents(parsed.Subtotal);
+            receipt.Tax = Precision.Cents(parsed.Tax);
+            receipt.Total = Precision.Cents(parsed.Total);
             // Costco's promotion lines belong to the item above them, not on a line of their own.
             var baked = ReceiptPromotions.Bake(parsed.Lines);
             receipt.Lines.Clear();
@@ -57,17 +58,17 @@ public sealed class ReceiptExtractor(
                 Name = baked.Line.Name,
                 Code = baked.Line.Code,
                 Quantity = baked.Line.Quantity,
-                Amount = baked.Line.Amount,
-                Discount = baked.Discount,
+                Amount = Precision.Cents(baked.Line.Amount),
+                Discount = Precision.Cents(baked.Discount),
                 TaxCode = baked.Line.TaxCode,
                 IsTaxed = ReceiptTaxCodes.IsTaxed(baked.Line.TaxCode),
             }));
 
             var checks = ReceiptChecks.Evaluate(
                 receipt.Lines.Select(l => (l.Amount, l.IsTaxed)),
-                parsed.Subtotal,
-                parsed.Tax,
-                parsed.Total,
+                receipt.Subtotal,
+                receipt.Tax,
+                receipt.Total,
                 receipt.TaxRatePercent);
             if (receipt.Lines.Count == 0)
             {
