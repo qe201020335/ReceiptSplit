@@ -383,7 +383,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
           </>
         )}
 
-        <Accordion variant="separated" chevronPosition="left" multiple>
+        <Accordion variant="contained" chevronPosition="left" multiple>
           <Accordion.Item value="photo">
             <Accordion.Control>Original photo</Accordion.Control>
             <Accordion.Panel>
