@@ -27,6 +27,9 @@ public class Receipt
 
     public decimal? Subtotal { get; set; }
 
+    /// <summary>Percentage taken off the whole purchase after the subtotal (10 = 10% off storewide); 0 for none.</summary>
+    public decimal DiscountPercent { get; set; }
+
     public decimal? Tax { get; set; }
 
     public decimal? Total { get; set; }
@@ -62,6 +65,7 @@ public class Receipt
         StoreName = null;
         PurchaseDate = null;
         Subtotal = null;
+        DiscountPercent = 0m;
         Tax = null;
         Total = null;
         Lines.Clear();

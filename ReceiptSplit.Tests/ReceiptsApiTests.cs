@@ -56,7 +56,7 @@ public class ReceiptsApiTests
             },
             receipt.Lines);
         Assert.Equal(
-            new ReceiptChecksDto(7.48m, LinesMatchSubtotal: true, TotalMatches: true, TaxedSum: 5.49m, ExpectedTax: 0.71m, TaxMatches: true),
+            new ReceiptChecksDto(7.48m, LinesMatchSubtotal: true, Discount: 0m, TotalMatches: true, TaxedSum: 5.49m, ExpectedTax: 0.71m, TaxMatches: true),
             receipt.Checks);
         Assert.Equal(("fake-model", 64, 48), (receipt.Extraction?.Model, receipt.Extraction?.SentImageWidth, receipt.Extraction?.SentImageHeight));
         Assert.Equal(photo, Assert.Single(factory.Llm.Requests).Data);
@@ -163,7 +163,7 @@ public class ReceiptsApiTests
         var lines = receipt.Lines
             .Select(l => new ReceiptLineEditDto(l.Name, l.Code, l.Quantity, l.Amount, l.Discount, l.TaxCode, l.IsTaxed))
             .ToList();
-        var edit = new ReceiptEditDto(receipt.StoreName, receipt.PurchaseDate, 23.98m, 1.43m, 25.41m, lines);
+        var edit = new ReceiptEditDto(receipt.StoreName, receipt.PurchaseDate, 23.98m, 0m, 1.43m, 25.41m, lines);
 
         var corrected = await PutEditAsync(client, receipt.Id, edit);
         Assert.Equal([-3.00m, 0m], corrected.Lines.Select(l => l.Discount));
@@ -176,6 +176,33 @@ public class ReceiptsApiTests
             Ct);
 
         Assert.Equal(HttpStatusCode.BadRequest, positiveDiscount.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_storewide_discount_set_by_hand_is_checked_and_kept_in_range()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var client = factory.CreateClient();
+        var receipt = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Jpeg));
+
+        var lines = receipt.Lines
+            .Select(l => new ReceiptLineEditDto(l.Name, l.Code, l.Quantity, l.Amount, l.Discount, l.TaxCode, l.IsTaxed))
+            .ToList();
+        // 10% off 1.99 and 5.49 is 0.20 + 0.55; tax is 13% of the discounted 4.94.
+        var edit = new ReceiptEditDto(receipt.StoreName, receipt.PurchaseDate, 7.48m, 10m, 0.64m, 7.37m, lines);
+
+        var corrected = await PutEditAsync(client, receipt.Id, edit);
+        Assert.Equal(10m, corrected.DiscountPercent);
+        Assert.Equal(-0.75m, corrected.Checks!.Discount);
+        Assert.Equal(4.94m, corrected.Checks.TaxedSum);
+        Assert.Equal(ReceiptStatus.Completed, corrected.Status);
+
+        var withoutDiscount = await PutEditAsync(client, receipt.Id, edit with { DiscountPercent = 0m });
+        Assert.Equal(ReceiptStatus.NeedsReview, withoutDiscount.Status);
+
+        using var tooMuch = await client.PutAsJsonAsync(
+            $"/api/receipts/{receipt.Id}", edit with { DiscountPercent = 150m }, Json, Ct);
+        Assert.Equal(HttpStatusCode.BadRequest, tooMuch.StatusCode);
     }
 
     [Fact]
@@ -193,6 +220,7 @@ public class ReceiptsApiTests
             "Corner Market",
             new DateOnly(2026, 9, 14),
             Subtotal: 7.48m,
+            DiscountPercent: 0m,
             Tax: 0.71m,
             Total: 8.19m,
             [
@@ -223,6 +251,7 @@ public class ReceiptsApiTests
             receipt.StoreName,
             receipt.PurchaseDate,
             Subtotal: 7.48m,
+            DiscountPercent: 0m,
             Tax: 0.714m,
             Total: 8.19m,
             [
@@ -265,6 +294,7 @@ public class ReceiptsApiTests
             "  Corner Market  ",
             new DateOnly(2026, 9, 14),
             Subtotal: 3.00m,
+            DiscountPercent: 0m,
             Tax: null,
             Total: 3.00m,
             [
@@ -286,7 +316,7 @@ public class ReceiptsApiTests
         using var client = factory.CreateClient();
         var receipt = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Jpeg));
         await PutEditAsync(client, receipt.Id, new ReceiptEditDto(
-            "By hand", null, 1.00m, null, 1.00m, [new ReceiptLineEditDto("TYPED", null, 1m, 1.00m, Discount: 0m, null, IsTaxed: false)]));
+            "By hand", null, 1.00m, 0m, null, 1.00m, [new ReceiptLineEditDto("TYPED", null, 1m, 1.00m, Discount: 0m, null, IsTaxed: false)]));
 
         using (var rerun = await client.PostAsync($"/api/receipts/{receipt.Id}/extract", null, Ct))
         {
@@ -308,7 +338,7 @@ public class ReceiptsApiTests
         factory.Llm.Block();
         using var upload = await client.PostAsync("/api/receipts", PhotoForm(TestImages.Create(64, 48, MagickFormat.Jpeg), "receipt.jpg"), Ct);
         var queued = (await upload.Content.ReadFromJsonAsync<ReceiptQueuedDto>(Json, Ct))!;
-        var oneLine = new ReceiptEditDto("Corner Market", null, 1.00m, null, 1.00m,
+        var oneLine = new ReceiptEditDto("Corner Market", null, 1.00m, 0m, null, 1.00m,
             [new ReceiptLineEditDto("TYPED", null, 1m, 1.00m, Discount: 0m, null, IsTaxed: false)]);
 
         using (var busy = await client.PutAsJsonAsync($"/api/receipts/{queued.Id}", oneLine, Json, Ct))
@@ -475,7 +505,7 @@ public class ReceiptsApiTests
         using var patch = await client.PatchAsJsonAsync($"/api/receipts/{id}", new ReceiptTaxRateDto(13m), Json, Ct);
         using var put = await client.PutAsJsonAsync(
             $"/api/receipts/{id}",
-            new ReceiptEditDto("Corner Market", null, 1.00m, null, 1.00m, [new ReceiptLineEditDto("TYPED", null, 1m, 1.00m, 0m, null, false)]),
+            new ReceiptEditDto("Corner Market", null, 1.00m, 0m, null, 1.00m, [new ReceiptLineEditDto("TYPED", null, 1m, 1.00m, 0m, null, false)]),
             Json,
             Ct);
         using var delete = await client.DeleteAsync($"/api/receipts/{id}", Ct);

@@ -102,6 +102,7 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
         storeName: storeName.trim() === '' ? null : storeName.trim(),
         purchaseDate: purchaseDate === '' ? null : purchaseDate,
         subtotal: toNumber(subtotal) ?? null,
+        discountPercent: receipt.discountPercent,
         tax: toNumber(tax) ?? null,
         total: toNumber(total) ?? null,
         lines: lines.map(

@@ -2,9 +2,12 @@ using ReceiptSplit.Data;
 
 namespace ReceiptSplit.Extraction;
 
+/// <param name="Discount">The storewide discount taken off after the subtotal, negative or zero.</param>
+/// <param name="TaxedSum">The taxed lines less their part of the discount, which is what tax is charged on.</param>
 public sealed record ReceiptCheckResult(
     decimal LinesSum,
     bool LinesMatchSubtotal,
+    decimal Discount,
     bool TotalMatches,
     decimal TaxedSum,
     decimal ExpectedTax,
@@ -26,25 +29,22 @@ public static class ReceiptChecks
         decimal? subtotal,
         decimal? tax,
         decimal? total,
-        decimal taxRatePercent)
+        decimal taxRatePercent,
+        decimal discountPercent = 0m)
     {
-        var sum = 0m;
-        var taxedSum = 0m;
-        foreach (var (amount, isTaxed) in lines)
-        {
-            sum += amount;
-            if (isTaxed)
-            {
-                taxedSum += amount;
-            }
-        }
+        var all = lines.ToList();
+        var sum = all.Sum(line => line.Amount);
+        var taxed = all.Where(line => line.IsTaxed).Select(line => line.Amount).ToList();
+        var discount = ReceiptDiscount.Amount(all.Select(line => line.Amount), discountPercent);
+        var taxedSum = taxed.Sum() + ReceiptDiscount.Amount(taxed, discountPercent);
 
         var expectedTax = Math.Round(taxedSum * taxRatePercent / 100m, 2, MidpointRounding.AwayFromZero);
         return new ReceiptCheckResult(
             sum,
             LinesMatchSubtotal: subtotal == sum,
+            discount,
             // Receipts without any tax may come back with a null tax.
-            TotalMatches: subtotal is not null && total is not null && subtotal + (tax ?? 0m) == total,
+            TotalMatches: subtotal is not null && total is not null && subtotal + discount + (tax ?? 0m) == total,
             taxedSum,
             expectedTax,
             TaxMatches: Math.Abs(expectedTax - (tax ?? 0m)) <= TaxTolerance);

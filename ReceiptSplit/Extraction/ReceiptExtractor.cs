@@ -71,7 +71,8 @@ public sealed class ReceiptExtractor(
                 receipt.Subtotal,
                 receipt.Tax,
                 receipt.Total,
-                receipt.TaxRatePercent);
+                receipt.TaxRatePercent,
+                receipt.DiscountPercent);
             if (receipt.Lines.Count == 0)
             {
                 receipt.Status = ReceiptStatus.Failed;
