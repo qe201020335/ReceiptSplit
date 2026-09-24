@@ -100,6 +100,34 @@ public class ReceiptOutputParserTests
         Assert.Equal(new ParsedLine("12\" PIZZA", "4011", 2m, 19.98m, null), Assert.Single(ReceiptOutputParser.Parse(output).Lines));
     }
 
+    /// <summary>A real MIXUE receipt from Japan: yen have no cents, and the item numbers look like quantities.</summary>
+    [Fact]
+    public void Reads_amounts_in_a_currency_without_cents()
+    {
+        const string output = """
+            ```json
+            ["原葉紅茶","9",1,"130",null]
+            ["パ一ルミルクティー(700ml)","2",1,"500",null]
+            ["香橙·四季春","6",1,"480",null]
+            ["BIG SET",null,"2","1,200",null]
+            {"s":"1,110","t":"83","T":"1,110","store":"MIXUE","date":"2025-03-14"}
+            ```
+            """;
+
+        var parsed = ReceiptOutputParser.Parse(output);
+
+        Assert.Equal(
+            new[]
+            {
+                new ParsedLine("原葉紅茶", "9", 1m, 130m, null),
+                new ParsedLine("パ一ルミルクティー(700ml)", "2", 1m, 500m, null),
+                new ParsedLine("香橙·四季春", "6", 1m, 480m, null),
+                new ParsedLine("BIG SET", null, 2m, 1200m, null),
+            },
+            parsed.Lines);
+        Assert.Equal((1110m, 83m, 1110m), (parsed.Subtotal!.Value, parsed.Tax!.Value, parsed.Total!.Value));
+    }
+
     /// <summary>From a real T&amp;T photo, where all but the first row came back in these shapes.</summary>
     [Fact]
     public void Reads_names_given_with_their_printed_translation_and_rows_without_a_code()

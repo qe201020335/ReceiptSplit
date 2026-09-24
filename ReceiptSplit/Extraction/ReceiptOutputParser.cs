@@ -28,11 +28,12 @@ public static partial class ReceiptOutputParser
 
     /// <summary>
     /// A name, or a list of the name's printed lines (T&amp;T prints a Chinese line under each English one). The code
-    /// may be left out entirely; the amount is always quoted, so a quantity is never taken for a code.
+    /// may be left out entirely; the amount is always quoted, so a quantity is never taken for a code. Amounts have
+    /// cents, or none at all in currencies without them such as the yen ("1,110").
     /// </summary>
     private const string RowPattern =
         $$"""
-        (?<name>{{JsonString}}|\[\s*{{JsonString}}(?:\s*,\s*{{JsonString}})*\s*\])\s*,\s*(?:(?<code>{{JsonString}}|null|-?\d+)\s*,\s*)?(?<qty>"?-?\d+(?:\.\d+)?"?|null)\s*,\s*"(?<amount>\(?-?\$?-?[\d,]*\.\d{2}-?\)?)"\s*,\s*(?<tax>{{JsonString}}|null)
+        (?<name>{{JsonString}}|\[\s*{{JsonString}}(?:\s*,\s*{{JsonString}})*\s*\])\s*,\s*(?:(?<code>{{JsonString}}|null|-?\d+)\s*,\s*)?(?<qty>"?-?\d+(?:\.\d+)?"?|null)\s*,\s*"(?<amount>\(?-?\$?-?(?:[\d,]*\.\d{2}|\d[\d,]*)-?\)?)"\s*,\s*(?<tax>{{JsonString}}|null)
         """;
 
     [GeneratedRegex(RowPattern)]
