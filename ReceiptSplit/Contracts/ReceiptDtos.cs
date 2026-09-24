@@ -14,6 +14,7 @@ public sealed record ReceiptEditDto(
     [StringLength(200)] string? StoreName,
     DateOnly? PurchaseDate,
     [Range(-1_000_000, 1_000_000)] decimal? Subtotal,
+    [Range(0, 100)] decimal DiscountPercent,
     [Range(-1_000_000, 1_000_000)] decimal? Tax,
     [Range(-1_000_000, 1_000_000)] decimal? Total,
     [Required, MinLength(1), MaxLength(500)] IReadOnlyList<ReceiptLineEditDto> Lines);
@@ -46,6 +47,7 @@ public sealed record ReceiptDetailDto(
     DateTime? EditedAt,
     decimal TaxRatePercent,
     decimal? Subtotal,
+    decimal DiscountPercent,
     decimal? Tax,
     decimal? Total,
     ReceiptChecksDto? Checks,
@@ -65,6 +67,7 @@ public sealed record ReceiptLineDto(
 public sealed record ReceiptChecksDto(
     decimal LinesSum,
     bool LinesMatchSubtotal,
+    decimal Discount,
     bool TotalMatches,
     decimal TaxedSum,
     decimal ExpectedTax,
@@ -86,6 +89,7 @@ public static class ReceiptMappings
         dto.StoreName,
         dto.PurchaseDate,
         dto.Subtotal,
+        dto.DiscountPercent,
         dto.Tax,
         dto.Total,
         dto.Lines
@@ -107,10 +111,12 @@ public static class ReceiptMappings
                 receipt.Subtotal,
                 receipt.Tax,
                 receipt.Total,
-                receipt.TaxRatePercent);
+                receipt.TaxRatePercent,
+                receipt.DiscountPercent);
             checks = new ReceiptChecksDto(
                 result.LinesSum,
                 result.LinesMatchSubtotal,
+                result.Discount,
                 result.TotalMatches,
                 result.TaxedSum,
                 result.ExpectedTax,
@@ -140,6 +146,7 @@ public static class ReceiptMappings
             receipt.EditedAt,
             receipt.TaxRatePercent,
             receipt.Subtotal,
+            receipt.DiscountPercent,
             receipt.Tax,
             receipt.Total,
             checks,

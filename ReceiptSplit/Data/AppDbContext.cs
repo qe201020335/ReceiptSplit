@@ -27,6 +27,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             receipt.HasIndex(r => r.CreatedAt);
             receipt.Property(r => r.Status).HasConversion<string>().HasMaxLength(16);
             receipt.Property(r => r.TaxRatePercent).HasConversion(rate);
+            receipt.Property(r => r.DiscountPercent).HasConversion(rate);
             receipt.Property(r => r.Subtotal).HasConversion(cents);
             receipt.Property(r => r.Tax).HasConversion(cents);
             receipt.Property(r => r.Total).HasConversion(cents);

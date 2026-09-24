@@ -9,6 +9,7 @@ public sealed record ParsedLine(string Name, string? Code, decimal Quantity, dec
 public sealed record ParsedReceipt(
     IReadOnlyList<ParsedLine> Lines,
     decimal? Subtotal,
+    decimal DiscountPercent,
     decimal? Tax,
     decimal? Total,
     string? StoreName,
@@ -62,7 +63,7 @@ public static partial class ReceiptOutputParser
         var totals = TotalsRegex().Matches(content).LastOrDefault();
         if (totals is null)
         {
-            return new ParsedReceipt(lines, null, null, null, null, null);
+            return new ParsedReceipt(lines, null, 0m, null, null, null, null);
         }
 
         try
@@ -72,6 +73,7 @@ public static partial class ReceiptOutputParser
             return new ParsedReceipt(
                 lines,
                 Subtotal: ParseMoney(ReadProperty(root, "s")),
+                DiscountPercent: ParsePercent(ReadProperty(root, "d")),
                 Tax: ParseMoney(ReadProperty(root, "t")),
                 Total: ParseMoney(ReadProperty(root, "T")),
                 StoreName: NullIfBlank(ReadProperty(root, "store")),
@@ -79,7 +81,7 @@ public static partial class ReceiptOutputParser
         }
         catch (JsonException)
         {
-            return new ParsedReceipt(lines, null, null, null, null, null);
+            return new ParsedReceipt(lines, null, 0m, null, null, null, null);
         }
     }
 
@@ -116,6 +118,13 @@ public static partial class ReceiptOutputParser
             ? negative ? -amount : amount
             : null;
     }
+
+    /// <summary>Parses 10, "10" or "10%"; anything else, null included, means no discount.</summary>
+    public static decimal ParsePercent(string? text) =>
+        decimal.TryParse(text?.Trim().TrimEnd('%').Trim(), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture,
+            out var percent) && percent < 100m
+            ? percent
+            : 0m;
 
     private static decimal ParseQuantity(string token)
     {

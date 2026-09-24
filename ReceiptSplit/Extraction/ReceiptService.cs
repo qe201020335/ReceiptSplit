@@ -111,6 +111,7 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
         receipt.PurchaseDate = edit.PurchaseDate;
         // Rounded to what is stored before checking, or a stray third decimal would decide the status.
         receipt.Subtotal = Precision.Cents(edit.Subtotal);
+        receipt.DiscountPercent = Precision.Rate(edit.DiscountPercent);
         receipt.Tax = Precision.Cents(edit.Tax);
         receipt.Total = Precision.Cents(edit.Total);
 
@@ -135,7 +136,8 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
             receipt.Subtotal,
             receipt.Tax,
             receipt.Total,
-            receipt.TaxRatePercent));
+            receipt.TaxRatePercent,
+            receipt.DiscountPercent));
 
         await db.SaveChangesAsync(cancellationToken);
         return ReceiptActionResult.Done;
@@ -172,7 +174,8 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
                 receipt.Subtotal,
                 receipt.Tax,
                 receipt.Total,
-                taxRatePercent);
+                taxRatePercent,
+                receipt.DiscountPercent);
             receipt.Status = ReceiptChecks.StatusFor(checks);
         }
 

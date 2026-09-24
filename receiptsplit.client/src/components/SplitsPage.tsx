@@ -79,7 +79,7 @@ export function SplitsPage({ id, onBack }: SplitsPageProps) {
 function SplitBoard({ receipt }: { receipt: ReceiptDetail }) {
   const lines = useMemo(() => splitLines(receipt), [receipt])
   const [state, actions] = useSplitState()
-  const summary = summarize(lines, state, receipt.total)
+  const summary = summarize(lines, state, receipt)
 
   return (
     <>

@@ -31,6 +31,8 @@ export interface ReceiptLine {
 export interface ReceiptChecks {
   linesSum: number
   linesMatchSubtotal: boolean
+  /** Storewide discount taken off after the subtotal, negative or 0. */
+  discount: number
   totalMatches: boolean
   taxedSum: number
   expectedTax: number
@@ -53,6 +55,7 @@ export interface ReceiptEdit {
   storeName: string | null
   purchaseDate: string | null
   subtotal: number | null
+  discountPercent: number
   tax: number | null
   total: number | null
   lines: ReceiptLineEdit[]
@@ -79,6 +82,8 @@ export interface ReceiptDetail {
   editedAt: string | null
   taxRatePercent: number
   subtotal: number | null
+  /** Percentage taken off the whole purchase after the subtotal; 0 for none. */
+  discountPercent: number
   tax: number | null
   total: number | null
   checks: ReceiptChecks | null

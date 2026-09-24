@@ -16,7 +16,9 @@ public class ReceiptChecksTests
     {
         var result = ReceiptChecks.Evaluate(Lines, subtotal: 5.99m, tax: 0.52m, total: 6.51m, Ontario);
 
-        Assert.Equal(new ReceiptCheckResult(5.99m, true, true, TaxedSum: 3.99m, ExpectedTax: 0.52m, TaxMatches: true), result);
+        Assert.Equal(
+            new ReceiptCheckResult(5.99m, true, Discount: 0m, true, TaxedSum: 3.99m, ExpectedTax: 0.52m, TaxMatches: true),
+            result);
         Assert.True(result.Passed);
         Assert.Equal(ReceiptStatus.Completed, ReceiptChecks.StatusFor(result));
     }
@@ -95,6 +97,34 @@ public class ReceiptChecksTests
 
         Assert.Equal(0.20m, result.ExpectedTax);
         Assert.True(result.Passed);
+    }
+
+    /// <summary>A Target receipt in Texas: "10%off Storewide" under the subtotal, and tax "8.25000 on $361.21".</summary>
+    private static readonly (decimal Amount, bool IsTaxed)[] TargetLines =
+        [(13.99m, false), (349.99m, true), (25.99m, true), (10.99m, true), (12.99m, true), (1.39m, true)];
+
+    [Fact]
+    public void Takes_a_storewide_discount_off_the_total_and_the_taxed_amount()
+    {
+        var result = ReceiptChecks.Evaluate(
+            TargetLines, subtotal: 415.34m, tax: 29.80m, total: 403.60m, taxRatePercent: 8.25m, discountPercent: 10m);
+
+        // Rounded per line as the receipt does; 10% of the whole 415.34 would be 41.53.
+        Assert.Equal(-41.54m, result.Discount);
+        Assert.Equal(361.21m, result.TaxedSum);
+        Assert.Equal(29.80m, result.ExpectedTax);
+        Assert.True(result.Passed);
+    }
+
+    [Fact]
+    public void Flags_a_storewide_discount_the_totals_do_not_show()
+    {
+        var result = ReceiptChecks.Evaluate(
+            TargetLines, subtotal: 415.34m, tax: 29.80m, total: 403.60m, taxRatePercent: 8.25m, discountPercent: 0m);
+
+        Assert.True(result.LinesMatchSubtotal);
+        Assert.False(result.TotalMatches);
+        Assert.False(result.TaxMatches);
     }
 
     [Fact]

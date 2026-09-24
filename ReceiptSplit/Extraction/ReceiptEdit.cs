@@ -5,6 +5,7 @@ public sealed record ReceiptEdit(
     string? StoreName,
     DateOnly? PurchaseDate,
     decimal? Subtotal,
+    decimal DiscountPercent,
     decimal? Tax,
     decimal? Total,
     IReadOnlyList<ReceiptLineEdit> Lines);

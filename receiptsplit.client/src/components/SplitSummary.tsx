@@ -1,4 +1,5 @@
 import { Card, Table, Text, Title } from '@mantine/core'
+import { formatPercent } from '../format.ts'
 import { formatCents, type SplitSummary as Summary } from '../splits.ts'
 
 function plural(count: number, noun: string): string {
@@ -6,7 +7,8 @@ function plural(count: number, noun: string): string {
 }
 
 export function SplitSummary({ summary }: { summary: Summary }) {
-  const { people, assignedCents, linesCents, receiptTotalCents, unassigned, mismatched } = summary
+  const { people, assignedCents, linesCents, discountPercent, receiptTotalCents, unassigned, mismatched } = summary
+  const discounted = discountPercent !== 0
   const done = unassigned === 0 && mismatched === 0
 
   return (
@@ -23,13 +25,17 @@ export function SplitSummary({ summary }: { summary: Summary }) {
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Person</Table.Th>
+              {discounted && <Table.Th ta="right">Items</Table.Th>}
+              {discounted && <Table.Th ta="right">{formatPercent(discountPercent)} off</Table.Th>}
               <Table.Th ta="right">Owes</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {people.map(({ person, cents }) => (
+            {people.map(({ person, cents, itemsCents, discountCents }) => (
               <Table.Tr key={person}>
                 <Table.Td>{person}</Table.Td>
+                {discounted && <Table.Td ta="right">{formatCents(itemsCents)}</Table.Td>}
+                {discounted && <Table.Td ta="right">{formatCents(discountCents)}</Table.Td>}
                 <Table.Td ta="right">{formatCents(cents)}</Table.Td>
               </Table.Tr>
             ))}
