@@ -61,6 +61,9 @@ browser.
 - A storewide discount (Target's `10%off Storewide`, taken off after the subtotal) is `Receipt.DiscountPercent`,
   not a line. `ReceiptDiscount.Amount` turns it into an amount by rounding each line's share, which is how the
   receipt prints it; the checks take it off the total and the taxed amount. Splits apply it to each person's total.
+- `Receipt.TaxIncluded` marks prices that already include the tax (Japan's `内消費税`). Like the tax rate it is entered
+  at upload, not extracted, and survives re-extraction. When set, the tax is ignored everywhere: the checks don't
+  add or check it, the page hides it, and splits add nothing on top.
 
 ### Images
 

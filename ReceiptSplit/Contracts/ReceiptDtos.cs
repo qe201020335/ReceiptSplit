@@ -7,7 +7,8 @@ namespace ReceiptSplit.Contracts;
 public sealed record ReceiptQueuedDto(Guid Id, ReceiptStatus Status);
 
 /// <summary>Body of the request that changes the rate a receipt's tax is checked against.</summary>
-public sealed record ReceiptTaxRateDto(decimal TaxRatePercent);
+/// <param name="TaxIncluded">Whether the prices include the tax; left as it is when omitted.</param>
+public sealed record ReceiptTaxRateDto(decimal TaxRatePercent, bool? TaxIncluded = null);
 
 /// <summary>Body of the request that replaces a receipt's extracted result with hand corrected values.</summary>
 public sealed record ReceiptEditDto(
@@ -16,7 +17,6 @@ public sealed record ReceiptEditDto(
     [Range(-1_000_000, 1_000_000)] decimal? Subtotal,
     [Range(0, 100)] decimal DiscountPercent,
     [Range(-1_000_000, 1_000_000)] decimal? Tax,
-    bool TaxIncluded,
     [Range(-1_000_000, 1_000_000)] decimal? Total,
     [Required, MinLength(1), MaxLength(500)] IReadOnlyList<ReceiptLineEditDto> Lines);
 
@@ -93,7 +93,6 @@ public static class ReceiptMappings
         dto.Subtotal,
         dto.DiscountPercent,
         dto.Tax,
-        dto.TaxIncluded,
         dto.Total,
         dto.Lines
             .Select(l => new ReceiptLineEdit(l.Name, l.Code, l.Quantity, l.Amount, l.Discount, l.TaxCode, l.IsTaxed))

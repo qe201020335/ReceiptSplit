@@ -28,6 +28,7 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
         Stream content,
         string fileName,
         decimal? taxRatePercent,
+        bool taxIncluded,
         CancellationToken cancellationToken)
     {
         var taxRate = Precision.Rate(taxRatePercent ?? DefaultTaxRatePercent);
@@ -51,6 +52,7 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
             StoredFileName = $"{id}{image.Extension}",
             ContentType = image.MimeType,
             TaxRatePercent = taxRate,
+            TaxIncluded = taxIncluded,
         };
 
         var path = storage.Value.GetUploadPath(receipt.StoredFileName);
@@ -113,7 +115,6 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
         receipt.Subtotal = Precision.Cents(edit.Subtotal);
         receipt.DiscountPercent = Precision.Rate(edit.DiscountPercent);
         receipt.Tax = Precision.Cents(edit.Tax);
-        receipt.TaxIncluded = edit.TaxIncluded;
         receipt.Total = Precision.Cents(edit.Total);
 
         receipt.Lines.Clear();
@@ -146,11 +147,16 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
     }
 
     /// <summary>
-    /// Changes the tax rate the receipt is checked against. The checks are computed from the stored lines,
+    /// Changes the tax rate the receipt is checked against, and whether its prices include the tax when given.
+    /// The checks are computed from the stored lines,
     /// so an already extracted receipt is re-checked here instead of being sent to the model again.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">The tax rate is outside the accepted range.</exception>
-    public async Task<ReceiptActionResult> UpdateTaxRateAsync(Guid id, decimal taxRatePercent, CancellationToken cancellationToken)
+    public async Task<ReceiptActionResult> UpdateTaxRateAsync(
+        Guid id,
+        decimal taxRatePercent,
+        bool? taxIncluded,
+        CancellationToken cancellationToken)
     {
         taxRatePercent = Precision.Rate(taxRatePercent);
         ValidateTaxRate(taxRatePercent);
@@ -167,6 +173,7 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
         }
 
         receipt.TaxRatePercent = taxRatePercent;
+        receipt.TaxIncluded = taxIncluded ?? receipt.TaxIncluded;
 
         // A queued receipt is checked when it is extracted, and a failed one has no lines worth checking.
         if (receipt.Error is null && receipt.Status is ReceiptStatus.Completed or ReceiptStatus.NeedsReview)

@@ -13,12 +13,17 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
 {
     /// <summary>Uploads a receipt photo and queues it for extraction; poll the returned location for the result.</summary>
     /// <param name="taxRatePercent">Sales tax rate the receipt was charged at; defaults to Ontario's 13%.</param>
+    /// <param name="taxIncluded">Whether the printed prices already include the tax, which is then ignored.</param>
     [HttpPost]
     [RequestSizeLimit(ReceiptService.MaxUploadBytes + 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = ReceiptService.MaxUploadBytes + 1024 * 1024)]
     [ProducesResponseType<ReceiptQueuedDto>(StatusCodes.Status202Accepted)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Upload(IFormFile file, [FromForm] decimal? taxRatePercent, CancellationToken cancellationToken)
+    public async Task<IActionResult> Upload(
+        IFormFile file,
+        [FromForm] decimal? taxRatePercent,
+        [FromForm] bool taxIncluded,
+        CancellationToken cancellationToken)
     {
         if (taxRatePercent is { } rate && !ReceiptService.IsValidTaxRate(rate))
         {
@@ -28,7 +33,7 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
         await using var stream = file.OpenReadStream();
         try
         {
-            var receipt = await receipts.CreateAsync(stream, file.FileName, taxRatePercent, cancellationToken);
+            var receipt = await receipts.CreateAsync(stream, file.FileName, taxRatePercent, taxIncluded, cancellationToken);
             return AcceptedAtAction(nameof(Get), new { id = receipt.Id }, new ReceiptQueuedDto(receipt.Id, receipt.Status));
         }
         catch (InvalidImageException ex)
@@ -94,7 +99,10 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
             _ => NotFound(),
         };
 
-    /// <summary>Changes the tax rate the receipt is checked against and re-checks it, without calling the model.</summary>
+    /// <summary>
+    /// Changes the tax rate the receipt is checked against, or whether its prices include the tax, and re-checks it
+    /// without calling the model.
+    /// </summary>
     [HttpPatch("{id:guid}")]
     [ProducesResponseType<ReceiptDetailDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
@@ -110,7 +118,7 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
             return InvalidTaxRate();
         }
 
-        return await receipts.UpdateTaxRateAsync(id, request.TaxRatePercent, cancellationToken) switch
+        return await receipts.UpdateTaxRateAsync(id, request.TaxRatePercent, request.TaxIncluded, cancellationToken) switch
         {
             ReceiptActionResult.Done => await Get(id, cancellationToken),
             ReceiptActionResult.Busy => Problem(

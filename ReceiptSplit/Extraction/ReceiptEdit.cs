@@ -7,7 +7,6 @@ public sealed record ReceiptEdit(
     decimal? Subtotal,
     decimal DiscountPercent,
     decimal? Tax,
-    bool TaxIncluded,
     decimal? Total,
     IReadOnlyList<ReceiptLineEdit> Lines);
 
