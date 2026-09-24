@@ -395,6 +395,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                   loading="lazy"
                   radius="sm"
                   mah="80vh"
+                  maw="100%"
                   w="auto"
                   fit="contain"
                 />
