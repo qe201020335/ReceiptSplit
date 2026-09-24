@@ -314,6 +314,15 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                       <Table.Td ta="right">{formatMoney(receipt.subtotal)}</Table.Td>
                       <Table.Td />
                     </Table.Tr>
+                    {checks && receipt.discountPercent !== 0 && (
+                      <Table.Tr>
+                        <Table.Th colSpan={compact ? 2 : 3} ta="right">
+                          Discount ({formatPercent(receipt.discountPercent)} off)
+                        </Table.Th>
+                        <Table.Td ta="right">{formatMoney(checks.discount)}</Table.Td>
+                        <Table.Td />
+                      </Table.Tr>
+                    )}
                     {checks && (
                       <Table.Tr>
                         <Table.Th colSpan={compact ? 2 : 3} ta="right">
@@ -352,7 +361,8 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                     : `✗ Lines add up to ${formatMoney(checks.linesSum)}, but the subtotal is ${formatMoney(receipt.subtotal)}`}
                 </List.Item>
                 <List.Item c={checks.totalMatches ? 'green' : 'red'}>
-                  {checks.totalMatches ? '✓ Subtotal + tax equals the total' : "✗ Subtotal + tax doesn't equal the total"}
+                  {checks.totalMatches ? '✓' : '✗'} Subtotal {receipt.discountPercent !== 0 && '− discount '}+ tax
+                  {checks.totalMatches ? ' equals' : " doesn't equal"} the total
                 </List.Item>
                 <List.Item c={checks.taxMatches ? 'green' : 'red'}>
                   {checks.taxMatches ? '✓' : '✗'} {formatPercent(receipt.taxRatePercent)} tax on{' '}

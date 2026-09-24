@@ -56,6 +56,9 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
   const [storeName, setStoreName] = useState(receipt.storeName ?? '')
   const [purchaseDate, setPurchaseDate] = useState(receipt.purchaseDate ?? '')
   const [subtotal, setSubtotal] = useState(toText(receipt.subtotal))
+  const [discountPercent, setDiscountPercent] = useState(
+    receipt.discountPercent === 0 ? '' : String(receipt.discountPercent),
+  )
   const [tax, setTax] = useState(toText(receipt.tax))
   const [total, setTotal] = useState(toText(receipt.total))
   const [lines, setLines] = useState<LineDraft[]>(() => draftLines(receipt))
@@ -77,6 +80,7 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
   const amounts = lines.map((line) => toNumber(line.amount))
   const linesSum = amounts.reduce((sum: number, amount) => sum + (amount ?? 0), 0)
   const subtotalValue = toNumber(subtotal)
+  const discountValue = toNumber(discountPercent)
   const difference = subtotalValue == null ? null : Math.round((linesSum - subtotalValue) * 100) / 100
 
   const invalid =
@@ -89,7 +93,9 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
         toNumber(line.discount) === undefined ||
         (toNumber(line.discount) ?? 0) > 0,
     ) ||
-    [subtotal, tax, total].some((value) => toNumber(value) === undefined)
+    [subtotal, tax, total].some((value) => toNumber(value) === undefined) ||
+    discountValue === undefined ||
+    (discountValue != null && (discountValue < 0 || discountValue > 100))
 
   async function save() {
     if (invalid) {
@@ -102,7 +108,7 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
         storeName: storeName.trim() === '' ? null : storeName.trim(),
         purchaseDate: purchaseDate === '' ? null : purchaseDate,
         subtotal: toNumber(subtotal) ?? null,
-        discountPercent: receipt.discountPercent,
+        discountPercent: discountValue ?? 0,
         tax: toNumber(tax) ?? null,
         total: toNumber(total) ?? null,
         lines: lines.map(
@@ -270,6 +276,16 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
             styles={numberInput}
             value={subtotal}
             onChange={(event) => setSubtotal(event.currentTarget.value)}
+          />
+          <TextInput
+            label="Discount %"
+            size="xs"
+            w={110}
+            inputMode="decimal"
+            placeholder="0"
+            styles={numberInput}
+            value={discountPercent}
+            onChange={(event) => setDiscountPercent(event.currentTarget.value)}
           />
           <TextInput
             label="Tax"
