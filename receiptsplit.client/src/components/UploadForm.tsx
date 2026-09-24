@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, CloseButton, Group, NumberInput, Stack, Text, Title } from '@mantine/core'
+import { Button, Card, Checkbox, CloseButton, Group, NumberInput, Stack, Text, Title } from '@mantine/core'
 import { Dropzone } from '@mantine/dropzone'
 import { notifications } from '@mantine/notifications'
 import { api, errorMessage, type ReceiptQueued } from '../api.ts'
@@ -13,6 +13,7 @@ interface UploadFormProps {
 export function UploadForm({ onUploaded }: UploadFormProps) {
   const [file, setFile] = useState<File | null>(null)
   const [taxRate, setTaxRate] = useState<string | number>(() => lastTaxRatePercent())
+  const [taxIncluded, setTaxIncluded] = useState(false)
   const [uploading, setUploading] = useState(false)
 
   const rate = Number(taxRate)
@@ -25,7 +26,7 @@ export function UploadForm({ onUploaded }: UploadFormProps) {
 
     setUploading(true)
     try {
-      const receipt = await api.uploadReceipt(file, rate)
+      const receipt = await api.uploadReceipt(file, rate, taxIncluded)
       rememberTaxRatePercent(rate)
       setFile(null)
       onUploaded(receipt)
@@ -103,9 +104,16 @@ export function UploadForm({ onUploaded }: UploadFormProps) {
             step={0.5}
             decimalScale={3}
             allowNegative={false}
+            disabled={taxIncluded}
             error={rateValid ? null : `Enter a rate between ${minTaxRatePercent} and ${maxTaxRatePercent}%`}
             value={taxRate}
             onChange={setTaxRate}
+          />
+          <Checkbox
+            label="Prices include tax"
+            description="As in Japan: the tax is part of each price and isn't checked."
+            checked={taxIncluded}
+            onChange={(event) => setTaxIncluded(event.currentTarget.checked)}
           />
           <Button type="submit" disabled={!file || !rateValid} loading={uploading}>
             Upload

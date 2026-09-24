@@ -120,7 +120,9 @@ export function allocate(total: number, weights: number[]): number[] {
  */
 export function splitLines(receipt: ReceiptDetail): SplitLine[] {
   const base = receipt.lines.map((line) => toCents(line.amount))
-  const taxed = receipt.lines.map((line, index) => (line.isTaxed ? base[index] : 0))
+  // Tax already inside the prices is ignored: nothing is added on top.
+  const isTaxed = receipt.lines.map((line) => line.isTaxed && !receipt.taxIncluded)
+  const taxed = receipt.lines.map((_, index) => (isTaxed[index] ? base[index] : 0))
   const taxedCents = taxed.reduce((sum, cents) => sum + cents, 0)
   const tax =
     receipt.tax != null && taxedCents > 0
@@ -133,7 +135,7 @@ export function splitLines(receipt: ReceiptDetail): SplitLine[] {
     code: line.code,
     quantity: line.quantity,
     discount: line.discount,
-    isTaxed: line.isTaxed,
+    isTaxed: isTaxed[index],
     cents: base[index] + tax[index],
   }))
 }

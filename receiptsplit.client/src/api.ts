@@ -57,7 +57,6 @@ export interface ReceiptEdit {
   subtotal: number | null
   discountPercent: number
   tax: number | null
-  taxIncluded: boolean
   total: number | null
   lines: ReceiptLineEdit[]
 }
@@ -86,7 +85,7 @@ export interface ReceiptDetail {
   /** Percentage taken off the whole purchase after the subtotal; 0 for none. */
   discountPercent: number
   tax: number | null
-  /** The prices already include the tax, so it isn't added on top and its amount isn't checked. */
+  /** Entered at upload: the prices already include the tax, so the tax is ignored everywhere. */
   taxIncluded: boolean
   total: number | null
   checks: ReceiptChecks | null
@@ -137,10 +136,11 @@ export const api = {
 
   getReceipt: (id: string) => request<ReceiptDetail>(`/api/receipts/${id}`),
 
-  uploadReceipt: (file: File, taxRatePercent: number) => {
+  uploadReceipt: (file: File, taxRatePercent: number, taxIncluded: boolean) => {
     const form = new FormData()
     form.append('file', file)
     form.append('taxRatePercent', String(taxRatePercent))
+    form.append('taxIncluded', String(taxIncluded))
     return request<ReceiptQueued>('/api/receipts', { method: 'POST', body: form })
   },
 
@@ -152,12 +152,12 @@ export const api = {
       body: JSON.stringify(edit),
     }),
 
-  /** Re-checks the receipt against a different sales tax rate; no new extraction. */
-  updateTaxRate: (id: string, taxRatePercent: number) =>
+  /** Re-checks the receipt against a different sales tax rate, or with tax included or not; no new extraction. */
+  updateTaxRate: (id: string, taxRatePercent: number, taxIncluded: boolean) =>
     request<ReceiptDetail>(`/api/receipts/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ taxRatePercent }),
+      body: JSON.stringify({ taxRatePercent, taxIncluded }),
     }),
 
   rerunExtraction: (id: string) => request<ReceiptQueued>(`/api/receipts/${id}/extract`, { method: 'POST' }),
