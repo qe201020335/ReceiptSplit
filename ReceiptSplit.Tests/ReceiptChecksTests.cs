@@ -127,6 +127,36 @@ public class ReceiptChecksTests
         Assert.False(result.TaxMatches);
     }
 
+    /// <summary>A MIXUE receipt from Japan: 合計 1,110 with (内消費税 8%) 83 already inside the prices.</summary>
+    private static readonly (decimal Amount, bool IsTaxed)[] MixueLines = [(130m, true), (500m, true), (480m, true)];
+
+    [Theory]
+    [InlineData("83")]
+    [InlineData("82")]
+    [InlineData("0")]
+    public void Does_not_add_or_check_tax_that_is_included_in_the_prices(string printedTax)
+    {
+        var tax = decimal.Parse(printedTax, CultureInfo.InvariantCulture);
+
+        var result = ReceiptChecks.Evaluate(
+            MixueLines, subtotal: 1110m, tax: tax, total: 1110m, taxRatePercent: 8m, taxIncluded: true);
+
+        Assert.True(result.Passed);
+    }
+
+    [Fact]
+    public void Still_checks_the_lines_and_total_when_tax_is_included()
+    {
+        var misread = ReceiptChecks.Evaluate(
+            MixueLines, subtotal: 1110m, tax: 83m, total: 1193m, taxRatePercent: 8m, taxIncluded: true);
+        var taxOnTop = ReceiptChecks.Evaluate(MixueLines, subtotal: 1110m, tax: 83m, total: 1110m, taxRatePercent: 8m);
+
+        Assert.True(misread.LinesMatchSubtotal);
+        Assert.False(misread.TotalMatches);
+        Assert.False(taxOnTop.TotalMatches);
+        Assert.False(taxOnTop.TaxMatches);
+    }
+
     [Fact]
     public void Fails_without_printed_totals()
     {

@@ -113,6 +113,7 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
         receipt.Subtotal = Precision.Cents(edit.Subtotal);
         receipt.DiscountPercent = Precision.Rate(edit.DiscountPercent);
         receipt.Tax = Precision.Cents(edit.Tax);
+        receipt.TaxIncluded = edit.TaxIncluded;
         receipt.Total = Precision.Cents(edit.Total);
 
         receipt.Lines.Clear();
@@ -137,7 +138,8 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
             receipt.Tax,
             receipt.Total,
             receipt.TaxRatePercent,
-            receipt.DiscountPercent));
+            receipt.DiscountPercent,
+            receipt.TaxIncluded));
 
         await db.SaveChangesAsync(cancellationToken);
         return ReceiptActionResult.Done;
@@ -175,7 +177,8 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
                 receipt.Tax,
                 receipt.Total,
                 taxRatePercent,
-                receipt.DiscountPercent);
+                receipt.DiscountPercent,
+                receipt.TaxIncluded);
             receipt.Status = ReceiptChecks.StatusFor(checks);
         }
 

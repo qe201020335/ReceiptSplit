@@ -163,7 +163,7 @@ public class ReceiptsApiTests
         var lines = receipt.Lines
             .Select(l => new ReceiptLineEditDto(l.Name, l.Code, l.Quantity, l.Amount, l.Discount, l.TaxCode, l.IsTaxed))
             .ToList();
-        var edit = new ReceiptEditDto(receipt.StoreName, receipt.PurchaseDate, 23.98m, 0m, 1.43m, 25.41m, lines);
+        var edit = new ReceiptEditDto(receipt.StoreName, receipt.PurchaseDate, 23.98m, 0m, 1.43m, false, 25.41m, lines);
 
         var corrected = await PutEditAsync(client, receipt.Id, edit);
         Assert.Equal([-3.00m, 0m], corrected.Lines.Select(l => l.Discount));
@@ -204,7 +204,7 @@ public class ReceiptsApiTests
             .Select(l => new ReceiptLineEditDto(l.Name, l.Code, l.Quantity, l.Amount, l.Discount, l.TaxCode, l.IsTaxed))
             .ToList();
         // 10% off 1.99 and 5.49 is 0.20 + 0.55; tax is 13% of the discounted 4.94.
-        var edit = new ReceiptEditDto(receipt.StoreName, receipt.PurchaseDate, 7.48m, 10m, 0.64m, 7.37m, lines);
+        var edit = new ReceiptEditDto(receipt.StoreName, receipt.PurchaseDate, 7.48m, 10m, 0.64m, false, 7.37m, lines);
 
         var corrected = await PutEditAsync(client, receipt.Id, edit);
         Assert.Equal(10m, corrected.DiscountPercent);
@@ -218,6 +218,28 @@ public class ReceiptsApiTests
         using var tooMuch = await client.PutAsJsonAsync(
             $"/api/receipts/{receipt.Id}", edit with { DiscountPercent = 150m }, Json, Ct);
         Assert.Equal(HttpStatusCode.BadRequest, tooMuch.StatusCode);
+    }
+
+    [Fact]
+    public async Task Tax_marked_as_included_by_hand_is_not_added_to_the_total()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var client = factory.CreateClient();
+        var receipt = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Jpeg));
+
+        var lines = receipt.Lines
+            .Select(l => new ReceiptLineEditDto(l.Name, l.Code, l.Quantity, l.Amount, l.Discount, l.TaxCode, l.IsTaxed))
+            .ToList();
+        // The 0.71 is inside the 7.48, so the total is the subtotal.
+        var edit = new ReceiptEditDto(receipt.StoreName, receipt.PurchaseDate, 7.48m, 0m, 0.71m, true, 7.48m, lines);
+
+        var included = await PutEditAsync(client, receipt.Id, edit);
+        Assert.True(included.TaxIncluded);
+        Assert.Equal(ReceiptStatus.Completed, included.Status);
+
+        var onTop = await PutEditAsync(client, receipt.Id, edit with { TaxIncluded = false });
+        Assert.False(onTop.TaxIncluded);
+        Assert.Equal(ReceiptStatus.NeedsReview, onTop.Status);
     }
 
     [Fact]
@@ -237,6 +259,7 @@ public class ReceiptsApiTests
             Subtotal: 7.48m,
             DiscountPercent: 0m,
             Tax: 0.71m,
+            TaxIncluded: false,
             Total: 8.19m,
             [
                 new ReceiptLineEditDto("BANANAS", null, 1.25m, 1.99m, Discount: 0m, null, IsTaxed: false),
@@ -268,6 +291,7 @@ public class ReceiptsApiTests
             Subtotal: 7.48m,
             DiscountPercent: 0m,
             Tax: 0.714m,
+            TaxIncluded: false,
             Total: 8.19m,
             [
                 new ReceiptLineEditDto("BANANAS", null, 1.25m, 1.994m, Discount: 0m, null, IsTaxed: false),
@@ -311,6 +335,7 @@ public class ReceiptsApiTests
             Subtotal: 3.00m,
             DiscountPercent: 0m,
             Tax: null,
+            TaxIncluded: false,
             Total: 3.00m,
             [
                 new ReceiptLineEditDto("  APPLES  ", "  ", 1m, 1.00m, Discount: 0m, "  ", IsTaxed: false),
@@ -331,7 +356,7 @@ public class ReceiptsApiTests
         using var client = factory.CreateClient();
         var receipt = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Jpeg));
         await PutEditAsync(client, receipt.Id, new ReceiptEditDto(
-            "By hand", null, 1.00m, 0m, null, 1.00m, [new ReceiptLineEditDto("TYPED", null, 1m, 1.00m, Discount: 0m, null, IsTaxed: false)]));
+            "By hand", null, 1.00m, 0m, null, false, 1.00m, [new ReceiptLineEditDto("TYPED", null, 1m, 1.00m, Discount: 0m, null, IsTaxed: false)]));
 
         using (var rerun = await client.PostAsync($"/api/receipts/{receipt.Id}/extract", null, Ct))
         {
@@ -353,7 +378,7 @@ public class ReceiptsApiTests
         factory.Llm.Block();
         using var upload = await client.PostAsync("/api/receipts", PhotoForm(TestImages.Create(64, 48, MagickFormat.Jpeg), "receipt.jpg"), Ct);
         var queued = (await upload.Content.ReadFromJsonAsync<ReceiptQueuedDto>(Json, Ct))!;
-        var oneLine = new ReceiptEditDto("Corner Market", null, 1.00m, 0m, null, 1.00m,
+        var oneLine = new ReceiptEditDto("Corner Market", null, 1.00m, 0m, null, false, 1.00m,
             [new ReceiptLineEditDto("TYPED", null, 1m, 1.00m, Discount: 0m, null, IsTaxed: false)]);
 
         using (var busy = await client.PutAsJsonAsync($"/api/receipts/{queued.Id}", oneLine, Json, Ct))
@@ -520,7 +545,7 @@ public class ReceiptsApiTests
         using var patch = await client.PatchAsJsonAsync($"/api/receipts/{id}", new ReceiptTaxRateDto(13m), Json, Ct);
         using var put = await client.PutAsJsonAsync(
             $"/api/receipts/{id}",
-            new ReceiptEditDto("Corner Market", null, 1.00m, 0m, null, 1.00m, [new ReceiptLineEditDto("TYPED", null, 1m, 1.00m, 0m, null, false)]),
+            new ReceiptEditDto("Corner Market", null, 1.00m, 0m, null, false, 1.00m, [new ReceiptLineEditDto("TYPED", null, 1m, 1.00m, 0m, null, false)]),
             Json,
             Ct);
         using var delete = await client.DeleteAsync($"/api/receipts/{id}", Ct);

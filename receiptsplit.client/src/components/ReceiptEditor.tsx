@@ -110,6 +110,7 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
         subtotal: toNumber(subtotal) ?? null,
         discountPercent: discountValue ?? 0,
         tax: toNumber(tax) ?? null,
+        taxIncluded: receipt.taxIncluded,
         total: toNumber(total) ?? null,
         lines: lines.map(
           (line): ReceiptLineEdit => ({

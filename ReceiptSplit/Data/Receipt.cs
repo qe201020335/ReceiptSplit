@@ -32,6 +32,10 @@ public class Receipt
 
     public decimal? Tax { get; set; }
 
+    /// <summary>Whether the printed prices already include <see cref="Tax"/>, as Japan's 内消費税 does, instead of it
+    /// being added on top. The amount of an included tax isn't checked.</summary>
+    public bool TaxIncluded { get; set; }
+
     public decimal? Total { get; set; }
 
     public List<ReceiptLine> Lines { get; set; } = [];
@@ -67,6 +71,7 @@ public class Receipt
         Subtotal = null;
         DiscountPercent = 0m;
         Tax = null;
+        TaxIncluded = false;
         Total = null;
         Lines.Clear();
         ModelOutput = null;

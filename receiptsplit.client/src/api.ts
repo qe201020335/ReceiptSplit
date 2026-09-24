@@ -57,6 +57,7 @@ export interface ReceiptEdit {
   subtotal: number | null
   discountPercent: number
   tax: number | null
+  taxIncluded: boolean
   total: number | null
   lines: ReceiptLineEdit[]
 }
@@ -85,6 +86,8 @@ export interface ReceiptDetail {
   /** Percentage taken off the whole purchase after the subtotal; 0 for none. */
   discountPercent: number
   tax: number | null
+  /** The prices already include the tax, so it isn't added on top and its amount isn't checked. */
+  taxIncluded: boolean
   total: number | null
   checks: ReceiptChecks | null
   lines: ReceiptLine[]
