@@ -1,6 +1,7 @@
 // Splitting a receipt between people. Everything is in whole cents so the parts always add back up.
 
 import type { ReceiptDetail } from './api.ts'
+import { formatPercent } from './format.ts'
 
 /** A receipt line with its share of the tax included, which is what people pay for it. */
 export interface SplitLine {
@@ -59,15 +60,23 @@ export interface PersonItem {
 
 export interface PersonTotal {
   person: string
+  /** What they owe: their items less their part of the storewide discount. */
   cents: number
+  /** Their items, tax included, before the storewide discount. */
+  itemsCents: number
+  /** Their part of the storewide discount, negative or 0. */
+  discountCents: number
   items: PersonItem[]
 }
 
 export interface SplitSummary {
   people: PersonTotal[]
+  /** What people owe between them, storewide discount taken off. */
   assignedCents: number
-  /** Sum of every line, tax included. */
+  /** Sum of every line, tax included, less the storewide discount. */
   linesCents: number
+  /** Percentage taken off the whole receipt after the subtotal; 0 for none. */
+  discountPercent: number
   receiptTotalCents: number | null
   unassigned: number
   mismatched: number
@@ -158,8 +167,15 @@ export function lineSplit(line: SplitLine, assignment: LineAssignment, people: s
   }
 }
 
-export function summarize(lines: SplitLine[], state: SplitState, receiptTotal: number | null): SplitSummary {
-  const people = state.people.map((person): PersonTotal => ({ person, cents: 0, items: [] }))
+/**
+ * Each person's total for the lines assigned to them. A storewide discount is not spread over the lines: it comes
+ * off each person's total instead, in proportion to their items, with whatever is still unassigned holding its own
+ * share until someone takes it.
+ */
+export function summarize(lines: SplitLine[], state: SplitState, receipt: ReceiptDetail): SplitSummary {
+  const people = state.people.map(
+    (person): PersonTotal => ({ person, cents: 0, itemsCents: 0, discountCents: 0, items: [] }),
+  )
   let assignedCents = 0
   let unassigned = 0
   let mismatched = 0
@@ -175,17 +191,33 @@ export function summarize(lines: SplitLine[], state: SplitState, receiptTotal: n
     for (const part of split.parts) {
       const total = people.find((person) => person.person === part.person)
       if (total) {
-        total.cents += part.cents
+        total.itemsCents += part.cents
         total.items.push({ line, part, split })
       }
     }
   }
 
+  const linesCents = lines.reduce((sum, line) => sum + line.cents, 0)
+  const discountCents = receipt.discountPercent !== 0 && receipt.checks ? toCents(receipt.checks.discount) : 0
+  // A person whose items come to less than nothing gets none of the discount, and amounts typed past a line's
+  // price leave nothing unassigned; negative weights would hand out more than the discount.
+  const weights = [...people.map((person) => person.itemsCents), linesCents - assignedCents].map((cents) =>
+    Math.max(0, cents),
+  )
+  if (discountCents !== 0 && weights.some((weight) => weight > 0)) {
+    const parts = allocate(-discountCents, weights)
+    people.forEach((person, index) => (person.discountCents = -parts[index]))
+  }
+  for (const person of people) {
+    person.cents = person.itemsCents + person.discountCents
+  }
+
   return {
     people,
-    assignedCents,
-    linesCents: lines.reduce((sum, line) => sum + line.cents, 0),
-    receiptTotalCents: receiptTotal == null ? null : toCents(receiptTotal),
+    assignedCents: people.reduce((sum, person) => sum + person.cents, 0),
+    linesCents: linesCents + discountCents,
+    discountPercent: receipt.discountPercent,
+    receiptTotalCents: receipt.total == null ? null : toCents(receipt.total),
     unassigned,
     mismatched,
   }
@@ -194,7 +226,7 @@ export function summarize(lines: SplitLine[], state: SplitState, receiptTotal: n
 /** Plain text for pasting into a chat: each person's total, then what it is made of. */
 export function summaryText(summary: SplitSummary): string {
   return summary.people
-    .map(({ person, cents, items }) =>
+    .map(({ person, cents, items, discountCents }) =>
       [
         `${person}: ${formatCents(cents)}`,
         ...items.map(({ line, part, split }) => {
@@ -206,6 +238,7 @@ export function summaryText(summary: SplitSummary): string {
                 : ''
           return `  ${line.name}: ${formatCents(part.cents)}${note}`
         }),
+        ...(discountCents !== 0 ? [`  ${formatPercent(summary.discountPercent)} off: ${formatCents(discountCents)}`] : []),
       ].join('\n'),
     )
     .join('\n\n')
