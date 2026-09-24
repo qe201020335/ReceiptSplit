@@ -58,6 +58,9 @@ browser.
   values read back from the database.
 - `ReceiptLine.Amount` is the price actually paid, with any promotion already deducted; `Discount` is the negative
   promotion amount, so the printed price is `Amount - Discount`.
+- A storewide discount (Target's `10%off Storewide`, taken off after the subtotal) is `Receipt.DiscountPercent`,
+  not a line. `ReceiptDiscount.Amount` turns it into an amount by rounding each line's share, which is how the
+  receipt prints it; the checks take it off the total and the taxed amount. Splits apply it to each person's total.
 
 ### Images
 
@@ -73,8 +76,8 @@ browser.
 The endpoint is llama.cpp's OpenAI-compatible `llama-server`, developed against Qwen3.8 27B on a shared LAN
 server. What was learned from real receipts:
 
-- The prompt in `ExtractionPrompt` was validated on real Costco and T&T photos. Change it only with evidence from
-  sample outputs.
+- The prompt in `ExtractionPrompt` was validated on real Costco and T&T photos, and its `d` (storewide discount
+  percentage) field on a Target photo. Change it only with evidence from sample outputs.
 - Don't use `response_format` / JSON schema: grammar-constrained output flipped the sign of every amount.
 - Thinking is turned off (`chat_template_kwargs.enable_thinking = false`) and temperature is 0, but output is still
   not fully deterministic between runs.

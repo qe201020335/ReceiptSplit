@@ -48,6 +48,7 @@ public sealed class ReceiptExtractor(
             receipt.PurchaseDate = parsed.PurchaseDate;
             // Rounded to what is stored, so the status below agrees with the totals read back later.
             receipt.Subtotal = Precision.Cents(parsed.Subtotal);
+            receipt.DiscountPercent = Precision.Rate(parsed.DiscountPercent);
             receipt.Tax = Precision.Cents(parsed.Tax);
             receipt.Total = Precision.Cents(parsed.Total);
             // Costco's promotion lines belong to the item above them, not on a line of their own.

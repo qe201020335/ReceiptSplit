@@ -158,6 +158,23 @@ public class ReceiptOutputParserTests
         Assert.Equal((58.05m, 2.59m, 60.64m), (parsed.Subtotal!.Value, parsed.Tax!.Value, parsed.Total!.Value));
     }
 
+    [Theory]
+    [InlineData("\"d\":10,", "10")]
+    [InlineData("\"d\":\"10\",", "10")]
+    [InlineData("\"d\":\"10%\",", "10")]
+    [InlineData("\"d\":12.5,", "12.5")]
+    [InlineData("\"d\":null,", "0")]
+    [InlineData("\"d\":\"none\",", "0")]
+    [InlineData("\"d\":100,", "0")]
+    [InlineData("", "0")]
+    public void Reads_the_storewide_discount_percentage(string discountJson, string expected)
+    {
+        var parsed = ReceiptOutputParser.Parse($$"""{"s":"415.34",{{discountJson}}"t":"29.80","T":"403.60"}""");
+
+        Assert.Equal(decimal.Parse(expected, CultureInfo.InvariantCulture), parsed.DiscountPercent);
+        Assert.Equal(415.34m, parsed.Subtotal);
+    }
+
     [Fact]
     public void Leaves_totals_empty_without_a_totals_line()
     {
@@ -219,6 +236,7 @@ public class ReceiptOutputParserTests
             parsed.Subtotal,
             parsed.Tax,
             parsed.Total,
-            taxRatePercent: 13m).Passed);
+            taxRatePercent: 13m,
+            parsed.DiscountPercent).Passed);
     }
 }

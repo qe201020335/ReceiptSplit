@@ -179,6 +179,21 @@ public class ReceiptsApiTests
     }
 
     [Fact]
+    public async Task A_storewide_discount_read_by_the_model_is_taken_off_the_totals()
+    {
+        await using var factory = new ReceiptApiFactory();
+        factory.Llm.Content = FakeLlamaClient.StorewideDiscountOutput;
+        using var client = factory.CreateClient();
+
+        var receipt = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Jpeg), taxRatePercent: 8.25m);
+
+        Assert.Equal(ReceiptStatus.Completed, receipt.Status);
+        Assert.Equal(10m, receipt.DiscountPercent);
+        Assert.Equal((-41.54m, 361.21m), (receipt.Checks!.Discount, receipt.Checks.TaxedSum));
+        Assert.Equal(6, receipt.Lines.Count);
+    }
+
+    [Fact]
     public async Task A_storewide_discount_set_by_hand_is_checked_and_kept_in_range()
     {
         await using var factory = new ReceiptApiFactory();

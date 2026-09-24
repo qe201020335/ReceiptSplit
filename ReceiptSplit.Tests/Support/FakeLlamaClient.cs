@@ -19,6 +19,17 @@ public sealed class FakeLlamaClient : ILlamaClient
         {"s": "23.98", "t": "1.43", "T": "25.41", "store": "Costco Wholesale", "date": "2026-09-13"}
         """;
 
+    /// <summary>A Target receipt in Texas (8.25%) with "10%off Storewide" taken off after the subtotal.</summary>
+    public const string StorewideDiscountOutput = """
+        ["SUNSCREEN", "037110435", 1, "13.99", "N+"]
+        ["Schwinn", "082093045", 1, "349.99", "T"]
+        ["BIKE PUMP", "082010063", 1, "25.99", "T"]
+        ["REPAIR KIT", "082010050", 1, "10.99", "T"]
+        ["BIKE LOCK", "082010101", 1, "12.99", "T"]
+        ["Up&Up", "081019798", 1, "1.39", "T"]
+        {"s": "415.34", "d": 10, "t": "29.80", "T": "403.60", "store": "Target", "date": "2025-08-21"}
+        """;
+
     private volatile TaskCompletionSource _gate = CompletedGate();
 
     public string Content { get; set; } = ValidOutput;
