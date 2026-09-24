@@ -32,6 +32,10 @@ public class Receipt
 
     public decimal? Tax { get; set; }
 
+    /// <summary>Whether the printed prices already include the tax, as Japan's 内消費税 does, instead of it being
+    /// added on top. Entered with the upload like the rate; when set, <see cref="Tax"/> is ignored everywhere.</summary>
+    public bool TaxIncluded { get; set; }
+
     public decimal? Total { get; set; }
 
     public List<ReceiptLine> Lines { get; set; } = [];
@@ -57,7 +61,7 @@ public class Receipt
     public DateTime? EditedAt { get; set; }
 
     /// <summary>Drops all extraction results, hand corrections included, and puts the receipt back in the queue state.
-    /// The tax rate is entered by the person uploading, not extracted, so it survives.</summary>
+    /// The tax rate and whether tax is included are entered by the person uploading, not extracted, so they survive.</summary>
     public void ResetExtraction()
     {
         Status = ReceiptStatus.Queued;

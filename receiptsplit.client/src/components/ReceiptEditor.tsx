@@ -64,6 +64,8 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
   const [lines, setLines] = useState<LineDraft[]>(() => draftLines(receipt))
   const [nextKey, setNextKey] = useState(receipt.lines.length)
   const [saving, setSaving] = useState(false)
+  // Tax already inside the prices is ignored; its fields keep their values but aren't shown.
+  const showTax = !receipt.taxIncluded
 
   function updateLine(key: number, change: Partial<LineDraft>) {
     setLines((current) => current.map((line) => (line.key === key ? { ...line, ...change } : line)))
@@ -173,8 +175,8 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
                 <Table.Th w={100} ta="right">
                   Discount
                 </Table.Th>
-                <Table.Th w={80}>Tax code</Table.Th>
-                <Table.Th w={60}>Taxed</Table.Th>
+                {showTax && <Table.Th w={80}>Tax code</Table.Th>}
+                {showTax && <Table.Th w={60}>Taxed</Table.Th>}
                 <Table.Th w={40} />
               </Table.Tr>
             </Table.Thead>
@@ -232,22 +234,26 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
                       onChange={(event) => updateLine(line.key, { discount: event.currentTarget.value })}
                     />
                   </Table.Td>
-                  <Table.Td>
-                    <TextInput
-                      size="xs"
-                      aria-label={`Item ${index + 1} tax code`}
-                      maxLength={16}
-                      value={line.taxCode}
-                      onChange={(event) => updateLine(line.key, { taxCode: event.currentTarget.value })}
-                    />
-                  </Table.Td>
-                  <Table.Td>
-                    <Checkbox
-                      aria-label={`Item ${index + 1} is taxed`}
-                      checked={line.isTaxed}
-                      onChange={(event) => updateLine(line.key, { isTaxed: event.currentTarget.checked })}
-                    />
-                  </Table.Td>
+                  {showTax && (
+                    <Table.Td>
+                      <TextInput
+                        size="xs"
+                        aria-label={`Item ${index + 1} tax code`}
+                        maxLength={16}
+                        value={line.taxCode}
+                        onChange={(event) => updateLine(line.key, { taxCode: event.currentTarget.value })}
+                      />
+                    </Table.Td>
+                  )}
+                  {showTax && (
+                    <Table.Td>
+                      <Checkbox
+                        aria-label={`Item ${index + 1} is taxed`}
+                        checked={line.isTaxed}
+                        onChange={(event) => updateLine(line.key, { isTaxed: event.currentTarget.checked })}
+                      />
+                    </Table.Td>
+                  )}
                   <Table.Td>
                     <ActionIcon
                       variant="subtle"
@@ -287,15 +293,17 @@ export function ReceiptEditor({ receipt, onSaved, onCancel }: ReceiptEditorProps
             value={discountPercent}
             onChange={(event) => setDiscountPercent(event.currentTarget.value)}
           />
-          <TextInput
-            label="Tax"
-            size="xs"
-            w={110}
-            inputMode="decimal"
-            styles={numberInput}
-            value={tax}
-            onChange={(event) => setTax(event.currentTarget.value)}
-          />
+          {showTax && (
+            <TextInput
+              label="Tax"
+              size="xs"
+              w={110}
+              inputMode="decimal"
+              styles={numberInput}
+              value={tax}
+              onChange={(event) => setTax(event.currentTarget.value)}
+            />
+          )}
           <TextInput
             label="Total"
             size="xs"

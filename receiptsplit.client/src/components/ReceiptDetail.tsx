@@ -5,6 +5,7 @@ import {
   Anchor,
   Button,
   Card,
+  Checkbox,
   Code,
   Group,
   Image,
@@ -43,6 +44,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
   const [busy, setBusy] = useState(false)
   // The rate being typed, or null when it is only being displayed.
   const [taxRateDraft, setTaxRateDraft] = useState<string | number | null>(null)
+  const [taxIncludedDraft, setTaxIncludedDraft] = useState(false)
   const [editing, setEditing] = useState(false)
   // Bumping this reloads the receipt.
   const [version, setVersion] = useState(0)
@@ -80,7 +82,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
     return () => clearTimeout(timer)
   }, [receipt, waiting])
 
-  async function saveTaxRate(draft: string | number) {
+  async function saveTaxRate(draft: string | number, taxIncluded: boolean) {
     const rate = Number(draft)
     if (String(draft).trim() === '' || !isValidTaxRate(rate)) {
       return
@@ -89,11 +91,14 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
     setBusy(true)
     setError(null)
     try {
-      const updated = await api.updateTaxRate(id, rate)
+      const updated = await api.updateTaxRate(id, rate, taxIncluded)
       setReceipt(updated)
       setTaxRateDraft(null)
       onChanged()
-      notifications.show({ message: `Sales tax set to ${formatPercent(rate)}`, color: 'green' })
+      notifications.show({
+        message: taxIncluded ? 'Prices include tax' : `Sales tax set to ${formatPercent(rate)}`,
+        color: 'green',
+      })
     } catch (e) {
       notifications.show({ title: "Couldn't change the tax rate", message: errorMessage(e), color: 'red' })
     } finally {
@@ -168,6 +173,8 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
 
   const { checks, extraction } = receipt
   const canSplit = receipt.status === 'Completed' && !busy
+  // Tax already inside the prices is ignored, so nothing about it is shown.
+  const showTax = !receipt.taxIncluded
   const taxRateValid = taxRateDraft !== null && String(taxRateDraft).trim() !== '' && isValidTaxRate(Number(taxRateDraft))
 
   return (
@@ -183,12 +190,17 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
             </Text>
             {taxRateDraft === null ? (
               <Group gap="xs">
-                <Text size="sm">Sales tax {formatPercent(receipt.taxRatePercent)}</Text>
+                <Text size="sm">
+                  {receipt.taxIncluded ? 'Prices include tax' : `Sales tax ${formatPercent(receipt.taxRatePercent)}`}
+                </Text>
                 <Anchor
                   component="button"
                   type="button"
                   size="sm"
-                  onClick={() => setTaxRateDraft(receipt.taxRatePercent)}
+                  onClick={() => {
+                    setTaxRateDraft(receipt.taxRatePercent)
+                    setTaxIncludedDraft(receipt.taxIncluded)
+                  }}
                   disabled={busy || receipt.status === 'Processing'}
                 >
                   Change
@@ -198,7 +210,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
               <form
                 onSubmit={(event) => {
                   event.preventDefault()
-                  void saveTaxRate(taxRateDraft)
+                  void saveTaxRate(taxRateDraft, taxIncludedDraft)
                 }}
               >
                 <Group gap="xs" align="flex-end">
@@ -212,8 +224,16 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                     max={maxTaxRatePercent}
                     decimalScale={3}
                     allowNegative={false}
+                    disabled={taxIncludedDraft}
                     value={taxRateDraft}
                     onChange={setTaxRateDraft}
+                  />
+                  <Checkbox
+                    label="Prices include tax"
+                    size="xs"
+                    mb={6}
+                    checked={taxIncludedDraft}
+                    onChange={(event) => setTaxIncludedDraft(event.currentTarget.checked)}
                   />
                   <Button type="submit" size="xs" variant="default" disabled={busy || !taxRateValid}>
                     Save
@@ -271,7 +291,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                       <Table.Th>Item</Table.Th>
                       <Table.Th ta="right">Qty</Table.Th>
                       <Table.Th ta="right">Amount</Table.Th>
-                      <Table.Th>Tax</Table.Th>
+                      {showTax && <Table.Th>Tax</Table.Th>}
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
@@ -294,15 +314,17 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                         </Table.Td>
                         <Table.Td ta="right">{line.quantity}</Table.Td>
                         <Table.Td ta="right">{formatMoney(line.amount)}</Table.Td>
-                        <Table.Td style={{ whiteSpace: 'nowrap' }}>
-                          {line.taxCode}
-                          {line.isTaxed && (
-                            <Text span c="green" title={`Taxed at ${formatPercent(receipt.taxRatePercent)}`}>
-                              {' '}
-                              ✓
-                            </Text>
-                          )}
-                        </Table.Td>
+                        {showTax && (
+                          <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                            {line.taxCode}
+                            {line.isTaxed && (
+                              <Text span c="green" title={`Taxed at ${formatPercent(receipt.taxRatePercent)}`}>
+                                {' '}
+                                ✓
+                              </Text>
+                            )}
+                          </Table.Td>
+                        )}
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
@@ -312,7 +334,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                         Subtotal
                       </Table.Th>
                       <Table.Td ta="right">{formatMoney(receipt.subtotal)}</Table.Td>
-                      <Table.Td />
+                      {showTax && <Table.Td />}
                     </Table.Tr>
                     {checks && receipt.discountPercent !== 0 && (
                       <Table.Tr>
@@ -320,10 +342,10 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                           Discount ({formatPercent(receipt.discountPercent)} off)
                         </Table.Th>
                         <Table.Td ta="right">{formatMoney(checks.discount)}</Table.Td>
-                        <Table.Td />
+                        {showTax && <Table.Td />}
                       </Table.Tr>
                     )}
-                    {checks && (
+                    {checks && showTax && (
                       <Table.Tr>
                         <Table.Th colSpan={compact ? 2 : 3} ta="right">
                           Taxed items
@@ -332,13 +354,15 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                         <Table.Td />
                       </Table.Tr>
                     )}
-                    <Table.Tr>
-                      <Table.Th colSpan={compact ? 2 : 3} ta="right">
-                        Tax
-                      </Table.Th>
-                      <Table.Td ta="right">{formatMoney(receipt.tax)}</Table.Td>
-                      <Table.Td />
-                    </Table.Tr>
+                    {showTax && (
+                      <Table.Tr>
+                        <Table.Th colSpan={compact ? 2 : 3} ta="right">
+                          Tax
+                        </Table.Th>
+                        <Table.Td ta="right">{formatMoney(receipt.tax)}</Table.Td>
+                        <Table.Td />
+                      </Table.Tr>
+                    )}
                     <Table.Tr>
                       <Table.Th colSpan={compact ? 2 : 3} ta="right">
                         Total
@@ -346,7 +370,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                       <Table.Td ta="right" fw={700}>
                         {formatMoney(receipt.total)}
                       </Table.Td>
-                      <Table.Td />
+                      {showTax && <Table.Td />}
                     </Table.Tr>
                   </Table.Tfoot>
                 </Table>
@@ -361,14 +385,17 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
                     : `✗ Lines add up to ${formatMoney(checks.linesSum)}, but the subtotal is ${formatMoney(receipt.subtotal)}`}
                 </List.Item>
                 <List.Item c={checks.totalMatches ? 'green' : 'red'}>
-                  {checks.totalMatches ? '✓' : '✗'} Subtotal {receipt.discountPercent !== 0 && '− discount '}+ tax
-                  {checks.totalMatches ? ' equals' : " doesn't equal"} the total
+                  {checks.totalMatches ? '✓' : '✗'} Subtotal {receipt.discountPercent !== 0 && '− discount '}
+                  {showTax && '+ tax '}
+                  {checks.totalMatches ? 'equals' : "doesn't equal"} the total
                 </List.Item>
-                <List.Item c={checks.taxMatches ? 'green' : 'red'}>
-                  {checks.taxMatches ? '✓' : '✗'} {formatPercent(receipt.taxRatePercent)} tax on{' '}
-                  {formatMoney(checks.taxedSum)} of taxed items is {formatMoney(checks.expectedTax)}
-                  {checks.taxMatches ? '' : `, but the receipt shows ${formatMoney(receipt.tax)}`}
-                </List.Item>
+                {showTax && (
+                  <List.Item c={checks.taxMatches ? 'green' : 'red'}>
+                    {checks.taxMatches ? '✓' : '✗'} {formatPercent(receipt.taxRatePercent)} tax on{' '}
+                    {formatMoney(checks.taxedSum)} of taxed items is {formatMoney(checks.expectedTax)}
+                    {checks.taxMatches ? '' : `, but the receipt shows ${formatMoney(receipt.tax)}`}
+                  </List.Item>
+                )}
               </List>
             )}
 

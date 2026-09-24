@@ -30,7 +30,8 @@ public static class ReceiptChecks
         decimal? tax,
         decimal? total,
         decimal taxRatePercent,
-        decimal discountPercent = 0m)
+        decimal discountPercent = 0m,
+        bool taxIncluded = false)
     {
         var all = lines.ToList();
         var sum = all.Sum(line => line.Amount);
@@ -43,11 +44,13 @@ public static class ReceiptChecks
             sum,
             LinesMatchSubtotal: subtotal == sum,
             discount,
-            // Receipts without any tax may come back with a null tax.
-            TotalMatches: subtotal is not null && total is not null && subtotal + discount + (tax ?? 0m) == total,
+            // Receipts without any tax may come back with a null tax. Tax already inside the prices adds nothing.
+            TotalMatches: subtotal is not null && total is not null &&
+                subtotal + discount + (taxIncluded ? 0m : tax ?? 0m) == total,
             taxedSum,
             expectedTax,
-            TaxMatches: Math.Abs(expectedTax - (tax ?? 0m)) <= TaxTolerance);
+            // How much of an included tax is tax doesn't change what anyone pays, so it isn't checked.
+            TaxMatches: taxIncluded || Math.Abs(expectedTax - (tax ?? 0m)) <= TaxTolerance);
     }
 
     /// <summary>The status an extracted receipt gets from its checks; shared with the tax rate editor.</summary>
