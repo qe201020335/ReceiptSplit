@@ -14,7 +14,7 @@ It has been tuned on receipts from Costco and T&T but should work with any gener
 
 ## Stack
 
-- ASP.NET Core 10 with EF Core and SQLite
+- ASP.NET Core 10 with EF Core and SQLite, logging to the console with Serilog
 - React, TypeScript and Vite with Mantine
 - An OpenAI-compatible [llama.cpp](https://github.com/ggml-org/llama.cpp) server with a vision model
 

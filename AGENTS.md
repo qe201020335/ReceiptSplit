@@ -47,6 +47,8 @@ browser.
   without calling the model. Actions that would clash with an extraction return `ReceiptActionResult.Busy` (409);
   which statuses count as busy differs per action, see `ReceiptService`.
 - **Business logic lives in `ReceiptService`**, not in the controller, so other entry points can reuse it.
+- **Logging is Serilog, console only**: the container's stdout is the log, so there is no file sink. Levels live
+  in the `Serilog` section of `appsettings.json` (`MinimumLevel`), not in `Logging`, which nothing reads any more.
 - **No authentication in the app yet.** It will first be deployed behind an identity-aware proxy (IAP), with sign-in
   and users (each receipt belonging to one) added later. Don't assume a trusted home network.
 

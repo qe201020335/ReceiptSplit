@@ -5,8 +5,20 @@ using Microsoft.Extensions.Options;
 using ReceiptSplit.Data;
 using ReceiptSplit.Extraction;
 using ReceiptSplit.Options;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Logs go to the console only: in Docker the container runtime collects stdout. Levels come from the Serilog
+// section of the configuration. The static Log.Logger is left alone because nothing uses it, and test hosts
+// running side by side would otherwise replace each other's.
+builder.Services.AddSerilog((services, logger) => logger
+    .ReadFrom.Configuration(builder.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(outputTemplate:
+        "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}"),
+    preserveStaticLogger: true);
 
 builder.Services.AddOptions<StorageOptions>()
     .Bind(builder.Configuration.GetSection(StorageOptions.SectionName))
