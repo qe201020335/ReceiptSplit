@@ -16,4 +16,7 @@ services:
       # The SQLite database and uploaded photos. Create the folder before the first start, or Docker creates it
       # owned by root and the app can't write to it.
       - ${RECEIPTSPLIT_DATA:-./data}:/app/data
+      # Optional settings layered over the image's appsettings.json. Create the file first, or Docker mounts an
+      # empty folder in its place. The environment variables above still win over anything set in it.
+      # - ./appsettings.Production.json:/app/appsettings.Production.json:ro
     restart: unless-stopped
