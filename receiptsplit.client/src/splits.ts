@@ -69,7 +69,18 @@ export interface PersonTotal {
   itemsCents: number
   /** Their part of the storewide discounts, negative or 0. */
   discountCents: number
+  /** Receipt id -> their part of that receipt's storewide discount, negative; only receipts with one. */
+  discounts: Record<string, number>
   items: PersonItem[]
+}
+
+/** A receipt as the summary names it. */
+export interface SummaryReceipt {
+  id: string
+  /** The store, with the purchase date when another receipt in the split is from the same store. */
+  name: string
+  /** Percentage taken off the whole receipt after the subtotal; 0 for none. */
+  discountPercent: number
 }
 
 export interface SplitSummary {
@@ -78,8 +89,8 @@ export interface SplitSummary {
   assignedCents: number
   /** Sum of every line, tax included, less the storewide discounts. */
   linesCents: number
-  /** Names the storewide discount, e.g. "10% off"; null when no receipt has one. */
-  discountLabel: string | null
+  /** The receipts being split, in order. */
+  receipts: SummaryReceipt[]
   receiptTotalCents: number | null
   unassigned: number
   mismatched: number
@@ -181,7 +192,7 @@ export function lineSplit(line: SplitLine, assignment: LineAssignment, people: s
  */
 export function summarize(lines: SplitLine[], state: SplitState, receipts: ReceiptDetail[]): SplitSummary {
   const people = state.people.map(
-    (person): PersonTotal => ({ person, cents: 0, itemsCents: 0, discountCents: 0, items: [] }),
+    (person): PersonTotal => ({ person, cents: 0, itemsCents: 0, discountCents: 0, discounts: {}, items: [] }),
   )
   let assignedCents = 0
   let unassigned = 0
@@ -231,7 +242,10 @@ export function summarize(lines: SplitLine[], state: SplitState, receipts: Recei
     )
     if (weights.some((weight) => weight > 0)) {
       const parts = allocate(-discountCents, weights)
-      people.forEach((person, index) => (person.discountCents -= parts[index]))
+      people.forEach((person, index) => {
+        person.discountCents -= parts[index]
+        person.discounts[receipt.id] = -parts[index]
+      })
     }
   }
   for (const person of people) {
@@ -244,7 +258,11 @@ export function summarize(lines: SplitLine[], state: SplitState, receipts: Recei
     people,
     assignedCents: people.reduce((sum, person) => sum + person.cents, 0),
     linesCents: linesCents + totalDiscountCents,
-    discountLabel: discountLabel(receipts),
+    receipts: receipts.map((receipt) => ({
+      id: receipt.id,
+      name: receiptName(receipt, receipts),
+      discountPercent: receiptDiscountCents(receipt) !== 0 ? receipt.discountPercent : 0,
+    })),
     receiptTotalCents: totals.some((total) => total == null)
       ? null
       : totals.reduce((sum: number, total) => sum + toCents(total ?? 0), 0),
@@ -258,35 +276,65 @@ function receiptDiscountCents(receipt: ReceiptDetail): number {
   return receipt.discountPercent !== 0 && receipt.checks ? toCents(receipt.checks.discount) : 0
 }
 
-/** "10% off" when the discounted receipts share one percentage; receipts with different ones just say "Discount". */
-function discountLabel(receipts: ReceiptDetail[]): string | null {
-  const percents = new Set(
-    receipts.filter((receipt) => receiptDiscountCents(receipt) !== 0).map((receipt) => receipt.discountPercent),
-  )
-  if (percents.size === 0) {
-    return null
-  }
-  return percents.size === 1 ? `${formatPercent([...percents][0])} off` : 'Discount'
+function receiptName(receipt: ReceiptDetail, receipts: ReceiptDetail[]): string {
+  const store = receipt.storeName ?? 'Unknown store'
+  const shared = receipts.some((other) => other !== receipt && (other.storeName ?? 'Unknown store') === store)
+  return shared && receipt.purchaseDate ? `${store} ${receipt.purchaseDate}` : store
 }
 
-/** Plain text for pasting into a chat: each person's total, then what it is made of. */
+/**
+ * Names a receipt's storewide discount: "10% off" when there is only the one receipt, otherwise with the store in
+ * front, since the discount only comes off that receipt's items.
+ */
+export function discountLabel(summary: SplitSummary, receipt: SummaryReceipt): string {
+  const off = `${formatPercent(receipt.discountPercent)} off`
+  return summary.receipts.length > 1 ? `${receipt.name} ${off}` : off
+}
+
+function itemText({ line, part, split }: PersonItem, indent: string): string {
+  const note =
+    split.totalShares == null
+      ? ` (of ${formatCents(line.cents)})`
+      : split.totalShares > 1
+        ? ` (${part.shares}/${split.totalShares} share)`
+        : ''
+  return `${indent}${line.name}: ${formatCents(part.cents)}${note}`
+}
+
+/**
+ * Plain text for pasting into a chat: each person's total, then what it is made of. With several receipts their
+ * items are grouped under each store, so a storewide discount sits with the receipt it came off.
+ */
 export function summaryText(summary: SplitSummary): string {
+  const off = (receipt: SummaryReceipt) => `${formatPercent(receipt.discountPercent)} off`
+
   return summary.people
-    .map(({ person, cents, items, discountCents }) =>
-      [
-        `${person}: ${formatCents(cents)}`,
-        ...items.map(({ line, part, split }) => {
-          const note =
-            split.totalShares == null
-              ? ` (of ${formatCents(line.cents)})`
-              : split.totalShares > 1
-                ? ` (${part.shares}/${split.totalShares} share)`
-                : ''
-          return `  ${line.name}: ${formatCents(part.cents)}${note}`
-        }),
-        ...(discountCents !== 0 ? [`  ${summary.discountLabel}: ${formatCents(discountCents)}`] : []),
-      ].join('\n'),
-    )
+    .map(({ person, cents, items, discounts }) => {
+      const heading = `${person}: ${formatCents(cents)}`
+      if (summary.receipts.length === 1) {
+        const [receipt] = summary.receipts
+        const discount = discounts[receipt.id]
+        return [
+          heading,
+          ...items.map((item) => itemText(item, '  ')),
+          ...(discount ? [`  ${off(receipt)}: ${formatCents(discount)}`] : []),
+        ].join('\n')
+      }
+
+      const groups = summary.receipts.flatMap((receipt) => {
+        const receiptItems = items.filter((item) => item.line.receiptId === receipt.id)
+        const discount = discounts[receipt.id]
+        if (receiptItems.length === 0 && !discount) {
+          return []
+        }
+        return [
+          `  ${receipt.name}`,
+          ...receiptItems.map((item) => itemText(item, '    ')),
+          ...(discount ? [`    ${off(receipt)}: ${formatCents(discount)}`] : []),
+        ]
+      })
+      return [heading, ...groups].join('\n')
+    })
     .join('\n\n')
 }
 
