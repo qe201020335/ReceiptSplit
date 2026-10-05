@@ -33,7 +33,7 @@ public class ExtractionErrorsTests
     public void Describes_the_other_failures_plainly()
     {
         Assert.Equal("Unsupported image format: Svg.", ExtractionErrors.Describe(new InvalidImageException("Unsupported image format: Svg."), Timeout));
-        Assert.StartsWith("Couldn't reach the model server", ExtractionErrors.Describe(new HttpRequestException("Connection refused (192.168.1.250:8000)"), Timeout));
+        Assert.StartsWith("Couldn't reach the model server", ExtractionErrors.Describe(new HttpRequestException("Connection refused"), Timeout));
         Assert.StartsWith("The model server didn't answer within 10 minutes", ExtractionErrors.Describe(new TaskCanceledException(), Timeout));
         Assert.Equal("The model server sent a response that couldn't be read.", ExtractionErrors.Describe(new JsonException("'<' is an invalid start"), Timeout));
         Assert.Equal("The photo couldn't be decoded.", ExtractionErrors.Describe(new MagickCorruptImageErrorException("broken"), Timeout));
