@@ -5,6 +5,9 @@ import { formatPercent } from './format.ts'
 
 /** A receipt line with its share of the tax included, which is what people pay for it. */
 export interface SplitLine {
+  /** Identifies the line across receipts, whose positions repeat: receipt id and position. */
+  key: string
+  receiptId: string
   position: number
   name: string
   code: string | null
@@ -31,8 +34,8 @@ export interface LineAssignment {
 
 export interface SplitState {
   people: string[]
-  /** Keyed by line position; a missing line is split by shares with nobody assigned. */
-  lines: Record<number, LineAssignment>
+  /** Keyed by SplitLine.key; a missing line is split by shares with nobody assigned. */
+  lines: Record<string, LineAssignment>
 }
 
 export type LineProblem = 'unassigned' | 'mismatch'
@@ -130,6 +133,8 @@ export function splitLines(receipt: ReceiptDetail): SplitLine[] {
       : taxed.map((cents) => Math.round((cents * receipt.taxRatePercent) / 100))
 
   return receipt.lines.map((line, index) => ({
+    key: `${receipt.id}:${line.position}`,
+    receiptId: receipt.id,
     position: line.position,
     name: line.name,
     code: line.code,
@@ -140,8 +145,8 @@ export function splitLines(receipt: ReceiptDetail): SplitLine[] {
   }))
 }
 
-export function assignmentFor(state: SplitState, position: number): LineAssignment {
-  return state.lines[position] ?? emptyAssignment
+export function assignmentFor(state: SplitState, key: string): LineAssignment {
+  return state.lines[key] ?? emptyAssignment
 }
 
 export function lineSplit(line: SplitLine, assignment: LineAssignment, people: string[]): LineSplit {
@@ -183,7 +188,7 @@ export function summarize(lines: SplitLine[], state: SplitState, receipt: Receip
   let mismatched = 0
 
   for (const line of lines) {
-    const split = lineSplit(line, assignmentFor(state, line.position), state.people)
+    const split = lineSplit(line, assignmentFor(state, line.key), state.people)
     assignedCents += split.assignedCents
     if (split.problem === 'unassigned') {
       unassigned += 1
@@ -259,10 +264,10 @@ function withoutKey<T>(record: Record<string, T>, key: string): Record<string, T
 
 function updateLine(
   state: SplitState,
-  position: number,
+  key: string,
   change: (assignment: LineAssignment) => LineAssignment,
 ): SplitState {
-  return { ...state, lines: { ...state.lines, [position]: change(assignmentFor(state, position)) } }
+  return { ...state, lines: { ...state.lines, [key]: change(assignmentFor(state, key)) } }
 }
 
 /**
@@ -285,8 +290,8 @@ export function setPeople(state: SplitState, names: string[]): SplitState {
   const people = normalizePeople(names)
   const removed = state.people.filter((person) => !people.includes(person))
   const lines = Object.fromEntries(
-    Object.entries(state.lines).map(([position, assignment]) => [
-      position,
+    Object.entries(state.lines).map(([key, assignment]) => [
+      key,
       removed.reduce(
         (current, person) => ({
           ...current,
@@ -300,8 +305,8 @@ export function setPeople(state: SplitState, names: string[]): SplitState {
   return { people, lines }
 }
 
-export function changeShare(state: SplitState, position: number, person: string, delta: number): SplitState {
-  return updateLine(state, position, (assignment) => {
+export function changeShare(state: SplitState, key: string, person: string, delta: number): SplitState {
+  return updateLine(state, key, (assignment) => {
     const count = (assignment.shares[person] ?? 0) + delta
     return {
       ...assignment,
@@ -310,27 +315,27 @@ export function changeShare(state: SplitState, position: number, person: string,
   })
 }
 
-export function addEveryone(state: SplitState, position: number): SplitState {
-  return updateLine(state, position, (assignment) => ({
+export function addEveryone(state: SplitState, key: string): SplitState {
+  return updateLine(state, key, (assignment) => ({
     ...assignment,
     shares: Object.fromEntries(state.people.map((person) => [person, (assignment.shares[person] ?? 0) + 1])),
   }))
 }
 
 /** Clears whichever of shares or amounts the line is currently split by. */
-export function clearLine(state: SplitState, position: number): SplitState {
-  return updateLine(state, position, (assignment) =>
+export function clearLine(state: SplitState, key: string): SplitState {
+  return updateLine(state, key, (assignment) =>
     assignment.mode === 'amounts' ? { ...assignment, amounts: {} } : { ...assignment, shares: {} },
   )
 }
 
-export function setMode(state: SplitState, position: number, mode: SplitMode): SplitState {
-  return updateLine(state, position, (assignment) => ({ ...assignment, mode }))
+export function setMode(state: SplitState, key: string, mode: SplitMode): SplitState {
+  return updateLine(state, key, (assignment) => ({ ...assignment, mode }))
 }
 
 /** Sets a person's amount in cents for a line, or removes it when null. */
-export function setAmount(state: SplitState, position: number, person: string, cents: number | null): SplitState {
-  return updateLine(state, position, (assignment) => ({
+export function setAmount(state: SplitState, key: string, person: string, cents: number | null): SplitState {
+  return updateLine(state, key, (assignment) => ({
     ...assignment,
     amounts: cents == null ? withoutKey(assignment.amounts, person) : { ...assignment.amounts, [person]: cents },
   }))

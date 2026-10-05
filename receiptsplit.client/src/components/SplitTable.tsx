@@ -58,7 +58,7 @@ export function SplitTable({ lines, state, actions }: SplitTableProps) {
           </Table.Thead>
           <Table.Tbody>
             {lines.map((line) => {
-              const assignment = assignmentFor(state, line.position)
+              const assignment = assignmentFor(state, line.key)
               const split = lineSplit(line, assignment, state.people)
               const background = split.problem ? problemColors[split.problem] : undefined
               const shares = (
@@ -70,7 +70,7 @@ export function SplitTable({ lines, state, actions }: SplitTableProps) {
                   : undefined
 
               return (
-                <Fragment key={line.position}>
+                <Fragment key={line.key}>
                   <Table.Tr bg={background} style={stacked ? { borderBottom: 0 } : undefined}>
                     {!stacked && <Table.Td c="dimmed">{line.position + 1}</Table.Td>}
                     <Table.Td>
@@ -149,18 +149,18 @@ function RowMenu({ line, assignment, hasPeople, actions }: RowMenuProps) {
       <Menu.Dropdown>
         <Menu.Item
           leftSection={<span className={classes.check}>{byAmounts ? '✓' : ''}</span>}
-          onClick={() => actions.setMode(line.position, byAmounts ? 'shares' : 'amounts')}
+          onClick={() => actions.setMode(line.key, byAmounts ? 'shares' : 'amounts')}
         >
           Split by $ amounts
         </Menu.Item>
         <Menu.Item
           leftSection={<span className={classes.check} />}
           disabled={byAmounts || !hasPeople}
-          onClick={() => actions.addEveryone(line.position)}
+          onClick={() => actions.addEveryone(line.key)}
         >
           Give everyone a share
         </Menu.Item>
-        <Menu.Item leftSection={<span className={classes.check} />} onClick={() => actions.clearLine(line.position)}>
+        <Menu.Item leftSection={<span className={classes.check} />} onClick={() => actions.clearLine(line.key)}>
           Clear
         </Menu.Item>
       </Menu.Dropdown>
@@ -190,7 +190,7 @@ function ShareButtons({ line, assignment, people, actions }: ShareButtonsProps) 
     const others = Object.entries(assignment.amounts)
       .filter(([other]) => other !== person)
       .reduce((sum, [, cents]) => sum + cents, 0)
-    const modalId = `split-amount-${line.position}`
+    const modalId = `split-amount-${line.key}`
     modals.open({
       modalId,
       title: `${person} pays towards ${line.name}`,
@@ -202,11 +202,11 @@ function ShareButtons({ line, assignment, people, actions }: ShareButtonsProps) 
           current={assignment.amounts[person] ?? null}
           remaining={line.cents - others}
           onSave={(cents) => {
-            actions.setAmount(line.position, person, cents)
+            actions.setAmount(line.key, person, cents)
             modals.close(modalId)
           }}
           onRemove={() => {
-            actions.setAmount(line.position, person, null)
+            actions.setAmount(line.key, person, null)
             modals.close(modalId)
           }}
           onCancel={() => modals.close(modalId)}
@@ -226,7 +226,7 @@ function ShareButtons({ line, assignment, people, actions }: ShareButtonsProps) 
               active={cents != null}
               label={cents != null ? `${person} $${formatCents(cents)}` : person}
               onPress={() => enterAmount(person)}
-              onSecondary={() => actions.setAmount(line.position, person, null)}
+              onSecondary={() => actions.setAmount(line.key, person, null)}
             />
           )
         }
@@ -238,8 +238,8 @@ function ShareButtons({ line, assignment, people, actions }: ShareButtonsProps) 
             active={count > 0}
             count={count}
             label={person}
-            onPress={() => actions.changeShare(line.position, person, 1)}
-            onSecondary={() => actions.changeShare(line.position, person, -1)}
+            onPress={() => actions.changeShare(line.key, person, 1)}
+            onSecondary={() => actions.changeShare(line.key, person, -1)}
           />
         )
       })}

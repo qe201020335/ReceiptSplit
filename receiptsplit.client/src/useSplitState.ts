@@ -17,13 +17,13 @@ export function useSplitState() {
   const actions = useMemo(
     () => ({
       setPeople: (names: string[]) => setState((current) => setPeople(current, names)),
-      changeShare: (position: number, person: string, delta: number) =>
-        setState((current) => changeShare(current, position, person, delta)),
-      addEveryone: (position: number) => setState((current) => addEveryone(current, position)),
-      clearLine: (position: number) => setState((current) => clearLine(current, position)),
-      setMode: (position: number, mode: SplitMode) => setState((current) => setMode(current, position, mode)),
-      setAmount: (position: number, person: string, cents: number | null) =>
-        setState((current) => setAmount(current, position, person, cents)),
+      changeShare: (key: string, person: string, delta: number) =>
+        setState((current) => changeShare(current, key, person, delta)),
+      addEveryone: (key: string) => setState((current) => addEveryone(current, key)),
+      clearLine: (key: string) => setState((current) => clearLine(current, key)),
+      setMode: (key: string, mode: SplitMode) => setState((current) => setMode(current, key, mode)),
+      setAmount: (key: string, person: string, cents: number | null) =>
+        setState((current) => setAmount(current, key, person, cents)),
     }),
     [],
   )
