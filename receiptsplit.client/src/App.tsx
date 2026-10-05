@@ -14,9 +14,12 @@ function App() {
   const [listError, setListError] = useState<string | null>(null)
   // Bumping this reloads the list.
   const [listVersion, setListVersion] = useState(0)
-  const [route, navigate, goBack] = useRoute()
+  const [route, navigate, goBack, navigateSplits] = useRoute()
   const selectedId = route.receiptId
 
+  // Receipts picked on the list to split together, or null when not picking. Kept while on the splits page, so
+  // coming back lets people change the set.
+  const [picked, setPicked] = useState<string[] | null>(null)
   const reloadList = useCallback(() => setListVersion((version) => version + 1), [])
 
   // On a phone the detail sits below the upload form and the list, so opening a receipt scrolls down to it.
@@ -115,7 +118,15 @@ function App() {
                     openReceipt(receipt.id)
                   }}
                 />
-                <ReceiptList receipts={receipts} error={listError} selectedId={selectedId} onSelect={openReceipt} />
+                <ReceiptList
+                  receipts={receipts}
+                  error={listError}
+                  selectedId={selectedId}
+                  onSelect={openReceipt}
+                  picked={picked}
+                  onPickedChange={setPicked}
+                  onSplit={navigateSplits}
+                />
               </Stack>
             </Grid.Col>
             <Grid.Col

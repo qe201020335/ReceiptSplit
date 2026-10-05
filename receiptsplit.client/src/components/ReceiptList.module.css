@@ -10,3 +10,20 @@
 .item[data-active] {
   cursor: default;
 }
+
+/* Mantine's card hides overflow, which makes it a scroll container and would keep the footer from sticking to the
+   window. Clipping keeps the rounded corners without that. */
+.card {
+  overflow: clip;
+}
+
+/* While picking receipts the Split button stays at the bottom of the window until the end of a long list. It runs
+   the card's full width, over the card's own bottom padding. */
+.footer {
+  position: sticky;
+  bottom: 0;
+  margin: 0 calc(-1 * var(--card-padding)) calc(-1 * var(--card-padding));
+  padding: var(--mantine-spacing-sm) var(--card-padding) var(--card-padding);
+  border-top: 1px solid var(--mantine-color-default-border);
+  background-color: var(--mantine-color-body);
+}
