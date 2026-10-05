@@ -1,8 +1,6 @@
 services:
   receiptsplit:
-    # Built and pushed by the CI workflow, so deploying needs only this file and a .env. The package is private
-    # while the repository is: log the host in first with a token that has read:packages.
-    #   echo <token> | docker login ghcr.io -u <user> --password-stdin
+    # Built and pushed by the CI workflow, so deploying needs only this file and a .env. 
     # Set RECEIPTSPLIT_IMAGE to pin a version (a v1.2.3 tag publishes 1.2.3 and 1.2).
     image: ${RECEIPTSPLIT_IMAGE:-ghcr.io/qe201020335/receiptsplit:latest}
     pull_policy: always
@@ -10,7 +8,7 @@ services:
       - "${RECEIPTSPLIT_PORT:-8080}:8080"
     environment:
       # Set these in a .env file next to this compose file (gitignored).
-      Llm__BaseUrl: ${LLM_BASE_URL:-http://192.168.1.250:8000}
+      Llm__BaseUrl: ${LLM_BASE_URL:-http://localhost:8000}
       Llm__ApiKey: ${LLM_API_KEY:-}
     # Runs as your user so the app can write to the data folder below; find your ids with `id -u` and `id -g`.
     user: "${RECEIPTSPLIT_UID:-1000}:${RECEIPTSPLIT_GID:-1000}"
