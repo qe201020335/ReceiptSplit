@@ -1,33 +1,40 @@
 import { useCallback, useEffect, useState } from 'react'
 
-export type View = 'detail' | 'splits'
-
 export interface Route {
-  /** The receipt being shown, or null for the start page. */
+  /** The receipt being shown, or null for the start page and the splits page. */
   receiptId: string | null
-  view: View
+  /** The receipts being split, one or several together, or null unless that is the page shown. */
+  splitIds: string[] | null
 }
 
 interface HistoryState {
   previous: string
 }
 
-const receiptPath = /^\/receipts\/([^/]+)(\/splits)?\/?$/
+const receiptPath = /^\/receipts\/([^/]+)\/?$/
+const splitsPath = /^\/splits\/?$/
+
+const home: Route = { receiptId: null, splitIds: null }
 
 function readRoute(): Route {
-  const match = receiptPath.exec(window.location.pathname)
-  return match ? { receiptId: match[1], view: match[2] ? 'splits' : 'detail' } : { receiptId: null, view: 'detail' }
+  const { pathname, search } = window.location
+  if (splitsPath.test(pathname)) {
+    const ids = (new URLSearchParams(search).get('receipts') ?? '').split(',').filter((id) => id !== '')
+    return ids.length > 0 ? { receiptId: null, splitIds: ids } : home
+  }
+  const match = receiptPath.exec(pathname)
+  return match ? { receiptId: match[1], splitIds: null } : home
 }
 
-function pathFor({ receiptId, view }: Route): string {
-  if (!receiptId) {
-    return '/'
+function pathFor({ receiptId, splitIds }: Route): string {
+  if (splitIds) {
+    return `/splits?receipts=${splitIds.map(encodeURIComponent).join(',')}`
   }
-  return view === 'splits' ? `/receipts/${receiptId}/splits` : `/receipts/${receiptId}`
+  return receiptId ? `/receipts/${receiptId}` : '/'
 }
 
 /**
- * The page being shown, kept in the URL as /receipts/:id or /receipts/:id/splits so links, reloads and
+ * The page being shown, kept in the URL as /receipts/:id or /splits?receipts=a,b so links, reloads and
  * back/forward work. The backend serves index.html for these paths.
  */
 export function useRoute() {
@@ -39,22 +46,29 @@ export function useRoute() {
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
-  const navigate = useCallback((receiptId: string | null, view: View = 'detail') => {
-    const next: Route = { receiptId, view: receiptId ? view : 'detail' }
+  const go = useCallback((next: Route) => {
     const path = pathFor(next)
-    if (window.location.pathname !== path) {
+    const previous = window.location.pathname + window.location.search
+    if (previous !== path) {
       // Remember where we came from, so goBack can return there instead of stacking another entry.
-      window.history.pushState({ previous: window.location.pathname } satisfies HistoryState, '', path)
+      window.history.pushState({ previous } satisfies HistoryState, '', path)
     }
     setRoute(next)
   }, [])
 
+  /** Shows a receipt, or the start page for null. */
+  const navigate = useCallback((receiptId: string | null) => go({ receiptId, splitIds: null }), [go])
+
+  /** Splits one receipt, or several together. */
+  const navigateSplits = useCallback((ids: string[]) => go({ receiptId: null, splitIds: ids }), [go])
+
   /**
-   * Goes back to the given page: a real history step when that is where the user came from, otherwise (opened by a
-   * link or a reload) it replaces the current entry, so the browser's back button doesn't return here either way.
+   * Goes back to a receipt, or the start page for null: a real history step when that is where the user came from,
+   * otherwise (opened by a link or a reload) it replaces the current entry, so the browser's back button doesn't
+   * return here either way.
    */
-  const goBack = useCallback((receiptId: string | null, view: View = 'detail') => {
-    const next: Route = { receiptId, view: receiptId ? view : 'detail' }
+  const goBack = useCallback((receiptId: string | null) => {
+    const next: Route = { receiptId, splitIds: null }
     const path = pathFor(next)
     if ((window.history.state as HistoryState | null)?.previous === path) {
       window.history.back()
@@ -64,5 +78,5 @@ export function useRoute() {
     setRoute(next)
   }, [])
 
-  return [route, navigate, goBack] as const
+  return [route, navigate, goBack, navigateSplits] as const
 }

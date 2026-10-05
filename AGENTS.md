@@ -113,7 +113,7 @@ first, so ask before doing that. Migrations are applied at startup by `DatabaseI
   colors come from `theme.ts` tokens and CSS variables so light and dark mode both work.
 - Keep the original palette: primary `#2f6fed` in light mode and `#6b9bff` in dark mode (with dark text on filled
   primary buttons). Check contrast in both color schemes.
-- Routing is a small hook, `useRoute.ts`, over the History API (`/receipts/:id`, `/receipts/:id/splits`); the
+- Routing is a small hook, `useRoute.ts`, over the History API (`/receipts/:id`, `/splits?receipts=a,b`); the
   backend serves `index.html` for any non-API path.
 - Every layout must work at phone width (390px) without sideways page scroll.
 - `api.ts` types mirror `ReceiptDtos.cs`; update both together. Split math stays in integer cents in `splits.ts`.
