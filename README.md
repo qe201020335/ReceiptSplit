@@ -8,7 +8,7 @@ reads the lines, and the app checks them against the receipt's own subtotal, tax
 corrected by hand. Once the receipt checks out, give each item to whoever pays for it, by shares or by dollar
 amounts, and copy a summary of who owes what.
 
-It has been tuned on receipts from Canadian stores such as Costco and T&T.
+It has been tuned on receipts from Costco and T&T but should work with any generic receipt.
 
 ## Stack
 
