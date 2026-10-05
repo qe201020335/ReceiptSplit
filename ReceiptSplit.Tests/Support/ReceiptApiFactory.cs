@@ -20,6 +20,8 @@ public sealed class ReceiptApiFactory(bool useFakeLlm = true) : WebApplicationFa
         builder.UseSetting("Storage:Root", StorageRoot);
         if (useFakeLlm)
         {
+            // The app checks at startup that the model server offers the configured model.
+            builder.UseSetting("Llm:Model", FakeLlamaClient.ModelName);
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<ILlamaClient>();

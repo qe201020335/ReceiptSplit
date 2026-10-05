@@ -17,6 +17,9 @@ public sealed record LlmCompletion(
 public interface ILlamaClient
 {
     Task<LlmCompletion> ExtractReceiptAsync(PreparedImage image, CancellationToken cancellationToken);
+
+    /// <summary>The names the server accepts as a request's model: each model's id and its aliases.</summary>
+    Task<IReadOnlyList<string>> ListModelsAsync(CancellationToken cancellationToken);
 }
 
 /// <summary>Calls llama-server's OpenAI-compatible chat endpoint with the settings validated on real receipts.</summary>
@@ -53,14 +56,7 @@ public sealed class LlamaClient(HttpClient http, IOptions<LlmOptions> options) :
 
         var stopwatch = Stopwatch.StartNew();
         using var response = await http.PostAsJsonAsync("v1/chat/completions", request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new HttpRequestException(
-                $"llama-server returned {(int)response.StatusCode}: {body[..Math.Min(body.Length, 500)]}",
-                inner: null,
-                response.StatusCode);
-        }
+        await EnsureSuccessAsync(response, cancellationToken);
 
         var completion = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(cancellationToken);
         stopwatch.Stop();
@@ -75,6 +71,36 @@ public sealed class LlamaClient(HttpClient http, IOptions<LlmOptions> options) :
             completion.Usage?.CompletionTokens,
             stopwatch.Elapsed);
     }
+
+    public async Task<IReadOnlyList<string>> ListModelsAsync(CancellationToken cancellationToken)
+    {
+        using var response = await http.GetAsync("v1/models", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var list = await response.Content.ReadFromJsonAsync<ModelList>(cancellationToken);
+        // In router mode llama-server also accepts a model's aliases in place of its id.
+        return (list?.Data ?? [])
+            .SelectMany(m => (m.Aliases ?? []).Prepend(m.Id))
+            .OfType<string>()
+            .Distinct()
+            .ToList();
+    }
+
+    private static async Task EnsureSuccessAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException(
+                $"llama-server returned {(int)response.StatusCode}: {body[..Math.Min(body.Length, 500)]}",
+                inner: null,
+                response.StatusCode);
+        }
+    }
+
+    private sealed record ModelList(List<ModelEntry>? Data);
+
+    private sealed record ModelEntry(string? Id, List<string>? Aliases);
 
     private sealed record ChatCompletionResponse(string? Model, List<ChatChoice>? Choices, ChatUsage? Usage);
 

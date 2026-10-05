@@ -30,12 +30,19 @@ public sealed class FakeLlamaClient : ILlamaClient
         {"s": "415.34", "d": 10, "t": "29.80", "T": "403.60", "store": "Target", "date": "2025-08-21"}
         """;
 
+    public const string ModelName = "fake-model";
+
     private volatile TaskCompletionSource _gate = CompletedGate();
 
     public string Content { get; set; } = ValidOutput;
 
     /// <summary>When set, extraction requests throw this instead of answering.</summary>
     public Exception? Failure { get; set; }
+
+    public List<string> Models { get; } = [ModelName];
+
+    /// <summary>When set, listing the models throws this, as the startup check does.</summary>
+    public Exception? ListFailure { get; set; }
 
     public ConcurrentQueue<PreparedImage> Requests { get; } = new();
 
@@ -53,8 +60,12 @@ public sealed class FakeLlamaClient : ILlamaClient
             throw Failure;
         }
 
-        return new LlmCompletion(Content, "fake-model", "stop", 100, 50, TimeSpan.FromMilliseconds(5));
+        return new LlmCompletion(Content, ModelName, "stop", 100, 50, TimeSpan.FromMilliseconds(5));
     }
+
+    public Task<IReadOnlyList<string>> ListModelsAsync(CancellationToken cancellationToken) => ListFailure is not null
+        ? Task.FromException<IReadOnlyList<string>>(ListFailure)
+        : Task.FromResult<IReadOnlyList<string>>(Models);
 
     private static TaskCompletionSource CompletedGate()
     {

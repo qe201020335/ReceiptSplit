@@ -44,6 +44,7 @@ builder.Services.AddHttpClient<ILlamaClient, LlamaClient>((sp, http) =>
 });
 builder.Services.AddScoped<ReceiptExtractor>();
 builder.Services.AddScoped<ReceiptService>();
+builder.Services.AddScoped<ModelServerCheck>();
 // Registered after DatabaseInitializer so migrations are applied before unfinished receipts are re-queued.
 builder.Services.AddHostedService<ExtractionWorker>();
 
@@ -72,4 +73,14 @@ app.MapControllers();
 app.MapFallback("/api/{**path}", () => Results.NotFound());
 app.MapFallbackToFile("/index.html");
 
+// Before anything starts, so a model server that can't be used stops a deploy instead of failing every receipt.
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    if (!await scope.ServiceProvider.GetRequiredService<ModelServerCheck>().RunAsync(CancellationToken.None))
+    {
+        return 1;
+    }
+}
+
 app.Run();
+return 0;
