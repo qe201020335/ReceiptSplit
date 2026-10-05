@@ -46,21 +46,21 @@ export function ReceiptList({
   return (
     <Card withBorder padding="md" component="nav" aria-label="Receipts" className={classes.card}>
       <Stack gap="sm">
-        <Group justify="space-between" wrap="nowrap" gap="xs" mih={26}>
+        <Group justify="space-between" wrap="nowrap" gap="xs" mih={30}>
           <Title order={2}>Receipts</Title>
           {picking ? (
             <Group gap="xs" wrap="nowrap">
               <Text size="sm" c="dimmed">
                 {pickedIds.length} selected
               </Text>
-              <Button variant="subtle" size="compact-sm" onClick={() => onPickedChange(null)}>
+              <Button variant="default" size="xs" onClick={() => onPickedChange(null)}>
                 Cancel
               </Button>
             </Group>
           ) : (
             anySplittable && (
-              <Button variant="subtle" size="compact-sm" onClick={() => onPickedChange([])}>
-                Split several
+              <Button variant="default" size="xs" onClick={() => onPickedChange([])}>
+                Multi Split
               </Button>
             )
           )}
