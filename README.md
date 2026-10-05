@@ -2,6 +2,8 @@
 
 > [!WARNING]
 > This is completely vibe-coded. I (qe201020335) have not written a single line of code in this project.
+>
+> Use at your own risk!
 
 A web app for splitting a shopping receipt between people. Upload a photo of the receipt, a local vision model
 reads the lines, and the app checks them against the receipt's own subtotal, tax and total. Anything misread can be
