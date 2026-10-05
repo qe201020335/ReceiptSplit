@@ -67,7 +67,7 @@ export interface PersonTotal {
   cents: number
   /** Their items, tax included, before the storewide discount. */
   itemsCents: number
-  /** Their part of the storewide discount, negative or 0. */
+  /** Their part of the storewide discounts, negative or 0. */
   discountCents: number
   items: PersonItem[]
 }
@@ -76,10 +76,10 @@ export interface SplitSummary {
   people: PersonTotal[]
   /** What people owe between them, storewide discount taken off. */
   assignedCents: number
-  /** Sum of every line, tax included, less the storewide discount. */
+  /** Sum of every line, tax included, less the storewide discounts. */
   linesCents: number
-  /** Percentage taken off the whole receipt after the subtotal; 0 for none. */
-  discountPercent: number
+  /** Names the storewide discount, e.g. "10% off"; null when no receipt has one. */
+  discountLabel: string | null
   receiptTotalCents: number | null
   unassigned: number
   mismatched: number
@@ -175,17 +175,19 @@ export function lineSplit(line: SplitLine, assignment: LineAssignment, people: s
 }
 
 /**
- * Each person's total for the lines assigned to them. A storewide discount is not spread over the lines: it comes
- * off each person's total instead, in proportion to their items, with whatever is still unassigned holding its own
- * share until someone takes it.
+ * Each person's total for the lines assigned to them, across one or more receipts. A storewide discount is not
+ * spread over the lines: it comes off each person's total instead, in proportion to their items from that receipt,
+ * with whatever is still unassigned on that receipt holding its own share until someone takes it.
  */
-export function summarize(lines: SplitLine[], state: SplitState, receipt: ReceiptDetail): SplitSummary {
+export function summarize(lines: SplitLine[], state: SplitState, receipts: ReceiptDetail[]): SplitSummary {
   const people = state.people.map(
     (person): PersonTotal => ({ person, cents: 0, itemsCents: 0, discountCents: 0, items: [] }),
   )
   let assignedCents = 0
   let unassigned = 0
   let mismatched = 0
+  // Receipt id -> what each person (in order) has from it, then what is assigned on it.
+  const byReceipt = new Map<string, { itemsCents: number[]; assignedCents: number }>()
 
   for (const line of lines) {
     const split = lineSplit(line, assignmentFor(state, line.key), state.people)
@@ -195,39 +197,76 @@ export function summarize(lines: SplitLine[], state: SplitState, receipt: Receip
     } else if (split.problem === 'mismatch') {
       mismatched += 1
     }
+    let receiptParts = byReceipt.get(line.receiptId)
+    if (!receiptParts) {
+      receiptParts = { itemsCents: people.map(() => 0), assignedCents: 0 }
+      byReceipt.set(line.receiptId, receiptParts)
+    }
+    receiptParts.assignedCents += split.assignedCents
     for (const part of split.parts) {
-      const total = people.find((person) => person.person === part.person)
-      if (total) {
-        total.itemsCents += part.cents
-        total.items.push({ line, part, split })
+      const index = people.findIndex((person) => person.person === part.person)
+      if (index >= 0) {
+        people[index].itemsCents += part.cents
+        people[index].items.push({ line, part, split })
+        receiptParts.itemsCents[index] += part.cents
       }
     }
   }
 
-  const linesCents = lines.reduce((sum, line) => sum + line.cents, 0)
-  const discountCents = receipt.discountPercent !== 0 && receipt.checks ? toCents(receipt.checks.discount) : 0
-  // A person whose items come to less than nothing gets none of the discount, and amounts typed past a line's
-  // price leave nothing unassigned; negative weights would hand out more than the discount.
-  const weights = [...people.map((person) => person.itemsCents), linesCents - assignedCents].map((cents) =>
-    Math.max(0, cents),
-  )
-  if (discountCents !== 0 && weights.some((weight) => weight > 0)) {
-    const parts = allocate(-discountCents, weights)
-    people.forEach((person, index) => (person.discountCents = -parts[index]))
+  let totalDiscountCents = 0
+  for (const receipt of receipts) {
+    const discountCents = receiptDiscountCents(receipt)
+    const receiptParts = byReceipt.get(receipt.id)
+    if (discountCents === 0 || !receiptParts) {
+      continue
+    }
+    totalDiscountCents += discountCents
+    const receiptLinesCents = lines
+      .filter((line) => line.receiptId === receipt.id)
+      .reduce((sum, line) => sum + line.cents, 0)
+    // A person whose items come to less than nothing gets none of the discount, and amounts typed past a line's
+    // price leave nothing unassigned; negative weights would hand out more than the discount.
+    const weights = [...receiptParts.itemsCents, receiptLinesCents - receiptParts.assignedCents].map((cents) =>
+      Math.max(0, cents),
+    )
+    if (weights.some((weight) => weight > 0)) {
+      const parts = allocate(-discountCents, weights)
+      people.forEach((person, index) => (person.discountCents -= parts[index]))
+    }
   }
   for (const person of people) {
     person.cents = person.itemsCents + person.discountCents
   }
 
+  const linesCents = lines.reduce((sum, line) => sum + line.cents, 0)
+  const totals = receipts.map((receipt) => receipt.total)
   return {
     people,
     assignedCents: people.reduce((sum, person) => sum + person.cents, 0),
-    linesCents: linesCents + discountCents,
-    discountPercent: receipt.discountPercent,
-    receiptTotalCents: receipt.total == null ? null : toCents(receipt.total),
+    linesCents: linesCents + totalDiscountCents,
+    discountLabel: discountLabel(receipts),
+    receiptTotalCents: totals.some((total) => total == null)
+      ? null
+      : totals.reduce((sum: number, total) => sum + toCents(total ?? 0), 0),
     unassigned,
     mismatched,
   }
+}
+
+/** The storewide discount in cents, negative or 0. */
+function receiptDiscountCents(receipt: ReceiptDetail): number {
+  return receipt.discountPercent !== 0 && receipt.checks ? toCents(receipt.checks.discount) : 0
+}
+
+/** "10% off" when the discounted receipts share one percentage; receipts with different ones just say "Discount". */
+function discountLabel(receipts: ReceiptDetail[]): string | null {
+  const percents = new Set(
+    receipts.filter((receipt) => receiptDiscountCents(receipt) !== 0).map((receipt) => receipt.discountPercent),
+  )
+  if (percents.size === 0) {
+    return null
+  }
+  return percents.size === 1 ? `${formatPercent([...percents][0])} off` : 'Discount'
 }
 
 /** Plain text for pasting into a chat: each person's total, then what it is made of. */
@@ -245,7 +284,7 @@ export function summaryText(summary: SplitSummary): string {
                 : ''
           return `  ${line.name}: ${formatCents(part.cents)}${note}`
         }),
-        ...(discountCents !== 0 ? [`  ${formatPercent(summary.discountPercent)} off: ${formatCents(discountCents)}`] : []),
+        ...(discountCents !== 0 ? [`  ${summary.discountLabel}: ${formatCents(discountCents)}`] : []),
       ].join('\n'),
     )
     .join('\n\n')
