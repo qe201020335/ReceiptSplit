@@ -47,6 +47,9 @@ browser.
   without calling the model. Actions that would clash with an extraction return `ReceiptActionResult.Busy` (409);
   which statuses count as busy differs per action, see `ReceiptService`.
 - **Business logic lives in `ReceiptService`**, not in the controller, so other entry points can reuse it.
+- **The model server is checked at startup.** `ModelServerCheck` lists the models (`GET /v1/models`, which doesn't
+  load one) and `Program.cs` exits with code 1 when the server can't be reached, rejects the API key or doesn't
+  offer `Llm:Model` by id or alias. `ReceiptApiFactory` sets `Llm:Model` to the fake client's model for this.
 - **Logging is Serilog, console only**: the container's stdout is the log, so there is no file sink. Levels live
   in the `Serilog` section of `appsettings.json` (`MinimumLevel`), not in `Logging`, which nothing reads any more.
 - **No authentication in the app yet.** It will first be deployed behind an identity-aware proxy (IAP), with sign-in
