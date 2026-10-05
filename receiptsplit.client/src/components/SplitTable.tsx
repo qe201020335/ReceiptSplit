@@ -2,6 +2,7 @@ import { Fragment } from 'react'
 import { ActionIcon, Button, Card, Group, Indicator, Menu, Table, Text } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { modals } from '@mantine/modals'
+import type { ReceiptDetail } from '../api.ts'
 import { formatMoney } from '../format.ts'
 import {
   assignmentFor,
@@ -18,6 +19,8 @@ import { SplitAmountForm } from './SplitAmountForm.tsx'
 import classes from './SplitTable.module.css'
 
 interface SplitTableProps {
+  /** With more than one, each receipt's lines get a heading row naming it. */
+  receipts: ReceiptDetail[]
   lines: SplitLine[]
   state: SplitState
   actions: SplitActions
@@ -30,10 +33,15 @@ const problemColors: Record<LineProblem, string> = {
   mismatch: 'color-mix(in srgb, var(--mantine-color-red-6) 22%, transparent)',
 }
 
-export function SplitTable({ lines, state, actions }: SplitTableProps) {
+export function SplitTable({ receipts, lines, state, actions }: SplitTableProps) {
   // On a phone the share buttons get a full-width row under their item instead of a squeezed column. Read the
   // query while rendering, not after, so a phone doesn't paint the wide layout first.
   const stacked = useMediaQuery('(max-width: 48em)', undefined, { getInitialValueInEffect: false })
+  const several = receipts.length > 1
+  const groups = receipts.map((receipt) => ({
+    receipt,
+    lines: lines.filter((line) => line.receiptId === receipt.id),
+  }))
 
   return (
     <Card withBorder padding="md">
@@ -56,75 +64,102 @@ export function SplitTable({ lines, state, actions }: SplitTableProps) {
               </Table.Th>
             </Table.Tr>
           </Table.Thead>
-          <Table.Tbody>
-            {lines.map((line) => {
-              const assignment = assignmentFor(state, line.key)
-              const split = lineSplit(line, assignment, state.people)
-              const background = split.problem ? problemColors[split.problem] : undefined
-              const shares = (
-                <ShareButtons line={line} assignment={assignment} people={state.people} actions={actions} />
-              )
-              const mismatch =
-                split.problem === 'mismatch'
-                  ? `Amounts add up to ${formatCents(split.assignedCents)}, but the item is ${formatCents(line.cents)}`
-                  : undefined
+          {groups.map(({ receipt, lines: groupLines }) => (
+            <Table.Tbody key={receipt.id}>
+              {several && <ReceiptHeading receipt={receipt} stacked={stacked} />}
+              {groupLines.map((line) => {
+                const assignment = assignmentFor(state, line.key)
+                const split = lineSplit(line, assignment, state.people)
+                const background = split.problem ? problemColors[split.problem] : undefined
+                const shares = (
+                  <ShareButtons line={line} assignment={assignment} people={state.people} actions={actions} />
+                )
+                const mismatch =
+                  split.problem === 'mismatch'
+                    ? `Amounts add up to ${formatCents(split.assignedCents)}, but the item is ${formatCents(line.cents)}`
+                    : undefined
 
-              return (
-                <Fragment key={line.key}>
-                  <Table.Tr bg={background} style={stacked ? { borderBottom: 0 } : undefined}>
-                    {!stacked && <Table.Td c="dimmed">{line.position + 1}</Table.Td>}
-                    <Table.Td>
-                      {line.name}
-                      {line.code && (
-                        <Text span c="dimmed" size="xs">
-                          {' '}
-                          {line.code}
-                        </Text>
-                      )}
-                      {line.discount !== 0 && (
-                        <Text size="xs" c="dimmed">
-                          promotion {formatMoney(line.discount)}
-                        </Text>
-                      )}
-                    </Table.Td>
-                    <Table.Td ta="right">{line.quantity}</Table.Td>
-                    <Table.Td ta="right" style={{ whiteSpace: 'nowrap' }} title={mismatch}>
-                      {formatCents(line.cents)}
-                      {line.isTaxed && (
-                        <Text size="xs" c="dimmed">
-                          incl. tax
-                        </Text>
-                      )}
-                      {assignment.mode === 'amounts' && (
-                        <Text size="xs" c="brand">
-                          $ amounts
-                        </Text>
-                      )}
-                    </Table.Td>
-                    {!stacked && <Table.Td>{shares}</Table.Td>}
-                    <Table.Td>
-                      <RowMenu
-                        line={line}
-                        assignment={assignment}
-                        hasPeople={state.people.length > 0}
-                        actions={actions}
-                      />
-                    </Table.Td>
-                  </Table.Tr>
-                  {stacked && (
-                    <Table.Tr bg={background}>
-                      <Table.Td colSpan={4} pt={0}>
-                        {shares}
+                return (
+                  <Fragment key={line.key}>
+                    <Table.Tr bg={background} style={stacked ? { borderBottom: 0 } : undefined}>
+                      {!stacked && <Table.Td c="dimmed">{line.position + 1}</Table.Td>}
+                      <Table.Td>
+                        {line.name}
+                        {line.code && (
+                          <Text span c="dimmed" size="xs">
+                            {' '}
+                            {line.code}
+                          </Text>
+                        )}
+                        {line.discount !== 0 && (
+                          <Text size="xs" c="dimmed">
+                            promotion {formatMoney(line.discount)}
+                          </Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td ta="right">{line.quantity}</Table.Td>
+                      <Table.Td ta="right" style={{ whiteSpace: 'nowrap' }} title={mismatch}>
+                        {formatCents(line.cents)}
+                        {line.isTaxed && (
+                          <Text size="xs" c="dimmed">
+                            incl. tax
+                          </Text>
+                        )}
+                        {assignment.mode === 'amounts' && (
+                          <Text size="xs" c="brand">
+                            $ amounts
+                          </Text>
+                        )}
+                      </Table.Td>
+                      {!stacked && <Table.Td>{shares}</Table.Td>}
+                      <Table.Td>
+                        <RowMenu
+                          line={line}
+                          assignment={assignment}
+                          hasPeople={state.people.length > 0}
+                          actions={actions}
+                        />
                       </Table.Td>
                     </Table.Tr>
-                  )}
-                </Fragment>
-              )
-            })}
-          </Table.Tbody>
+                    {stacked && (
+                      <Table.Tr bg={background}>
+                        <Table.Td colSpan={4} pt={0}>
+                          {shares}
+                        </Table.Td>
+                      </Table.Tr>
+                    )}
+                  </Fragment>
+                )
+              })}
+            </Table.Tbody>
+          ))}
         </Table>
       </Table.ScrollContainer>
     </Card>
+  )
+}
+
+/**
+ * Names the receipt the rows below it come from. Its total sits in the Total column, though it is the printed total
+ * and so can differ from the items' sum by a storewide discount.
+ */
+function ReceiptHeading({ receipt, stacked }: { receipt: ReceiptDetail; stacked: boolean }) {
+  return (
+    <Table.Tr className={classes.receipt}>
+      <Table.Th scope="rowgroup" colSpan={stacked ? 2 : 3}>
+        {receipt.storeName ?? 'Unknown store'}
+        {receipt.purchaseDate && (
+          <Text span size="xs" c="dimmed" fw={400}>
+            {' '}
+            {receipt.purchaseDate}
+          </Text>
+        )}
+      </Table.Th>
+      <Table.Td ta="right" fw={600}>
+        {formatMoney(receipt.total)}
+      </Table.Td>
+      <Table.Td colSpan={stacked ? 1 : 2} />
+    </Table.Tr>
   )
 }
 

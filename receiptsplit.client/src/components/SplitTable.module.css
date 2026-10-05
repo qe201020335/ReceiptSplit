@@ -17,6 +17,11 @@
   font-weight: 700;
 }
 
+/* A receipt's name above its lines when several receipts are split together. */
+.receipt {
+  background-color: var(--app-hover);
+}
+
 /* Keeps the ⋯ menu's items lined up whether or not "Split by $ amounts" is checked. */
 .check {
   display: inline-block;

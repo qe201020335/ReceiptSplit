@@ -73,7 +73,9 @@ function App() {
     return () => clearTimeout(timer)
   }, [receipts, anyInProgress, reloadList])
 
-  const showSplits = selectedId !== null && route.view === 'splits'
+  // Either one receipt's splits page or several receipts split together.
+  const splitIds = route.splitIds ?? (selectedId !== null && route.view === 'splits' ? [selectedId] : null)
+  const showSplits = splitIds !== null
   // The splits page has a wide table beside its summary, so it gets a wider page.
   const containerSize = showSplits ? 'xl' : 'lg'
 
@@ -100,7 +102,7 @@ function App() {
       </Paper>
       {showSplits ? (
         <Container size={containerSize} py="md" px="md">
-          <SplitsPage key={selectedId} id={selectedId} onBack={() => goBack(selectedId)} />
+          <SplitsPage key={splitIds.join(',')} ids={splitIds} onBack={() => goBack(selectedId)} />
         </Container>
       ) : (
         <Container size={containerSize} py="md" px="md">
