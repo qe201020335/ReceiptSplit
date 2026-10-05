@@ -266,10 +266,9 @@ function updateLine(
 }
 
 /**
- * Sets the list of names, split on commas and trimmed. A name repeated in any letter case is one person, spelled as
- * first entered. Anyone dropped loses their assignments.
+ * Names split on commas and trimmed. A name repeated in any letter case is one person, spelled as first entered.
  */
-export function setPeople(state: SplitState, names: string[]): SplitState {
+export function normalizePeople(names: string[]): string[] {
   const byKey = new Map<string, string>()
   for (const name of names.flatMap((entry) => entry.split(','))) {
     const trimmed = name.trim()
@@ -278,7 +277,12 @@ export function setPeople(state: SplitState, names: string[]): SplitState {
       byKey.set(key, trimmed)
     }
   }
-  const people = [...byKey.values()]
+  return [...byKey.values()]
+}
+
+/** Sets the list of names, normalized as above. Anyone dropped loses their assignments. */
+export function setPeople(state: SplitState, names: string[]): SplitState {
+  const people = normalizePeople(names)
   const removed = state.people.filter((person) => !people.includes(person))
   const lines = Object.fromEntries(
     Object.entries(state.lines).map(([position, assignment]) => [

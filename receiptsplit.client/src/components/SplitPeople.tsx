@@ -1,6 +1,7 @@
-import { Card, TagsInput, Text } from '@mantine/core'
+import { Button, Card, Group, Stack, TagsInput, Text, Tooltip } from '@mantine/core'
 import { modals } from '@mantine/modals'
-import { hasAssignments, type SplitState } from '../splits.ts'
+import { hasAssignments, normalizePeople, type SplitState } from '../splits.ts'
+import { useRecentNames } from '../useRecentNames.ts'
 import type { SplitActions } from '../useSplitState.ts'
 
 interface SplitPeopleProps {
@@ -9,10 +10,22 @@ interface SplitPeopleProps {
 }
 
 export function SplitPeople({ state, actions }: SplitPeopleProps) {
+  const [recentNames, recent] = useRecentNames()
+  const chosen = new Set(state.people.map((person) => person.toLocaleLowerCase()))
+  const offered = recentNames.filter((name) => !chosen.has(name.toLocaleLowerCase()))
+
+  function apply(names: string[]) {
+    const added = normalizePeople(names).filter((name) => !chosen.has(name.toLocaleLowerCase()))
+    actions.setPeople(names)
+    if (added.length > 0) {
+      recent.remember(added)
+    }
+  }
+
   function change(names: string[]) {
     const losing = state.people.filter((person) => !names.includes(person) && hasAssignments(state, person))
     if (losing.length === 0) {
-      actions.setPeople(names)
+      apply(names)
       return
     }
 
@@ -26,20 +39,51 @@ export function SplitPeople({ state, actions }: SplitPeopleProps) {
       ),
       labels: { confirm: 'Remove', cancel: 'Keep' },
       confirmProps: { color: 'red' },
-      onConfirm: () => actions.setPeople(names),
+      onConfirm: () => apply(names),
     })
   }
 
   return (
     <Card withBorder padding="md">
-      <TagsInput
-        label="People"
-        placeholder="Name, Enter to add (e.g. Alice, Bob)"
-        splitChars={[',']}
-        clearable
-        value={state.people}
-        onChange={change}
-      />
+      <Stack gap="sm">
+        <TagsInput
+          label="People"
+          placeholder="Name, Enter to add (e.g. Alice, Bob)"
+          splitChars={[',']}
+          clearable
+          value={state.people}
+          onChange={change}
+        />
+        {offered.length > 0 && (
+          <Group gap="xs">
+            <Text size="sm" c="dimmed">
+              Add again:
+            </Text>
+            {offered.map((name) => (
+              <Button.Group key={name}>
+                <Button
+                  variant="default"
+                  size="compact-sm"
+                  aria-label={`Add ${name}`}
+                  onClick={() => apply([...state.people, name])}
+                >
+                  {name}
+                </Button>
+                <Tooltip label={`Forget ${name}`}>
+                  <Button
+                    variant="default"
+                    size="compact-sm"
+                    aria-label={`Forget ${name}`}
+                    onClick={() => recent.forget(name)}
+                  >
+                    ×
+                  </Button>
+                </Tooltip>
+              </Button.Group>
+            ))}
+          </Group>
+        )}
+      </Stack>
     </Card>
   )
 }
