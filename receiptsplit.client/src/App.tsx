@@ -76,8 +76,7 @@ function App() {
     return () => clearTimeout(timer)
   }, [receipts, anyInProgress, reloadList])
 
-  // Either one receipt's splits page or several receipts split together.
-  const splitIds = route.splitIds ?? (selectedId !== null && route.view === 'splits' ? [selectedId] : null)
+  const splitIds = route.splitIds
   const showSplits = splitIds !== null
   // The splits page has a wide table beside its summary, so it gets a wider page.
   const containerSize = showSplits ? 'xl' : 'lg'
@@ -105,7 +104,12 @@ function App() {
       </Paper>
       {showSplits ? (
         <Container size={containerSize} py="md" px="md">
-          <SplitsPage key={splitIds.join(',')} ids={splitIds} onBack={() => goBack(selectedId)} />
+          <SplitsPage
+            key={splitIds.join(',')}
+            ids={splitIds}
+            // A single receipt's split goes back to that receipt, several to the list they were picked on.
+            onBack={() => goBack(splitIds.length === 1 ? splitIds[0] : null)}
+          />
         </Container>
       ) : (
         <Container size={containerSize} py="md" px="md">
@@ -141,7 +145,7 @@ function App() {
                   key={selectedId}
                   id={selectedId}
                   onChanged={reloadList}
-                  onSplit={() => navigate(selectedId, 'splits')}
+                  onSplit={() => navigateSplits([selectedId])}
                   onDeleted={() => {
                     navigate(null)
                     reloadList()
