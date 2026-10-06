@@ -15,7 +15,7 @@ function App() {
   const [listError, setListError] = useState<string | null>(null)
   // Bumping this reloads the list.
   const [listVersion, setListVersion] = useState(0)
-  const [route, navigate, goBack, navigateSplits] = useRoute()
+  const [route, navigate, goBack, navigateSplits, navigateManage] = useRoute()
   const selectedId = route.receiptId
 
   // Receipts picked on the list to split together, or null when not picking. Kept while on the splits page, so
@@ -141,6 +141,7 @@ function App() {
                   picked={picked}
                   onPickedChange={setPicked}
                   onSplit={navigateSplits}
+                  onManage={navigateManage}
                 />
               </Stack>
             </Grid.Col>

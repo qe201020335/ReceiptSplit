@@ -14,7 +14,11 @@ interface ReceiptListProps {
   picked: string[] | null
   onPickedChange: (ids: string[] | null) => void
   onSplit: (ids: string[]) => void
+  onManage: () => void
 }
+
+/** The card shows the newest few; the receipt manager has the rest. Picking for a split shows them all. */
+const recentCount = 5
 
 /** Only receipts whose lines agree with their totals can be split, alone or together. */
 function splittable(receipt: ReceiptSummary): boolean {
@@ -29,6 +33,7 @@ export function ReceiptList({
   picked,
   onPickedChange,
   onSplit,
+  onManage,
 }: ReceiptListProps) {
   const picking = picked !== null
   // In list order, and without receipts that were deleted or stopped checking out since they were picked.
@@ -36,6 +41,7 @@ export function ReceiptList({
     ? (receipts ?? []).filter((receipt) => splittable(receipt) && picked.includes(receipt.id)).map(({ id }) => id)
     : []
   const anySplittable = receipts?.some(splittable) ?? false
+  const shown = picking ? receipts : (receipts?.slice(0, recentCount) ?? null)
 
   useHotkeys(picking ? [['Escape', () => onPickedChange(null)]] : [])
 
@@ -78,7 +84,7 @@ export function ReceiptList({
         {receipts === null && !error && <Text c="dimmed">Loading…</Text>}
         {receipts?.length === 0 && <Text c="dimmed">No receipts yet.</Text>}
         <Stack gap={2}>
-          {receipts?.map((receipt) => {
+          {shown?.map((receipt) => {
             const label = (
               <Group justify="space-between" wrap="nowrap" gap="xs">
                 <Text fw={500} truncate>
@@ -132,6 +138,16 @@ export function ReceiptList({
             )
           })}
         </Stack>
+        {!picking && receipts && receipts.length > 0 && (
+          <Group justify="space-between" wrap="nowrap" gap="xs">
+            <Text size="sm" c="dimmed">
+              {receipts.length > recentCount && `Newest ${recentCount} of ${receipts.length}`}
+            </Text>
+            <Button variant="default" size="xs" onClick={onManage}>
+              Manage receipts
+            </Button>
+          </Group>
+        )}
         {picking && (
           <div className={classes.footer}>
             <Button fullWidth disabled={pickedIds.length === 0} onClick={() => onSplit(pickedIds)}>
