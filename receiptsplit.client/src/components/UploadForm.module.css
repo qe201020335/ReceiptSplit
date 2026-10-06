@@ -1,0 +1,26 @@
+/* The chosen photo on the same dark stage as the editor, so a white receipt's edges show. */
+.preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 96px;
+  padding: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--app-photo-stage);
+}
+
+button.preview:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
+
+.thumbnail {
+  display: block;
+  max-width: 100%;
+  max-height: 180px;
+}
+
+.unsupported {
+  color: #c5cbd3;
+}
