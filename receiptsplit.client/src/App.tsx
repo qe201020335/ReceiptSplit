@@ -3,6 +3,7 @@ import { Anchor, Box, Card, Container, Grid, Paper, Stack, Text, Title } from '@
 import { api, errorMessage, inProgress, type ReceiptSummary } from './api.ts'
 import { ReceiptDetail } from './components/ReceiptDetail.tsx'
 import { ReceiptList } from './components/ReceiptList.tsx'
+import { ReceiptManager } from './components/ReceiptManager.tsx'
 import { UploadForm } from './components/UploadForm.tsx'
 import { SplitsPage } from './components/SplitsPage.tsx'
 import { useRoute } from './useRoute.ts'
@@ -78,8 +79,8 @@ function App() {
 
   const splitIds = route.splitIds
   const showSplits = splitIds !== null
-  // The splits page has a wide table beside its summary, so it gets a wider page.
-  const containerSize = showSplits ? 'xl' : 'lg'
+  // The splits page has a wide table beside its summary, so it gets a wider page; the manager is a single list.
+  const containerSize = showSplits ? 'xl' : route.manage ? 'md' : 'lg'
 
   return (
     <Box mih="100vh" bg="var(--app-bg)">
@@ -109,6 +110,16 @@ function App() {
             ids={splitIds}
             // A single receipt's split goes back to that receipt, several to the list they were picked on.
             onBack={() => goBack(splitIds.length === 1 ? splitIds[0] : null)}
+          />
+        </Container>
+      ) : route.manage ? (
+        <Container size={containerSize} py="md" px="md">
+          <ReceiptManager
+            receipts={receipts}
+            error={listError}
+            onChanged={reloadList}
+            onOpen={navigate}
+            onBack={() => goBack(null)}
           />
         </Container>
       ) : (

@@ -5,6 +5,8 @@ export interface Route {
   receiptId: string | null
   /** The receipts being split, one or several together, or null unless that is the page shown. */
   splitIds: string[] | null
+  /** The receipt manager, which lists every receipt. */
+  manage: boolean
 }
 
 interface HistoryState {
@@ -13,20 +15,27 @@ interface HistoryState {
 
 const receiptPath = /^\/receipts\/([^/]+)\/?$/
 const splitsPath = /^\/splits\/?$/
+const managePath = /^\/receipts\/?$/
 
-const home: Route = { receiptId: null, splitIds: null }
+const home: Route = { receiptId: null, splitIds: null, manage: false }
 
 function readRoute(): Route {
   const { pathname, search } = window.location
   if (splitsPath.test(pathname)) {
     const ids = (new URLSearchParams(search).get('receipts') ?? '').split(',').filter((id) => id !== '')
-    return ids.length > 0 ? { receiptId: null, splitIds: ids } : home
+    return ids.length > 0 ? { ...home, splitIds: ids } : home
+  }
+  if (managePath.test(pathname)) {
+    return { ...home, manage: true }
   }
   const match = receiptPath.exec(pathname)
-  return match ? { receiptId: match[1], splitIds: null } : home
+  return match ? { ...home, receiptId: match[1] } : home
 }
 
-function pathFor({ receiptId, splitIds }: Route): string {
+function pathFor({ receiptId, splitIds, manage }: Route): string {
+  if (manage) {
+    return '/receipts'
+  }
   if (splitIds) {
     return `/splits?receipts=${splitIds.map(encodeURIComponent).join(',')}`
   }
@@ -34,7 +43,7 @@ function pathFor({ receiptId, splitIds }: Route): string {
 }
 
 /**
- * The page being shown, kept in the URL as /receipts/:id or /splits?receipts=a,b so links, reloads and
+ * The page being shown, kept in the URL as /receipts/:id, /receipts or /splits?receipts=a,b so links, reloads and
  * back/forward work. The backend serves index.html for these paths.
  */
 export function useRoute() {
@@ -57,10 +66,13 @@ export function useRoute() {
   }, [])
 
   /** Shows a receipt, or the start page for null. */
-  const navigate = useCallback((receiptId: string | null) => go({ receiptId, splitIds: null }), [go])
+  const navigate = useCallback((receiptId: string | null) => go({ ...home, receiptId }), [go])
 
   /** Splits one receipt, or several together. */
-  const navigateSplits = useCallback((ids: string[]) => go({ receiptId: null, splitIds: ids }), [go])
+  const navigateSplits = useCallback((ids: string[]) => go({ ...home, splitIds: ids }), [go])
+
+  /** Shows the receipt manager. */
+  const navigateManage = useCallback(() => go({ ...home, manage: true }), [go])
 
   /**
    * Goes back to a receipt, or the start page for null: a real history step when that is where the user came from,
@@ -68,7 +80,7 @@ export function useRoute() {
    * return here either way.
    */
   const goBack = useCallback((receiptId: string | null) => {
-    const next: Route = { receiptId, splitIds: null }
+    const next: Route = { ...home, receiptId }
     const path = pathFor(next)
     if ((window.history.state as HistoryState | null)?.previous === path) {
       window.history.back()
@@ -78,5 +90,5 @@ export function useRoute() {
     setRoute(next)
   }, [])
 
-  return [route, navigate, goBack, navigateSplits] as const
+  return [route, navigate, goBack, navigateSplits, navigateManage] as const
 }
