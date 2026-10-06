@@ -35,7 +35,10 @@ export const theme = createTheme({
  * behind white cards, so the page background gets its own variable.
  */
 export const cssVariablesResolver: CSSVariablesResolver = () => ({
-  variables: {},
+  variables: {
+    // The crop frame sits on the photo stage, which is dark in both schemes, so it takes dark mode's primary.
+    '--app-photo-crop': '#6b9bff',
+  },
   light: {
     '--app-primary-contrast': '#ffffff',
     '--app-bg': '#f5f6f8',
@@ -47,6 +50,8 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     '--mantine-color-default': '#ffffff',
     '--mantine-color-default-hover': '#eef0f4',
     '--app-hover': '#eef0f4',
+    // Photos sit on dark ink in both schemes, so the edges of a white receipt stand out to crop against.
+    '--app-photo-stage': '#1d2330',
   },
   dark: {
     '--app-primary-contrast': '#0b1020',
@@ -57,6 +62,7 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     '--mantine-color-default': '#222831',
     '--mantine-color-default-hover': '#2b323d',
     '--app-hover': '#2b323d',
+    '--app-photo-stage': '#0c0f13',
     // Fainter than an enabled button's #39414f border.
     '--mantine-color-disabled-border': '#2b323d',
   },

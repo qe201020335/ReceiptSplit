@@ -16,7 +16,8 @@
     "@mantine/modals": "^9.6.1",
     "@mantine/notifications": "^9.6.1",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "react-image-crop": "^11.1.2"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

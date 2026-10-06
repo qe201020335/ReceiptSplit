@@ -16,6 +16,7 @@ ReceiptSplit.Tests/           xUnit v3 tests on Microsoft.Testing.Platform, with
 receiptsplit.client/          React 19 + TypeScript + Vite 8 + Mantine 9
   src/api.ts                  Types and calls mirroring ReceiptDtos.cs
   src/splits.ts               Split calculations, all in integer cents
+  src/photoEdits.ts           Cropping and rotating a photo on a canvas before upload
   src/theme.ts                Mantine theme and color tokens
   src/components/             Page parts; *.module.css for component styles
 samples/                      Real photos, truth files and model outputs; gitignored, tests skip without it
@@ -76,6 +77,9 @@ browser.
   and every read passes the detected format in `MagickReadSettings`; don't let ImageMagick guess a format.
 - JPEG/PNG within the image token budget are sent to the model unchanged; anything else is auto-oriented, shrunk
   and re-encoded as JPEG. Browsers get a cached JPEG copy of HEIC, HEIF and TIFF photos.
+- The upload form can crop and rotate a photo first (`photoEdits.ts`, `PhotoEditor.tsx`). That happens on a canvas
+  in the browser, so the server only ever sees the edited JPEG or PNG; a photo the browser can't decode (HEIC
+  outside Safari) can't be edited and uploads as it is. An unedited photo is sent unchanged, not re-encoded.
 - The accepted formats are listed in both `ImagePreparer.SupportedFormats` and
   `receiptsplit.client/src/uploadTypes.ts`; change them together.
 

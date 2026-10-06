@@ -1,0 +1,108 @@
+/* On a phone the modal fills the screen and the stage takes whatever the tools below it leave. */
+.content {
+  display: flex;
+  flex-direction: column;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  min-height: 0;
+}
+
+/* Dark in both schemes: a white receipt's edges show clearly against it, which is what you crop to. */
+.stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: min(64dvh, 680px);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--app-photo-stage);
+  overflow: hidden;
+}
+
+@media (max-width: 36em) {
+  .stage {
+    flex: 1;
+    height: auto;
+    min-height: 240px;
+  }
+}
+
+/* A solid frame in place of the library's marching ants, which keep moving the whole time the editor is open. */
+.crop {
+  --rc-border-color: var(--app-photo-crop);
+  --rc-focus-color: var(--app-photo-crop);
+  --rc-drag-handle-bg-colour: var(--app-photo-crop);
+  --rc-drag-handle-size: 14px;
+  --rc-drag-handle-mobile-size: 26px;
+}
+
+/* Doubled to outrank the library's :not() rule for the ants. The shadow dims what the crop leaves out; the stage
+   clips it. */
+.crop.crop :global(.ReactCrop__crop-selection) {
+  animation: none;
+  background-image: none;
+  border: 2px solid var(--app-photo-crop);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.55);
+}
+
+.crop :global(.ReactCrop__drag-handle) {
+  border-color: var(--app-photo-stage);
+  border-radius: 50%;
+}
+
+.crop :global(.ReactCrop__crop-selection:focus-visible) {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.crop :global(.ReactCrop__crop-selection:focus:not(:focus-visible)) {
+  outline: none;
+}
+
+.media {
+  position: relative;
+}
+
+.canvas {
+  display: block;
+}
+
+/* A fine grid while straightening, to line the printed rows up against. */
+.media[data-straightening]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.4) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.4) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mix-blend-mode: difference;
+}
+
+.tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+}
+
+.straightenLabel {
+  margin-left: var(--mantine-spacing-xs);
+  white-space: nowrap;
+}
+
+.slider {
+  flex: 1;
+  min-width: 80px;
+}
+
+/* Tabular figures and a fixed width, so the slider doesn't shift as the angle changes. */
+.degrees {
+  width: 4.5ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
