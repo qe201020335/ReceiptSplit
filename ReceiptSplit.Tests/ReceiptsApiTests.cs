@@ -527,6 +527,56 @@ public class ReceiptsApiTests
     }
 
     [Fact]
+    public async Task Deletes_several_receipts_at_once()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var client = factory.CreateClient();
+        var first = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Jpeg));
+        var second = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Png));
+        var kept = await UploadAndWaitAsync(client, TestImages.Create(64, 48, MagickFormat.Jpeg));
+
+        var result = await DeleteManyAsync(client, first.Id, second.Id, Guid.CreateVersion7());
+
+        Assert.Equal(new[] { first.Id, second.Id }.Order(), result.Deleted.Order());
+        Assert.Empty(result.Busy);
+        var summaries = await client.GetFromJsonAsync<List<ReceiptSummaryDto>>("/api/receipts", Json, Ct);
+        Assert.Equal(kept.Id, Assert.Single(summaries!).Id);
+        Assert.Single(Directory.GetFiles(Path.Combine(factory.StorageRoot, "uploads")));
+    }
+
+    [Fact]
+    public async Task Receipts_being_read_are_left_out_of_a_bulk_delete()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var client = factory.CreateClient();
+        factory.Llm.Block();
+        using var reading = await client.PostAsync("/api/receipts", PhotoForm(TestImages.Create(64, 48, MagickFormat.Jpeg), "a.jpg"), Ct);
+        var processing = (await reading.Content.ReadFromJsonAsync<ReceiptQueuedDto>(Json, Ct))!;
+        await WaitForStatusAsync(client, processing.Id, ReceiptStatus.Processing);
+        using var waiting = await client.PostAsync("/api/receipts", PhotoForm(TestImages.Create(64, 48, MagickFormat.Jpeg), "b.jpg"), Ct);
+        var queued = (await waiting.Content.ReadFromJsonAsync<ReceiptQueuedDto>(Json, Ct))!;
+
+        var result = await DeleteManyAsync(client, processing.Id, queued.Id);
+
+        Assert.Equal((queued.Id, processing.Id), (Assert.Single(result.Deleted), Assert.Single(result.Busy)));
+        factory.Llm.Release();
+        Assert.Equal(ReceiptStatus.Completed, (await WaitForResultAsync(client, processing.Id)).Status);
+        var summaries = await client.GetFromJsonAsync<List<ReceiptSummaryDto>>("/api/receipts", Json, Ct);
+        Assert.Equal(processing.Id, Assert.Single(summaries!).Id);
+    }
+
+    [Fact]
+    public async Task A_bulk_delete_needs_at_least_one_receipt()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var client = factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync("/api/receipts/delete", new ReceiptDeleteDto([]), Json, Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Rejects_files_that_are_not_images()
     {
         await using var factory = new ReceiptApiFactory();
@@ -576,6 +626,14 @@ public class ReceiptsApiTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<ReceiptDetailDto>(Json, Ct))!;
+    }
+
+    private static async Task<ReceiptsDeletedDto> DeleteManyAsync(HttpClient client, params Guid[] ids)
+    {
+        using var response = await client.PostAsJsonAsync("/api/receipts/delete", new ReceiptDeleteDto(ids), Json, Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<ReceiptsDeletedDto>(Json, Ct))!;
     }
 
     private static async Task<ReceiptDetailDto> UploadAndWaitAsync(

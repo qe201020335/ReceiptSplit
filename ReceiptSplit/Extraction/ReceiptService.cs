@@ -242,9 +242,34 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
 
         db.Receipts.Remove(receipt);
         await db.SaveChangesAsync(cancellationToken);
+        DeletePhotos(receipt);
+        return ReceiptActionResult.Done;
+    }
+
+    /// <summary>
+    /// Deletes several receipts and their photos in one go, leaving out those the model is reading, as
+    /// <see cref="DeleteAsync"/> does. Ids that don't exist are ignored: they are already gone.
+    /// </summary>
+    public async Task<ReceiptsDeleted> DeleteManyAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        var receipts = await db.Receipts.Where(r => ids.Contains(r.Id)).ToListAsync(cancellationToken);
+        var busy = receipts.Where(r => r.Status == ReceiptStatus.Processing).ToList();
+        var deleted = receipts.Except(busy).ToList();
+
+        db.Receipts.RemoveRange(deleted);
+        await db.SaveChangesAsync(cancellationToken);
+        foreach (var receipt in deleted)
+        {
+            DeletePhotos(receipt);
+        }
+
+        return new ReceiptsDeleted([.. deleted.Select(r => r.Id)], [.. busy.Select(r => r.Id)]);
+    }
+
+    private void DeletePhotos(Receipt receipt)
+    {
         File.Delete(storage.Value.GetUploadPath(receipt.StoredFileName));
         File.Delete(storage.Value.GetDisplayCopyPath(receipt.StoredFileName));
-        return ReceiptActionResult.Done;
     }
 
     private static string? Trimmed(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
