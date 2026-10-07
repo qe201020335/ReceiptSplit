@@ -24,6 +24,8 @@
   </Folder>
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
+    <Project Path="tests/ReceiptSplit.Accounts.CloudflareAccess.Tests/ReceiptSplit.Accounts.CloudflareAccess.Tests.csproj" />
+    <Project Path="tests/ReceiptSplit.Accounts.Tests/ReceiptSplit.Accounts.Tests.csproj" />
     <Project Path="tests/ReceiptSplit.Extraction.Tests/ReceiptSplit.Extraction.Tests.csproj" />
     <Project Path="tests/ReceiptSplit.Receipts.Tests/ReceiptSplit.Receipts.Tests.csproj" />
     <Project Path="tests/ReceiptSplit.Testing/ReceiptSplit.Testing.csproj" />

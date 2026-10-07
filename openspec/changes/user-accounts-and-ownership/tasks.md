@@ -54,7 +54,7 @@ project's conventions apply throughout:
 
 ## 4. Verify the Access token
 
-- [ ] 4.1 In `ReceiptSplit.Accounts.CloudflareAccess`:
+- [x] 4.1 In `ReceiptSplit.Accounts.CloudflareAccess`:
   - add `CloudflareAccessOptions` (`Auth:CloudflareAccess`) and the `Microsoft.AspNetCore.Authentication.JwtBearer`
     package, with its version in `Directory.Packages.props` matching the other ASP.NET Core packages
   - configure the handler as design.md describes: the `Cf-Access-Jwt-Assertion` header, the issuer and audience,
@@ -63,12 +63,13 @@ project's conventions apply throughout:
 
   In the host, add `UseAuthentication`, the fallback policy requiring an authenticated user, and `AllowAnonymous`
   on the static assets and the SPA fallback. Verify that the solution builds.
-- [ ] 4.2 In `ReceiptSplit.Accounts`, add `AuthOptions` (`Auth:Admins`, `Auth:DevUser`) and
+- [x] 4.2 In `ReceiptSplit.Accounts`, add `AuthOptions` (`Auth:Admins`, `Auth:DevUser`) and
   `DevelopmentAuthenticationHandler`, which is active only in Development. Register them through `AddAccounts()`
   on `IHostApplicationBuilder`, which calls `AddDatabase()` first and does nothing when called again. Set `DevUser`
   and the same email in `Admins` in `appsettings.Development.json`. Verify by running the backend in Development:
-  `GET /api/receipts` succeeds without a token.
-- [ ] 4.3 Add `AccountSettingsCheck` (in `ReceiptSplit.Accounts`) and `CloudflareAccessCheck` (in the Cloudflare
+  `GET /api/receipts` succeeds without a token. Result: the development user is `dev@example.com`, and a scratch
+  backend listed all 28 receipts without a token.
+- [x] 4.3 Add `AccountSettingsCheck` (in `ReceiptSplit.Accounts`) and `CloudflareAccessCheck` (in the Cloudflare
   library), both internal, exposed as `CheckAccountSettingsAsync()` and `CheckCloudflareAccessAsync()` on
   `IServiceProvider`. Call them in `Program.cs` beside `CheckModelServerAsync()`. Between them, the app exits with
   code 1 when:
@@ -78,7 +79,7 @@ project's conventions apply throughout:
 
   It warns when `Admins` is empty. Verify with unit tests in each library's test project, one per failure, in the
   style of `ModelServerCheckTests`.
-- [ ] 4.4 Update `ReceiptApiFactory`:
+- [x] 4.4 Update `ReceiptApiFactory`:
   - clear `DevUser`
   - set a test team domain, audience and admin email
   - use a static `ConfigurationManager` with a generated RSA key
@@ -87,14 +88,15 @@ project's conventions apply throughout:
 
   The RSA key and the method that makes Access-shaped tokens go in `ReceiptSplit.Testing` as a test token signer,
   so the account libraries' tests can use them too. Verify that all existing API tests pass unchanged.
-- [ ] 4.5 Add API tests in `ReceiptSplit.Tests` for the token scenarios in `specs/user-identity`:
+- [x] 4.5 Add API tests in `ReceiptSplit.Tests` for the token scenarios in `specs/user-identity`:
   - no token → 401
   - forged email header only → 401
   - wrong key, audience or issuer → 401
   - expired → 401
   - `/` and a static file load without a token
 
-  Verify by running the tests.
+  Verify by running the tests. Result: tests don't build the client, so the page test serves `/` and a client
+  route from a temporary web root; a real asset is checked against a published build in 10.1.
 
 ## 5. Accounts, admins and sign-in refusals
 
