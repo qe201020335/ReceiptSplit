@@ -32,7 +32,8 @@ jobs:
         with:
           global-json-file: global.json
 
-      - run: dotnet build ReceiptSplit.sln -c Release
+      # GitHub Actions sets CI=true, which Directory.Build.props turns into warnings as errors.
+      - run: dotnet build ReceiptSplit.slnx -c Release
 
       # Live model tests stay opt-in, and the sample receipts are not in the repository, so those tests skip.
       - run: dotnet test --project ReceiptSplit.Tests -c Release --no-build

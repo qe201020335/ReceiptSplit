@@ -28,7 +28,7 @@ openspec/                     OpenSpec specs (specs/) and proposed changes (chan
 ## Commands
 
 ```sh
-dotnet build ReceiptSplit.sln
+dotnet build ReceiptSplit.slnx
 dotnet test --project ReceiptSplit.Tests                      # all backend tests
 dotnet test --project ReceiptSplit.Tests --filter-class ReceiptSplit.Tests.ReceiptChecksTests
 cd receiptsplit.client && npm run build && npm run lint       # type check, build, oxlint

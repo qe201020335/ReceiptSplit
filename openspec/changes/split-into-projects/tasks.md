@@ -20,12 +20,13 @@ outdated.
 
 ## 2. Solution, shared settings and central package management
 
-- [ ] 2.1 Migrate to `ReceiptSplit.slnx` (`dotnet sln migrate`), delete `ReceiptSplit.sln`, and add the
+- [x] 2.1 Migrate to `ReceiptSplit.slnx` (`dotnet sln migrate`), delete `ReceiptSplit.sln`, and add the
   `/Solution Items/` and `/.github/workflows/` folders as design.md lists them. Keep only the `Any CPU` platform.
   Update `TestPaths` to look for `ReceiptSplit.slnx`, and the solution name in CI and AGENTS.md. Verify that
   `dotnet build` and `dotnet test` at the root give the baseline, and that the sample-based tests still find
   `samples/` when present.
-- [ ] 2.2 Add the root `Directory.Build.props`:
+  The client project gets `<Build Project="false" />`, as the old solution didn't build it either.
+- [x] 2.2 Add the root `Directory.Build.props`:
   - conditioned on `.csproj`
   - `net10.0`, `Nullable`, `ImplicitUsings`
   - warnings as errors when `CI` is `true`
@@ -36,9 +37,10 @@ outdated.
   - the build and tests match the baseline
   - `dotnet list package` shows the same versions as before
   - the client project still restores, which runs `npm install`
-- [ ] 2.3 Build with `CI=true dotnet build` (warnings as errors), and fix every warning that turns up without
+- [x] 2.3 Build with `CI=true dotnet build` (warnings as errors), and fix every warning that turns up without
   disabling the analyzers that raised it. Note in CI's build step where the setting comes from. Verify that
   `CI=true dotnet build` and `CI=true dotnet test` pass.
+  No warnings turned up, in Debug or Release, so nothing needed fixing.
 
 ## 3. src/ and tests/
 

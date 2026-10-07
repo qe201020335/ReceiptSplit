@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/.github/" />
+  <Folder Name="/.github/workflows/">
+    <File Path=".github/workflows/ci.yml" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".config/dotnet-tools.json" />
+    <File Path=".dockerignore" />
+    <File Path="AGENTS.md" />
+    <File Path="compose.yaml" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="receiptsplit.client/receiptsplit.client.esproj">
+    <Platform Project="AnyCPU" />
+    <Build Project="false" />
+  </Project>
+  <Project Path="ReceiptSplit.Tests/ReceiptSplit.Tests.csproj" />
+  <Project Path="ReceiptSplit/ReceiptSplit.csproj" />
+</Solution>

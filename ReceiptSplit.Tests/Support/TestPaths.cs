@@ -13,12 +13,12 @@ internal static class TestPaths
     {
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "ReceiptSplit.sln")))
+            if (File.Exists(Path.Combine(dir.FullName, "ReceiptSplit.slnx")))
             {
                 return dir.FullName;
             }
         }
 
-        throw new InvalidOperationException("Could not find the repository root (ReceiptSplit.sln).");
+        throw new InvalidOperationException("Could not find the repository root (ReceiptSplit.slnx).");
     }
 }
