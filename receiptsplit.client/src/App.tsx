@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Anchor, Box, Card, Container, Grid, Paper, Stack, Text, Title } from '@mantine/core'
+import { useMediaQuery } from '@mantine/hooks'
 import { api, errorMessage, inProgress, type ReceiptSummary } from './api.ts'
 import { ReceiptDetail } from './components/ReceiptDetail.tsx'
 import { ReceiptList } from './components/ReceiptList.tsx'
@@ -7,7 +8,7 @@ import { ReceiptManager } from './components/ReceiptManager.tsx'
 import { ReceiptPage } from './components/ReceiptPage.tsx'
 import { UploadForm } from './components/UploadForm.tsx'
 import { SplitsPage } from './components/SplitsPage.tsx'
-import { home, useRoute } from './useRoute.ts'
+import { home, useRoute, type Route } from './useRoute.ts'
 
 const pollIntervalMs = 2000
 
@@ -16,37 +17,27 @@ function App() {
   const [listError, setListError] = useState<string | null>(null)
   // Bumping this reloads the list.
   const [listVersion, setListVersion] = useState(0)
-  const [route, go, goBack] = useRoute()
+  const [location, go, goBack, replace] = useRoute()
+  // Below Mantine's sm breakpoint the start page stacks, which would put an open receipt below the upload form and
+  // the list. Phones open receipts on their own page instead, and a start page link to a receipt redirects there.
+  const stacked = useMediaQuery('(max-width: 47.99em)', undefined, { getInitialValueInEffect: false })
+  const redirect = stacked && location.page === 'home' && location.receiptId !== null ? location.receiptId : null
+  // Drawn as the receipt page while the redirect below happens, so the stacked start page never shows.
+  const route: Route = redirect ? { page: 'receipt', receiptId: redirect } : location
   const selectedId = route.page === 'home' ? route.receiptId : null
+
+  useEffect(() => {
+    if (redirect) {
+      replace({ page: 'receipt', receiptId: redirect })
+    }
+  }, [redirect, replace])
 
   // Receipts picked on the list to split together, or null when not picking. Kept while on the splits page, so
   // coming back lets people change the set.
   const [picked, setPicked] = useState<string[] | null>(null)
   const reloadList = useCallback(() => setListVersion((version) => version + 1), [])
 
-  // On a phone the detail sits below the upload form and the list, so opening a receipt scrolls down to it.
-  const detailRef = useRef<HTMLDivElement>(null)
-  const revealDetail = useRef(false)
-  const openReceipt = useCallback(
-    (id: string) => {
-      revealDetail.current = true
-      go({ page: 'home', receiptId: id })
-    },
-    [go],
-  )
-
-  useEffect(() => {
-    const detail = detailRef.current
-    if (!revealDetail.current || !detail) {
-      return
-    }
-    revealDetail.current = false
-    // Side by side (from Mantine's sm breakpoint up) the detail is already in view.
-    if (window.matchMedia('(max-width: 47.99em)').matches) {
-      const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      detail.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' })
-    }
-  }, [selectedId])
+  const openReceipt = (id: string) => go(stacked ? { page: 'receipt', receiptId: id } : { page: 'home', receiptId: id })
 
   useEffect(() => {
     let current = true
@@ -158,13 +149,7 @@ function App() {
                 />
               </Stack>
             </Grid.Col>
-            <Grid.Col
-              span={{ base: 12, sm: 7, md: 8 }}
-              ref={detailRef}
-              // At least a screen tall while stacked, so there is room to scroll it to the top before it has loaded.
-              mih={selectedId ? { base: '100dvh', sm: 0 } : undefined}
-              style={{ scrollMarginTop: 16 }}
-            >
+            <Grid.Col span={{ base: 12, sm: 7, md: 8 }}>
               {selectedId ? (
                 <ReceiptDetail
                   key={selectedId}

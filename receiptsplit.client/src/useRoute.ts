@@ -87,5 +87,11 @@ export function useRoute() {
     setRoute(fallback)
   }, [])
 
-  return [route, go, goBack] as const
+  /** Shows another page in place of this one, keeping how the user got here so Back still returns there. */
+  const replace = useCallback((next: Route) => {
+    window.history.replaceState(window.history.state, '', pathFor(next))
+    setRoute(next)
+  }, [])
+
+  return [route, go, goBack, replace] as const
 }
