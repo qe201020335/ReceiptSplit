@@ -56,8 +56,9 @@ browser.
   /api/receipts/delete`) leaves busy receipts and lists them in its response instead of failing.
 - **Business logic lives in `ReceiptService`**, not in the controller, so other entry points can reuse it.
 - **The model server is checked at startup.** `ModelServerCheck` lists the models (`GET /v1/models`, which doesn't
-  load one) and `Program.cs` exits with code 1 when the server can't be reached, rejects the API key or doesn't
-  offer `Llm:Model` by id or alias. `ReceiptApiFactory` sets `Llm:Model` to the fake client's model for this.
+  load one); `Program.cs` runs it through `CheckModelServerAsync()` and exits with code 1 when the server can't be
+  reached, rejects the API key or doesn't offer `Llm:Model` by id or alias. `ReceiptApiFactory` sets `Llm:Model` to
+  the fake client's model for this.
 - **Logging is Serilog, console only**: the container's stdout is the log, so there is no file sink. Levels live
   in the `Serilog` section of `appsettings.json` (`MinimumLevel`), not in `Logging`, which nothing reads any more.
 - **No authentication in the app yet.** It will first be deployed behind an identity-aware proxy (IAP), with sign-in
@@ -116,6 +117,11 @@ first, so ask before doing that. Migrations are applied at startup by `DatabaseI
 - DTOs are positional records. Put DataAnnotations on the constructor parameters, not with `[property: ...]`: MVC
   throws at runtime for validation attributes on record properties.
 - Doc comments explain why, not what. Keep lines around 120 characters.
+- Each library registers its own settings and services with an `Add…` extension on `IHostApplicationBuilder`
+  (`AddDatabase`, `AddExtraction`, `AddReceipts`), so `Program.cs` never registers library types. The method
+  calls the `Add…` methods of the libraries it depends on first, which also fixes the order of hosted services
+  (migrations before the extraction worker), and does nothing when called again. Middleware a library adds gets a
+  `Use…` extension on the application instead.
 - Tests are named as sentences (`Hand_corrections_are_checked_at_the_precision_they_are_stored`). API tests use
   `ReceiptApiFactory` with `FakeLlamaClient` (`Content`, `Failure`, `Block()`/`Release()`), and images come from
   `TestImages.Create`.

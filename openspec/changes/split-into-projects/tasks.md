@@ -108,7 +108,7 @@ outdated.
 
 ## 8. Service registration extensions
 
-- [ ] 8.1 Add `AddDatabase()` to Data, `AddExtraction()` and `IServiceProvider.CheckModelServerAsync()` to
+- [x] 8.1 Add `AddDatabase()` to Data, `AddExtraction()` and `IServiceProvider.CheckModelServerAsync()` to
   Extraction, and `AddReceipts()` to Receipts, all on `IHostApplicationBuilder` as design.md describes. Each one
   does nothing when called again, and `AddReceipts()` calls the other two first. `Program.cs` calls the three
   methods and `CheckModelServerAsync()` in place of its own registrations. Verify:
@@ -116,7 +116,7 @@ outdated.
   - the tests match the baseline, including the startup check test and the API tests that swap in the fake model
     client
   - a scratch backend over a copy of `data/` starts, applies no migration and lists the receipts
-- [ ] 8.2 In AGENTS.md, describe the registration convention: each library has an `Add…` method on
+- [x] 8.2 In AGENTS.md, describe the registration convention: each library has an `Add…` method on
   `IHostApplicationBuilder` that registers its dependencies first and is safe to call twice, and middleware gets a
   `Use…` method. Update the lines that say `Program.cs` registers services and runs the startup check. Verify by
   reading the section against `Program.cs`.
