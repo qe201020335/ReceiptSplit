@@ -133,15 +133,22 @@ outdated.
 
 ## 10. Dockerfile at the root
 
-- [ ] 10.1 `git mv src/ReceiptSplit/Dockerfile Dockerfile`. Make its restore stage copy `global.json`,
+- [x] 10.1 `git mv src/ReceiptSplit/Dockerfile Dockerfile`. Make its restore stage copy `global.json`,
   `Directory.Build.props`, `Directory.Packages.props`, every project file under `src/` (`COPY --parents`) and the
   client's project files before `dotnet restore`. Drop `file:` from CI's build step. Remove
   `DockerDefaultTargetOS` and the `.dockerignore` link from `ReceiptSplit.csproj`. Verify that:
   - `docker build .` succeeds
   - a second build after changing only a `.cs` file reuses the restore layers
   - the image starts and serves `/` and the receipts over a copy of `data/`
-- [ ] 10.2 Exclude the Markdown files, `openspec/`, `.claude/` and `.github/` in `.dockerignore`. Verify that a
+  Two adjustments came out of running the steps. Restoring never ran `npm install` (building the client does), so
+  the restore stage runs `npm ci` to cache the client's packages too. And a project file missing from the restore
+  stage only made the restore skip it, so the build and publish pass `--no-restore` and fail on it instead.
+  With Docker 29.8: the restore found all four projects under `src/`; after a `.cs`-only change every layer up
+  to `npm ci` came from the cache; and the image, run over a copy of `data/`, applied no migration, served `/`
+  and `/receipts`, and listed the 28 receipts and opened one with its photo.
+- [x] 10.2 Exclude the Markdown files, `openspec/`, `.claude/` and `.github/` in `.dockerignore`. Verify that a
   build after changing only AGENTS.md or a file in `openspec/` reuses every layer.
+  After changing only AGENTS.md and `design.md`, every layer came from the cache.
 
 ## 11. Docs and integration check
 

@@ -94,7 +94,6 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: src/ReceiptSplit/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           # Links the package to this repository, which also gives it the repository's readme.
