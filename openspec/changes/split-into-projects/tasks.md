@@ -7,12 +7,15 @@ outdated.
 
 ## 1. SDK and tool manifest
 
-- [ ] 1.1 Record the baseline with `dotnet build ReceiptSplit.sln` and `dotnet test --project ReceiptSplit.Tests`:
+- [x] 1.1 Record the baseline with `dotnet build ReceiptSplit.sln` and `dotnet test --project ReceiptSplit.Tests`:
   the test counts (passed, skipped) and the build warnings.
-- [ ] 1.2 Add `"sdk": { "version": "10.0.100", "rollForward": "latestFeature" }` to `global.json`, and point CI's
+  Baseline: 152 tests, 149 passed and 3 skipped (the two live tests and the sample outputs test); 0 warnings in
+  Debug and Release.
+- [x] 1.2 Add `"sdk": { "version": "10.0.100", "rollForward": "latestFeature" }` to `global.json`, and point CI's
   `setup-dotnet` at it with `global-json-file` instead of `dotnet-version`. Verify that `dotnet --version` in the
   repository picks the installed 10.0 SDK and that the build and tests match the baseline.
-- [ ] 1.3 `git mv dotnet-tools.json .config/dotnet-tools.json`. Verify that `dotnet tool restore` and `dotnet ef
+  `dotnet --version` gives 10.0.112, the SDK installed here.
+- [x] 1.3 `git mv dotnet-tools.json .config/dotnet-tools.json`. Verify that `dotnet tool restore` and `dotnet ef
   --version` still work from the root and from the host's folder.
 
 ## 2. Solution, shared settings and central package management

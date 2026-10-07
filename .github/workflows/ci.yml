@@ -27,9 +27,10 @@ jobs:
           cache: npm
           cache-dependency-path: receiptsplit.client/package-lock.json
 
+      # Installs the SDK global.json asks for.
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
 
       - run: dotnet build ReceiptSplit.sln -c Release
 
