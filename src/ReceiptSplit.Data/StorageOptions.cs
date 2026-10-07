@@ -7,8 +7,7 @@ public sealed class StorageOptions
 
     /// <summary>
     /// Resolved against the content root (the project folder when run from source) when relative. Development points
-    /// it at data/ in the repository root, which on a case-insensitive file system would otherwise collide with the
-    /// project's Data/ source folder.
+    /// it at data/ in the repository root.
     /// </summary>
     public string Root { get; set; } = "data";
 

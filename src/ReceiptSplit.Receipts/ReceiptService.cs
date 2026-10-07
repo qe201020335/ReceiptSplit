@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ReceiptSplit.Data;
 
-namespace ReceiptSplit.Extraction;
+namespace ReceiptSplit.Receipts;
 
 /// <summary>
 /// Receipt operations shared by the HTTP API and future entry points such as a Discord bot.

@@ -16,11 +16,13 @@
   <Folder Name="/src/">
     <Project Path="src/ReceiptSplit.Data/ReceiptSplit.Data.csproj" />
     <Project Path="src/ReceiptSplit.Extraction/ReceiptSplit.Extraction.csproj" />
+    <Project Path="src/ReceiptSplit.Receipts/ReceiptSplit.Receipts.csproj" />
     <Project Path="src/ReceiptSplit/ReceiptSplit.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
     <Project Path="tests/ReceiptSplit.Extraction.Tests/ReceiptSplit.Extraction.Tests.csproj" />
+    <Project Path="tests/ReceiptSplit.Receipts.Tests/ReceiptSplit.Receipts.Tests.csproj" />
     <Project Path="tests/ReceiptSplit.Testing/ReceiptSplit.Testing.csproj" />
     <Project Path="tests/ReceiptSplit.Tests/ReceiptSplit.Tests.csproj" />
   </Folder>

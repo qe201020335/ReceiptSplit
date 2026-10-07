@@ -2,7 +2,7 @@ using System.Text.Json;
 using ReceiptSplit.Extraction;
 using ReceiptSplit.Testing;
 
-namespace ReceiptSplit.Tests;
+namespace ReceiptSplit.Receipts.Tests;
 
 /// <summary>
 /// Runs the real model outputs in samples/ through the parser, the promotions and the checks, as an extraction

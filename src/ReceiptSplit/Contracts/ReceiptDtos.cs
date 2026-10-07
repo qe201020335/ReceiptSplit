@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using ReceiptSplit.Data;
-using ReceiptSplit.Extraction;
+using ReceiptSplit.Receipts;
 
 namespace ReceiptSplit.Contracts;
 

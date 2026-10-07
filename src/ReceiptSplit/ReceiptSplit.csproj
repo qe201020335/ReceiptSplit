@@ -10,7 +10,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Magick.NET-Q8-AnyCPU" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
         <PackageReference Include="Microsoft.AspNetCore.SpaProxy" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
@@ -21,8 +20,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\ReceiptSplit.Data\ReceiptSplit.Data.csproj" />
-        <ProjectReference Include="..\ReceiptSplit.Extraction\ReceiptSplit.Extraction.csproj" />
+        <ProjectReference Include="..\ReceiptSplit.Receipts\ReceiptSplit.Receipts.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,6 +1,6 @@
 using ReceiptSplit.Data;
 
-namespace ReceiptSplit.Extraction;
+namespace ReceiptSplit.Receipts;
 
 /// <summary>
 /// A percentage taken off the whole purchase after the subtotal, such as Target's "10%off Storewide". It is kept

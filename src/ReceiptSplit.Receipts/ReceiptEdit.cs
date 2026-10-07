@@ -1,4 +1,4 @@
-namespace ReceiptSplit.Extraction;
+namespace ReceiptSplit.Receipts;
 
 /// <summary>A hand correction of one receipt, replacing what the model read.</summary>
 public sealed record ReceiptEdit(

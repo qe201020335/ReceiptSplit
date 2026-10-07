@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using ReceiptSplit.Data;
 
-namespace ReceiptSplit.Extraction;
+namespace ReceiptSplit.Receipts;
 
 /// <summary>
 /// Reads the tax code letters printed next to an amount. Costco Canada prints "H" on taxed lines and nothing

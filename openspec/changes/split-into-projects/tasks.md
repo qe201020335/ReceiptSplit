@@ -94,14 +94,15 @@ outdated.
 
 ## 7. Receipts library
 
-- [ ] 7.1 Create `src/ReceiptSplit.Receipts` and move the rest of `Extraction/` into it, with namespace
+- [x] 7.1 Create `src/ReceiptSplit.Receipts` and move the rest of `Extraction/` into it, with namespace
   `ReceiptSplit.Receipts`: `ReceiptService`, `ReceiptExtractor`, `ExtractionWorker`, `ExtractionQueue`, the
   checks, discount, tax codes, edit, results, `ImagePreparer` and `ExtractionErrors`. Receipts references Data and
   Extraction, and the host references Receipts. Remove the host's empty `Data/`, `Extraction/` and `Options/`
-  folders. Verify that the build and tests match the baseline.
-- [ ] 7.2 Create `tests/ReceiptSplit.Receipts.Tests` and move `ReceiptChecksTests`, `ReceiptTaxCodesTests`,
+  folders, and point the client's comments at the new files. Verify that the build and tests match the baseline.
+- [x] 7.2 Create `tests/ReceiptSplit.Receipts.Tests` and move `ReceiptChecksTests`, `ReceiptTaxCodesTests`,
   `ExtractionErrorsTests` and `ImagePreparerTests` into it. Verify that the total test counts match the baseline.
-- [ ] 7.3 Check the dependency direction. Data and Extraction don't reference each other or anything above them,
+  `SampleOutputTests` (see 6.2) moves there too.
+- [x] 7.3 Check the dependency direction. Data and Extraction don't reference each other or anything above them,
   and the host's `.csproj` has no package reference that only a library needs. Verify by reading the project
   references and with `dotnet list package` per project.
 

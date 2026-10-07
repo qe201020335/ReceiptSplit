@@ -1,6 +1,6 @@
 using ReceiptSplit.Data;
 
-namespace ReceiptSplit.Extraction;
+namespace ReceiptSplit.Receipts;
 
 /// <param name="Discount">The storewide discount taken off after the subtotal, negative or zero.</param>
 /// <param name="TaxedSum">The taxed lines less their part of the discount, which is what tax is charged on.</param>

@@ -1,8 +1,7 @@
 using System.Globalization;
 using ReceiptSplit.Data;
-using ReceiptSplit.Extraction;
 
-namespace ReceiptSplit.Tests;
+namespace ReceiptSplit.Receipts.Tests;
 
 public class ReceiptChecksTests
 {

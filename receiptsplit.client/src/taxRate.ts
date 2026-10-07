@@ -1,4 +1,4 @@
-// Sales tax rates, matching the range the backend accepts (src/ReceiptSplit/Extraction/ReceiptService.cs).
+// Sales tax rates, matching the range the backend accepts (src/ReceiptSplit.Receipts/ReceiptService.cs).
 
 const storageKey = 'receiptsplit.taxRatePercent'
 

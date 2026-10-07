@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Net.Http.Headers;
 using ReceiptSplit.Contracts;
 using ReceiptSplit.Data;
-using ReceiptSplit.Extraction;
+using ReceiptSplit.Receipts;
 
 namespace ReceiptSplit.Controllers;
 

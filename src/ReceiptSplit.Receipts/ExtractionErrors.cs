@@ -1,7 +1,7 @@
 using System.Text.Json;
 using ImageMagick;
 
-namespace ReceiptSplit.Extraction;
+namespace ReceiptSplit.Receipts;
 
 /// <summary>
 /// Turns an extraction failure into the message shown on the receipt. Exception messages can carry server file

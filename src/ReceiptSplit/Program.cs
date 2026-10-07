@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ReceiptSplit.Data;
 using ReceiptSplit.Extraction;
+using ReceiptSplit.Receipts;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);

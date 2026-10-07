@@ -1,9 +1,8 @@
 using System.Net;
 using System.Text.Json;
 using ImageMagick;
-using ReceiptSplit.Extraction;
 
-namespace ReceiptSplit.Tests;
+namespace ReceiptSplit.Receipts.Tests;
 
 public class ExtractionErrorsTests
 {

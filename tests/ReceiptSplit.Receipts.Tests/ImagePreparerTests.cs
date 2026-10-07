@@ -4,7 +4,7 @@ using ReceiptSplit.Extraction;
 using ReceiptSplit.Testing;
 using MsOptions = Microsoft.Extensions.Options.Options;
 
-namespace ReceiptSplit.Tests;
+namespace ReceiptSplit.Receipts.Tests;
 
 public class ImagePreparerTests
 {

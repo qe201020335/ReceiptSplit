@@ -2,8 +2,9 @@ using System.Buffers.Binary;
 using System.Text;
 using ImageMagick;
 using Microsoft.Extensions.Options;
+using ReceiptSplit.Extraction;
 
-namespace ReceiptSplit.Extraction;
+namespace ReceiptSplit.Receipts;
 
 public sealed record ImageDetails(MagickFormat Format, string MimeType, string Extension, uint Width, uint Height);
 

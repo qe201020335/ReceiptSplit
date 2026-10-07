@@ -1,6 +1,6 @@
 using System.Threading.Channels;
 
-namespace ReceiptSplit.Extraction;
+namespace ReceiptSplit.Receipts;
 
 /// <summary>
 /// In-memory queue of receipt ids waiting for extraction. The receipt's status in the database is the source
