@@ -34,16 +34,17 @@ project's conventions apply throughout:
 
 ## 3. Users, external identities and receipt owners
 
-- [ ] 3.1 In `ReceiptSplit.Data`, add `User`, `ExternalIdentity` and `IdentityProvider`, and configure them in
+- [x] 3.1 In `ReceiptSplit.Data`, add `User`, `ExternalIdentity` and `IdentityProvider`, and configure them in
   `AppDbContext` as design.md's data model describes. Verify that the solution builds.
-- [ ] 3.2 Add `Receipt.OwnerId`, nullable, with its foreign key to `User` and the (`OwnerId`, `CreatedAt`) index.
+- [x] 3.2 Add `Receipt.OwnerId`, nullable, with its foreign key to `User` and the (`OwnerId`, `CreatedAt`) index.
   Generate the `AddUsers` migration in `ReceiptSplit.Data` with the `dotnet ef` command from AGENTS.md
   (`--project src/ReceiptSplit.Data --startup-project src/ReceiptSplit`). Verify that the generated SQL only creates
-  tables, adds a nullable column and adds indexes.
-- [ ] 3.3 Apply the migration to a copy of `data/` in the scratchpad by starting a scratch backend on it. Verify
+  tables, adds a nullable column and adds indexes. Result: EF's `AddForeignKey` rebuilt the `Receipts` table, so
+  the column and its foreign key are added with one `ALTER TABLE` in `migrationBuilder.Sql` instead.
+- [x] 3.3 Apply the migration to a copy of `data/` in the scratchpad by starting a scratch backend on it. Verify
   that `GET /api/receipts` still lists every existing receipt, and that `OwnerId` is null on all of them
-  (`sqlite3`).
-- [ ] 3.4 Rewrite the Migrations section of AGENTS.md:
+  (`sqlite3`). Result: 28 receipts and 385 lines kept, all without an owner, and `foreign_key_check` is clean.
+- [x] 3.4 Rewrite the Migrations section of AGENTS.md:
   - the data must be preserved
   - add a migration for every model change, and never edit, replace or collapse a merged one
   - fill in values for existing rows within the migration

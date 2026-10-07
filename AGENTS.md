@@ -120,9 +120,16 @@ server. What was learned from real receipts:
 
 ### Migrations
 
-There is no data worth preserving yet. Editing, replacing or collapsing migrations is fine and backfill SQL isn't
-needed; collapsing migrations means deleting the dev database (`data/receiptsplit.db` and `data/uploads/` in the repository root)
-first, so ask before doing that. Migrations are applied at startup by `DatabaseInitializer`.
+The app is in use, and its data must be preserved. Migrations are applied at startup by `DatabaseInitializer`.
+
+- Add a migration for every model change. Never edit, replace or collapse one that has been merged.
+- When a change needs values for existing rows, fill them in within the migration (`migrationBuilder.Sql`), not
+  in app code.
+- Read the SQL a migration runs (`dotnet ef migrations script <previous> <new>` with the projects above). SQLite
+  can't alter most of a table, so EF rebuilds it by copying every row into a new table; prefer an in-place
+  `ALTER TABLE` when SQLite supports one, as `AddUsers` does for a column with a foreign key.
+- Check each migration against a copy of the dev database (`data/` in the repository root): start a scratch
+  backend on the copy and confirm that the existing receipts still load.
 
 ## Backend conventions
 
