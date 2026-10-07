@@ -8,7 +8,7 @@ namespace ReceiptSplit.Extraction;
 /// Checks at startup that the model server can be reached, accepts the API key and offers the configured model.
 /// Without it those mistakes only show up as failed receipts after someone uploads a photo.
 /// </summary>
-public sealed class ModelServerCheck(ILlamaClient llama, IOptions<LlmOptions> options, ILogger<ModelServerCheck> logger)
+internal sealed class ModelServerCheck(ILlamaClient llama, IOptions<LlmOptions> options, ILogger<ModelServerCheck> logger)
 {
     /// <summary>Listing models doesn't load one, so it answers quickly even when the server is busy.</summary>
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);

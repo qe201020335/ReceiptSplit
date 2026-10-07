@@ -9,7 +9,7 @@ namespace ReceiptSplit.Receipts;
 /// <summary>
 /// Processes queued receipts one at a time, matching the model server's single slot.
 /// </summary>
-public sealed class ExtractionWorker(
+internal sealed class ExtractionWorker(
     IServiceScopeFactory scopeFactory,
     ExtractionQueue queue,
     ILogger<ExtractionWorker> logger) : BackgroundService

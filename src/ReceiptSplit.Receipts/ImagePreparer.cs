@@ -6,7 +6,7 @@ using ReceiptSplit.Extraction;
 
 namespace ReceiptSplit.Receipts;
 
-public sealed record ImageDetails(MagickFormat Format, string MimeType, string Extension, uint Width, uint Height);
+internal sealed record ImageDetails(MagickFormat Format, string MimeType, string Extension, uint Width, uint Height);
 
 /// <summary>
 /// Turns an uploaded photo into what gets sent to the model. JPEG/PNG within the model's image budget is sent
@@ -126,7 +126,7 @@ public sealed class ImagePreparer(IOptions<LlmOptions> options)
     }
 
     /// <exception cref="InvalidImageException">The data is not an image in a supported format.</exception>
-    public static ImageDetails Identify(byte[] data)
+    internal static ImageDetails Identify(byte[] data)
     {
         var format = DetectFormat(data)
             ?? throw new InvalidImageException("The file is not a supported photo (JPEG, PNG, HEIC, WebP, AVIF, GIF, BMP or TIFF).");

@@ -6,7 +6,7 @@ namespace ReceiptSplit.Receipts;
 /// A percentage taken off the whole purchase after the subtotal, such as Target's "10%off Storewide". It is kept
 /// on the receipt as a percentage rather than on the lines, and only turned into an amount to check the totals.
 /// </summary>
-public static class ReceiptDiscount
+internal static class ReceiptDiscount
 {
     /// <summary>
     /// The discount on these lines, negative or zero. Each line's share is rounded to the cent before summing,

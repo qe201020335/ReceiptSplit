@@ -7,7 +7,7 @@ using ReceiptSplit.Extraction;
 namespace ReceiptSplit.Receipts;
 
 /// <summary>Runs one extraction: prepare the stored photo, ask the model, parse, check totals, save.</summary>
-public sealed class ReceiptExtractor(
+internal sealed class ReceiptExtractor(
     AppDbContext db,
     ImagePreparer imagePreparer,
     ILlamaClient llm,

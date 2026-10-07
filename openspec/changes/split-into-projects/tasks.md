@@ -123,10 +123,13 @@ outdated.
 
 ## 9. Internal by default
 
-- [ ] 9.1 Make every type in the three libraries `internal` unless another production project uses it, by
+- [x] 9.1 Make every type in the three libraries `internal` unless another production project uses it, by
   narrowing until the build fails and putting back only what's needed. Verify that the build passes, the tests
   match the baseline, and the libraries' public types are only ones the host or another library uses. List them
   in the commit body.
+  `ImagePreparer.Identify` becomes internal, as only Receipts uses it, so `ImageDetails` can be too. The generated
+  migrations stay as `dotnet ef` writes them (`public`), so new ones don't differ from the old.
+  Each type left public was then made internal on its own, and every one of them broke the build.
 
 ## 10. Dockerfile at the root
 

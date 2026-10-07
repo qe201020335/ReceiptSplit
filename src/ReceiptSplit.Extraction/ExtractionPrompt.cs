@@ -5,7 +5,7 @@ namespace ReceiptSplit.Extraction;
 /// and with a storewide discount after a Target receipt printed "10%off Storewide" under its subtotal.
 /// Rows are compact JSON arrays because output length dominates latency on the local model.
 /// </summary>
-public static class ExtractionPrompt
+internal static class ExtractionPrompt
 {
     public const string System =
         "You read photos of shopping receipts. Extract every purchased line in printed order, including discount/coupon lines. " +

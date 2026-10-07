@@ -8,7 +8,7 @@ namespace ReceiptSplit.Receipts;
 /// on the rest, T&amp;T prints "G P", and Costco US prints "A" on taxable lines and "E" on exempt ones.
 /// Codes are matched whole, so an exempt marker such as "E", "N" or "NT" is not mistaken for a tax code.
 /// </summary>
-public static partial class ReceiptTaxCodes
+internal static partial class ReceiptTaxCodes
 {
     private static readonly HashSet<string> Taxed = new(StringComparer.OrdinalIgnoreCase)
     {

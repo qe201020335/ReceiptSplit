@@ -7,7 +7,7 @@ namespace ReceiptSplit.Receipts;
 /// Turns an extraction failure into the message shown on the receipt. Exception messages can carry server file
 /// paths or the model server's raw error body, so those stay in the log and the receipt gets a plain explanation.
 /// </summary>
-public static class ExtractionErrors
+internal static class ExtractionErrors
 {
     public static string Describe(Exception exception, TimeSpan modelTimeout) => exception switch
     {

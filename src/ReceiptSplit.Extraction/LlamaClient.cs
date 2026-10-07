@@ -24,7 +24,7 @@ public interface ILlamaClient
 }
 
 /// <summary>Calls llama-server's OpenAI-compatible chat endpoint with the settings validated on real receipts.</summary>
-public sealed class LlamaClient(HttpClient http, IOptions<LlmOptions> options) : ILlamaClient
+internal sealed class LlamaClient(HttpClient http, IOptions<LlmOptions> options) : ILlamaClient
 {
     public async Task<LlmCompletion> ExtractReceiptAsync(PreparedImage image, CancellationToken cancellationToken)
     {
