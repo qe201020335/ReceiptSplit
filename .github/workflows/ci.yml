@@ -36,7 +36,7 @@ jobs:
       - run: dotnet build ReceiptSplit.slnx -c Release
 
       # Live model tests stay opt-in, and the sample receipts are not in the repository, so those tests skip.
-      - run: dotnet test --project ReceiptSplit.Tests -c Release --no-build
+      - run: dotnet test -c Release --no-build
 
   client:
     runs-on: ubuntu-latest
@@ -94,7 +94,7 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: ReceiptSplit/Dockerfile
+          file: src/ReceiptSplit/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           # Links the package to this repository, which also gives it the repository's readme.

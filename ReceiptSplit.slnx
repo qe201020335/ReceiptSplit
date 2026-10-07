@@ -13,10 +13,15 @@
     <File Path="global.json" />
     <File Path="README.md" />
   </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/ReceiptSplit/ReceiptSplit.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <File Path="tests/Directory.Build.props" />
+    <Project Path="tests/ReceiptSplit.Tests/ReceiptSplit.Tests.csproj" />
+  </Folder>
   <Project Path="receiptsplit.client/receiptsplit.client.esproj">
     <Platform Project="AnyCPU" />
     <Build Project="false" />
   </Project>
-  <Project Path="ReceiptSplit.Tests/ReceiptSplit.Tests.csproj" />
-  <Project Path="ReceiptSplit/ReceiptSplit.csproj" />
 </Solution>

@@ -8,7 +8,7 @@ Content-Type: multipart/form-data; boundary=ReceiptBoundary
 Content-Disposition: form-data; name="file"; filename="receipt2.jpg"
 Content-Type: image/jpeg
 
-< ../samples/receipt2.jpg
+< ../../samples/receipt2.jpg
 --ReceiptBoundary--
 
 > {% client.global.set("receiptId", response.body.id); %}

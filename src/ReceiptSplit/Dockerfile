@@ -17,12 +17,12 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["ReceiptSplit/ReceiptSplit.csproj", "ReceiptSplit/"]
+COPY ["src/ReceiptSplit/ReceiptSplit.csproj", "src/ReceiptSplit/"]
 # Restoring the server also runs npm install for the client it references.
 COPY ["receiptsplit.client/receiptsplit.client.esproj", "receiptsplit.client/package.json", "receiptsplit.client/package-lock.json", "receiptsplit.client/"]
-RUN dotnet restore "ReceiptSplit/ReceiptSplit.csproj"
+RUN dotnet restore "src/ReceiptSplit/ReceiptSplit.csproj"
 COPY . .
-WORKDIR "/src/ReceiptSplit"
+WORKDIR "/src/src/ReceiptSplit"
 RUN dotnet build "./ReceiptSplit.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish

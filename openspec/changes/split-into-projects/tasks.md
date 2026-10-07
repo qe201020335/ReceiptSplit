@@ -44,17 +44,21 @@ outdated.
 
 ## 3. src/ and tests/
 
-- [ ] 3.1 `git mv ReceiptSplit src/ReceiptSplit` and `git mv ReceiptSplit.Tests tests/ReceiptSplit.Tests`, and
+- [x] 3.1 `git mv ReceiptSplit src/ReceiptSplit` and `git mv ReceiptSplit.Tests tests/ReceiptSplit.Tests`, and
   update the solution. Update the paths relative to the host: `SpaRoot` and the client reference, Development's
   `Storage:Root` (`../../data`) and the sample path in `ReceiptSplit.http`. Verify that the build and tests match
   the baseline, and that a Development backend run from `src/ReceiptSplit` keeps its database in `data/` at the
   root.
-- [ ] 3.2 Add `tests/Directory.Build.props`, which imports the root props and sets the test settings and packages
+  A Development backend run from `src/ReceiptSplit`, in a worktree with a copy of `data/`, applied no migration
+  and listed the copy's 28 receipts, and created nothing under `src/`. The generated `spa.proxy.json` points at
+  `receiptsplit.client`.
+- [x] 3.2 Add `tests/Directory.Build.props`, which imports the root props and sets the test settings and packages
   for `*.Tests` projects, with a note on why the VSTest packages stay. Trim `ReceiptSplit.Tests.csproj` to its
   project reference and `Microsoft.AspNetCore.Mvc.Testing`. Verify that the tests match the baseline.
-- [ ] 3.3 Update the paths and test commands in CI, the Dockerfile, AGENTS.md, the README and the comment in
-  `vite.config.ts` (`dotnet test` for everything, and filtering by test project), and change `.dockerignore` from
-  `ReceiptSplit.Tests` to `tests`. Verify that the CI test step's command runs locally with the baseline result.
+- [x] 3.3 Update the paths and test commands in CI, the Dockerfile, AGENTS.md, the README and the client's
+  comments that name backend files (`dotnet test` for everything, and filtering by test project), and change
+  `.dockerignore` from `ReceiptSplit.Tests` to `tests`. Verify that the CI test step's command runs locally with
+  the baseline result.
 
 ## 4. Shared test support library
 

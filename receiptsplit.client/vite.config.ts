@@ -13,7 +13,7 @@ const apiTarget =
 export default defineConfig({
   plugins: [react()],
   server: {
-    // Must match SpaProxyServerUrl in ReceiptSplit/ReceiptSplit.csproj.
+    // Must match SpaProxyServerUrl in src/ReceiptSplit/ReceiptSplit.csproj.
     port: 5173,
     strictPort: true,
     proxy: {
