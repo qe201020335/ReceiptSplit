@@ -152,7 +152,7 @@ outdated.
 
 ## 11. Docs and integration check
 
-- [ ] 11.1 Rewrite the Layout section of AGENTS.md for the new tree: `src/`, `tests/`, the props files, `.config/`
+- [x] 11.1 Rewrite the Layout section of AGENTS.md for the new tree: `src/`, `tests/`, the props files, `.config/`
   and the root Dockerfile. Add these conventions:
   - internal by default
   - one test project per library
@@ -161,10 +161,15 @@ outdated.
   - package versions live in `Directory.Packages.props`
 
   Check the README for old paths. Verify by reading both against the tree.
-- [ ] 11.2 From a clean clone of the branch, run `dotnet build`, `CI=true dotnet test`, `npm run build`,
+  The README's paths moved with the host in 3.3.
+- [x] 11.2 From a clean clone of the branch, run `dotnet build`, `CI=true dotnet test`, `npm run build`,
   `npm run lint` and `docker build .`. Verify that all pass and the test counts match the baseline.
-- [ ] 11.3 Run a scratch backend and Vite on spare ports over a copy of `data/`. Verify that receipts list and
+  All passed: 152 tests, 149 passed and 3 skipped, also with CI's Release commands.
+- [x] 11.3 Run a scratch backend and Vite on spare ports over a copy of `data/`. Verify that receipts list and
   open, and that a photo upload is read to Completed. Then stop the servers and delete the copy.
+  Receipts listed and opened through Vite, in headless Chromium at desktop and phone widths in both color schemes,
+  with no sideways scroll or page errors. A re-uploaded T&T photo was read to Completed with the same 14 lines and
+  total as before.
 
 ## Workflow follow-up
 
