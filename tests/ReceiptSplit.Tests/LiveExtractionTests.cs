@@ -8,7 +8,7 @@ namespace ReceiptSplit.Tests;
 /// <summary>
 /// Sends the sample photos to the real llama-server configured for the app (appsettings + user secrets).
 /// Opt-in because it loads a model on a shared server:
-/// RECEIPTSPLIT_LIVE_TESTS=1 dotnet test --filter-class ReceiptSplit.Tests.LiveExtractionTests
+/// RECEIPTSPLIT_LIVE_TESTS=1 dotnet test --project tests/ReceiptSplit.Tests --filter-class ReceiptSplit.Tests.LiveExtractionTests
 /// </summary>
 public class LiveExtractionTests
 {

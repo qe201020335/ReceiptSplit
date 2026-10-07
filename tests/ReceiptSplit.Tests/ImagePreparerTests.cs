@@ -1,7 +1,6 @@
 using System.Text;
 using ImageMagick;
 using ReceiptSplit.Extraction;
-using ReceiptSplit.Options;
 using ReceiptSplit.Testing;
 using MsOptions = Microsoft.Extensions.Options.Options;
 

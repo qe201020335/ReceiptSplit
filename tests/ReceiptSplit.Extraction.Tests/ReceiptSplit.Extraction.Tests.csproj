@@ -1,11 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-        <PackageReference Include="Magick.NET-Q8-AnyCPU" />
-    </ItemGroup>
-
-    <ItemGroup>
         <ProjectReference Include="..\..\src\ReceiptSplit.Extraction\ReceiptSplit.Extraction.csproj" />
+        <ProjectReference Include="..\ReceiptSplit.Testing\ReceiptSplit.Testing.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,6 +1,4 @@
-using ReceiptSplit.Extraction;
-
-namespace ReceiptSplit.Tests;
+namespace ReceiptSplit.Extraction.Tests;
 
 public class ReceiptPromotionsTests
 {

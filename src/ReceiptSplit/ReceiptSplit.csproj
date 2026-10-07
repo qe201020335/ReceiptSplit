@@ -22,6 +22,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\ReceiptSplit.Data\ReceiptSplit.Data.csproj" />
+        <ProjectReference Include="..\ReceiptSplit.Extraction\ReceiptSplit.Extraction.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,4 +1,4 @@
-namespace ReceiptSplit.Options;
+namespace ReceiptSplit.Extraction;
 
 /// <summary>Connection and request settings for the OpenAI-compatible llama-server.</summary>
 public sealed class LlmOptions

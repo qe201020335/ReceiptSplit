@@ -2,9 +2,10 @@ using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
-using ReceiptSplit.Options;
 
 namespace ReceiptSplit.Extraction;
+
+public sealed record PreparedImage(byte[] Data, string MimeType, int Width, int Height, bool Converted);
 
 public sealed record LlmCompletion(
     string Content,

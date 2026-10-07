@@ -9,10 +9,11 @@ it and how to configure it.
 src/ReceiptSplit/             ASP.NET Core 10 backend (also serves the built client from wwwroot)
   Controllers/                Thin HTTP layer; ReceiptsController maps results to status codes and ProblemDetails
   Contracts/ReceiptDtos.cs    Request/response records and the entity → DTO mapping
-  Extraction/                 Upload handling, the extraction queue and worker, model client, parsing and checks
-  Options/                    Llm settings
+  Extraction/                 Upload handling, the extraction queue and worker, images and checks
 src/ReceiptSplit.Data/        EF Core model, migrations, Precision (cents and tax rate rounding), Storage settings
+src/ReceiptSplit.Extraction/ Model client, prompt, output parser, promotions, startup check and Llm settings
 tests/ReceiptSplit.Tests/     xUnit v3 tests on Microsoft.Testing.Platform
+tests/ReceiptSplit.Extraction.Tests/  Tests for the Extraction library
 tests/ReceiptSplit.Testing/   Helpers the tests share: a fake model client, test images and paths, sample truth
 receiptsplit.client/          React 19 + TypeScript + Vite 8 + Mantine 9
   src/api.ts                  Types and calls mirroring ReceiptDtos.cs

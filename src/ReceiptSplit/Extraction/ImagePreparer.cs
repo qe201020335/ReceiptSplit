@@ -2,13 +2,10 @@ using System.Buffers.Binary;
 using System.Text;
 using ImageMagick;
 using Microsoft.Extensions.Options;
-using ReceiptSplit.Options;
 
 namespace ReceiptSplit.Extraction;
 
 public sealed record ImageDetails(MagickFormat Format, string MimeType, string Extension, uint Width, uint Height);
-
-public sealed record PreparedImage(byte[] Data, string MimeType, int Width, int Height, bool Converted);
 
 /// <summary>
 /// Turns an uploaded photo into what gets sent to the model. JPEG/PNG within the model's image budget is sent

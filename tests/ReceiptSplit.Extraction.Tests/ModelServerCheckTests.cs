@@ -1,13 +1,10 @@
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
-using ReceiptSplit.Extraction;
-using ReceiptSplit.Options;
 using ReceiptSplit.Testing;
-using ReceiptSplit.Tests.Support;
 using MsOptions = Microsoft.Extensions.Options.Options;
 
-namespace ReceiptSplit.Tests;
+namespace ReceiptSplit.Extraction.Tests;
 
 public class ModelServerCheckTests
 {
@@ -39,15 +36,6 @@ public class ModelServerCheckTests
         };
 
         Assert.False(await Check(llama, FakeLlamaClient.ModelName).RunAsync(Ct));
-    }
-
-    [Fact]
-    public async Task The_app_doesnt_start_when_the_check_fails()
-    {
-        await using var factory = new ReceiptApiFactory();
-        factory.Llm.Models.Clear();
-
-        Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
     }
 
     [Fact]

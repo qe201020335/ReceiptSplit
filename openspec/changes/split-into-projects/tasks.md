@@ -79,14 +79,18 @@ outdated.
 
 ## 6. Extraction library
 
-- [ ] 6.1 Create `src/ReceiptSplit.Extraction` and move `ILlamaClient`, `LlamaClient`, `ExtractionPrompt`,
+- [x] 6.1 Create `src/ReceiptSplit.Extraction` and move `ILlamaClient`, `LlamaClient`, `ExtractionPrompt`,
   `ReceiptOutputParser`, `ReceiptPromotions`, `ModelServerCheck` and `LlmOptions` into it. `LlmOptions` changes
   namespace to `ReceiptSplit.Extraction`. Point `ReceiptSplit.Testing` at Extraction instead of the host, for
   `ILlamaClient`. Verify that the build and tests match the baseline.
-- [ ] 6.2 Create `tests/ReceiptSplit.Extraction.Tests`. Move `ReceiptOutputParserTests`,
+  `PreparedImage` moves from `ImagePreparer.cs` to `LlamaClient.cs`: `ILlamaClient` takes it, and Extraction can't
+  see Receipts, where `ImagePreparer` goes.
+- [x] 6.2 Create `tests/ReceiptSplit.Extraction.Tests`. Move `ReceiptOutputParserTests`,
   `ReceiptPromotionsTests` and `ModelServerCheckTests` into it, except
   `The_app_doesnt_start_when_the_check_fails`, which moves to a `StartupTests` class in `ReceiptSplit.Tests`.
   Verify that the total test counts match the baseline.
+  `Real_model_outputs_match_the_printed_receipt` also runs `ReceiptChecks` and `ReceiptTaxCodes`, which go to
+  Receipts, so it moves to a `SampleOutputTests` class in `ReceiptSplit.Tests`, and on to Receipts.Tests in 7.2.
 
 ## 7. Receipts library
 
