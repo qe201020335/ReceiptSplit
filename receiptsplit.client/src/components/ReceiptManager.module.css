@@ -1,0 +1,72 @@
+/* Clipping instead of Mantine's overflow: hidden keeps the rounded corners without making the card a scroll
+   container, which would stop the month headings and the footer from sticking to the window. */
+.card {
+  overflow: clip;
+}
+
+/* Each month's heading stays at the top of the window while its receipts scroll past, so a long list on a phone
+   always shows which month you're in. */
+.month {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  background-color: var(--app-bg);
+}
+
+section + section .month {
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+.monthLabel {
+  font-weight: 600;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.row:not([data-checked]):has(.toggle:not(:disabled)):hover {
+  background-color: var(--app-hover);
+}
+
+.row[data-checked] {
+  background-color: var(--mantine-primary-color-light);
+}
+
+.toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  min-width: 0;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+}
+
+.toggle:disabled {
+  cursor: default;
+}
+
+.open {
+  flex-shrink: 0;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md) var(--mantine-spacing-xs) 0;
+}
+
+/* Stays at the bottom of the window until the end of a long list, so Delete is always in reach. */
+.footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border-top: 1px solid var(--mantine-color-default-border);
+  background-color: var(--mantine-color-body);
+}

@@ -7,12 +7,14 @@ import {
 
 /**
  * Filled primary controls take their text color from --app-primary-contrast, like the old CSS's --accent-text:
- * white on #2f6fed, but near-black on dark mode's light #6b9bff, where white text can't be read.
+ * white on #2f6fed, but near-black on dark mode's light #6b9bff, where white text can't be read. Dark mode's
+ * primaryShade lightens every color, so the red of Delete buttons gets the same treatment.
  */
 const variantColorResolver: VariantColorsResolver = (input) => {
   const colors = defaultVariantColorsResolver(input)
   const primary = input.color === undefined || input.color === input.theme.primaryColor
-  return input.variant === 'filled' && primary ? { ...colors, color: 'var(--app-primary-contrast)' } : colors
+  const darkText = primary || input.color === 'red'
+  return input.variant === 'filled' && darkText ? { ...colors, color: 'var(--app-primary-contrast)' } : colors
 }
 
 /** The palette the hand-written CSS used: #2f6fed in light, lifted to #6b9bff in dark. */

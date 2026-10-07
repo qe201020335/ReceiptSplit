@@ -93,6 +93,12 @@ export interface ReceiptDetail {
   extraction: Extraction | null
 }
 
+/** What a bulk delete removed, and the receipts it left because the model is reading them. */
+export interface ReceiptsDeleted {
+  deleted: string[]
+  busy: string[]
+}
+
 export class ApiError extends Error {
   readonly status: number
 
@@ -163,6 +169,14 @@ export const api = {
   rerunExtraction: (id: string) => request<ReceiptQueued>(`/api/receipts/${id}/extract`, { method: 'POST' }),
 
   deleteReceipt: (id: string) => request<void>(`/api/receipts/${id}`, { method: 'DELETE' }),
+
+  /** Deletes several receipts; those being read are left and listed as busy. */
+  deleteReceipts: (ids: string[]) =>
+    request<ReceiptsDeleted>('/api/receipts/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    }),
 
   imageUrl: (id: string) => `/api/receipts/${id}/image`,
 }

@@ -161,6 +161,19 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
             _ => NotFound(),
         };
 
+    /// <summary>
+    /// Deletes several receipts and their photos. Receipts being extracted are left and listed as busy; unknown ids
+    /// are ignored.
+    /// </summary>
+    [HttpPost("delete")]
+    [ProducesResponseType<ReceiptsDeletedDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ReceiptsDeletedDto> DeleteMany(ReceiptDeleteDto request, CancellationToken cancellationToken)
+    {
+        var result = await receipts.DeleteManyAsync([.. request.Ids.Distinct()], cancellationToken);
+        return new ReceiptsDeletedDto(result.Deleted, result.Busy);
+    }
+
     private ObjectResult InvalidTaxRate() => Problem(
         title: "Invalid tax rate",
         detail: $"The tax rate must be between {ReceiptService.MinTaxRatePercent} and {ReceiptService.MaxTaxRatePercent} percent.",

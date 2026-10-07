@@ -46,7 +46,8 @@ browser.
 - **Statuses.** `Completed` when all three checks in `ReceiptChecks` pass (lines = subtotal, subtotal + tax = total,
   expected tax within a cent), otherwise `NeedsReview`. Hand edits (`PUT`) and tax rate changes (`PATCH`) recheck
   without calling the model. Actions that would clash with an extraction return `ReceiptActionResult.Busy` (409);
-  which statuses count as busy differs per action, see `ReceiptService`.
+  which statuses count as busy differs per action, see `ReceiptService`. The bulk delete (`POST
+  /api/receipts/delete`) leaves busy receipts and lists them in its response instead of failing.
 - **Business logic lives in `ReceiptService`**, not in the controller, so other entry points can reuse it.
 - **The model server is checked at startup.** `ModelServerCheck` lists the models (`GET /v1/models`, which doesn't
   load one) and `Program.cs` exits with code 1 when the server can't be reached, rejects the API key or doesn't
@@ -122,8 +123,8 @@ first, so ask before doing that. Migrations are applied at startup by `DatabaseI
   colors come from `theme.ts` tokens and CSS variables so light and dark mode both work.
 - Keep the original palette: primary `#2f6fed` in light mode and `#6b9bff` in dark mode (with dark text on filled
   primary buttons). Check contrast in both color schemes.
-- Routing is a small hook, `useRoute.ts`, over the History API (`/receipts/:id`, `/splits?receipts=a,b`); the
-  backend serves `index.html` for any non-API path.
+- Routing is a small hook, `useRoute.ts`, over the History API (`/receipts/:id`, `/receipts` for the receipt
+  manager, `/splits?receipts=a,b`); the backend serves `index.html` for any non-API path.
 - Every layout must work at phone width (390px) without sideways page scroll.
 - `api.ts` types mirror `ReceiptDtos.cs`; update both together. Split math stays in integer cents in `splits.ts`.
 - Oxlint enforces the React hooks rules, including no `setState` directly in effects: load data in an effect with

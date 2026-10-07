@@ -3,6 +3,7 @@ import { Anchor, Box, Card, Container, Grid, Paper, Stack, Text, Title } from '@
 import { api, errorMessage, inProgress, type ReceiptSummary } from './api.ts'
 import { ReceiptDetail } from './components/ReceiptDetail.tsx'
 import { ReceiptList } from './components/ReceiptList.tsx'
+import { ReceiptManager } from './components/ReceiptManager.tsx'
 import { UploadForm } from './components/UploadForm.tsx'
 import { SplitsPage } from './components/SplitsPage.tsx'
 import { useRoute } from './useRoute.ts'
@@ -14,7 +15,7 @@ function App() {
   const [listError, setListError] = useState<string | null>(null)
   // Bumping this reloads the list.
   const [listVersion, setListVersion] = useState(0)
-  const [route, navigate, goBack, navigateSplits] = useRoute()
+  const [route, navigate, goBack, navigateSplits, navigateManage] = useRoute()
   const selectedId = route.receiptId
 
   // Receipts picked on the list to split together, or null when not picking. Kept while on the splits page, so
@@ -78,8 +79,8 @@ function App() {
 
   const splitIds = route.splitIds
   const showSplits = splitIds !== null
-  // The splits page has a wide table beside its summary, so it gets a wider page.
-  const containerSize = showSplits ? 'xl' : 'lg'
+  // The splits page has a wide table beside its summary, so it gets a wider page; the manager is a single list.
+  const containerSize = showSplits ? 'xl' : route.manage ? 'md' : 'lg'
 
   return (
     <Box mih="100vh" bg="var(--app-bg)">
@@ -111,6 +112,16 @@ function App() {
             onBack={() => goBack(splitIds.length === 1 ? splitIds[0] : null)}
           />
         </Container>
+      ) : route.manage ? (
+        <Container size={containerSize} py="md" px="md">
+          <ReceiptManager
+            receipts={receipts}
+            error={listError}
+            onChanged={reloadList}
+            onOpen={navigate}
+            onBack={() => goBack(null)}
+          />
+        </Container>
       ) : (
         <Container size={containerSize} py="md" px="md">
           <Grid gap="md" align="flex-start">
@@ -130,6 +141,7 @@ function App() {
                   picked={picked}
                   onPickedChange={setPicked}
                   onSplit={navigateSplits}
+                  onManage={navigateManage}
                 />
               </Stack>
             </Grid.Col>
