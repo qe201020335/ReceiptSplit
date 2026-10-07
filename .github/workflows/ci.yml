@@ -4,6 +4,10 @@ on:
   push:
     branches: [master]
     tags: ['v*']
+    paths-ignore:
+      - '*.md' # ignore top level md file changes
+      - 'openspec/**'
+      - '.claude/**'
   pull_request:
   workflow_dispatch:
 
