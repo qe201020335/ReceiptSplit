@@ -69,11 +69,11 @@ outdated.
 
 ## 5. Data library
 
-- [ ] 5.1 Create `src/ReceiptSplit.Data` and move the entities, `ReceiptStatus`, `AppDbContext`, `Migrations/`,
+- [x] 5.1 Create `src/ReceiptSplit.Data` and move the entities, `ReceiptStatus`, `AppDbContext`, `Migrations/`,
   `DatabaseInitializer`, `Precision` and `StorageOptions` into it. `StorageOptions` changes namespace to
   `ReceiptSplit.Data`; the migrations keep theirs. The host references Data. Verify that the build and tests
   match the baseline.
-- [ ] 5.2 Update the `dotnet ef` command in AGENTS.md to `--project src/ReceiptSplit.Data --startup-project
+- [x] 5.2 Update the `dotnet ef` command in AGENTS.md to `--project src/ReceiptSplit.Data --startup-project
   src/ReceiptSplit`. Verify that `dotnet ef migrations list` with that command lists every migration, and that a
   scratch backend started on a copy of `data/` applies nothing new and lists the existing receipts.
 

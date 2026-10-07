@@ -1,4 +1,4 @@
-namespace ReceiptSplit.Options;
+namespace ReceiptSplit.Data;
 
 /// <summary>Where the SQLite database and uploaded receipt photos live.</summary>
 public sealed class StorageOptions

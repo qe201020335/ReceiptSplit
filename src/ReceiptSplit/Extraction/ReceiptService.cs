@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ReceiptSplit.Data;
-using ReceiptSplit.Options;
 
 namespace ReceiptSplit.Extraction;
 

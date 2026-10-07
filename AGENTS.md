@@ -9,9 +9,9 @@ it and how to configure it.
 src/ReceiptSplit/             ASP.NET Core 10 backend (also serves the built client from wwwroot)
   Controllers/                Thin HTTP layer; ReceiptsController maps results to status codes and ProblemDetails
   Contracts/ReceiptDtos.cs    Request/response records and the entity → DTO mapping
-  Data/                       EF Core model, migrations, Precision (cents and tax rate rounding)
   Extraction/                 Upload handling, the extraction queue and worker, model client, parsing and checks
-  Options/                    Llm and Storage settings
+  Options/                    Llm settings
+src/ReceiptSplit.Data/        EF Core model, migrations, Precision (cents and tax rate rounding), Storage settings
 tests/ReceiptSplit.Tests/     xUnit v3 tests on Microsoft.Testing.Platform
 tests/ReceiptSplit.Testing/   Helpers the tests share: a fake model client, test images and paths, sample truth
 receiptsplit.client/          React 19 + TypeScript + Vite 8 + Mantine 9
@@ -33,7 +33,7 @@ dotnet build ReceiptSplit.slnx
 dotnet test                                                   # all backend tests
 dotnet test --project tests/ReceiptSplit.Tests --filter-class ReceiptSplit.Tests.ReceiptChecksTests
 cd receiptsplit.client && npm run build && npm run lint       # type check, build, oxlint
-dotnet ef migrations add <Name> --project src/ReceiptSplit --output-dir Data/Migrations
+dotnet ef migrations add <Name> --project src/ReceiptSplit.Data --startup-project src/ReceiptSplit
 ```
 
 `dotnet ef` is a local tool (`dotnet tool restore`). There is no test runner for the client; verify UI changes in a
