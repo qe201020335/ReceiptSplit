@@ -123,8 +123,10 @@ first, so ask before doing that. Migrations are applied at startup by `DatabaseI
   colors come from `theme.ts` tokens and CSS variables so light and dark mode both work.
 - Keep the original palette: primary `#2f6fed` in light mode and `#6b9bff` in dark mode (with dark text on filled
   primary buttons). Check contrast in both color schemes.
-- Routing is a small hook, `useRoute.ts`, over the History API (`/receipts/:id`, `/receipts` for the receipt
-  manager, `/splits?receipts=a,b`); the backend serves `index.html` for any non-API path.
+- Routing is a small hook, `useRoute.ts`, over the History API: `/` (`/?receipt={id}` with a receipt open beside the
+  list), `/receipts` (the receipt manager), `/receipts/{id}` (a receipt's own page) and `/splits?receipts=a,b`. The
+  backend serves `index.html` for any non-API path. Phones open receipts on their own page, since the start page
+  stacks there.
 - Every layout must work at phone width (390px) without sideways page scroll.
 - `api.ts` types mirror `ReceiptDtos.cs`; update both together. Split math stays in integer cents in `splits.ts`.
 - Oxlint enforces the React hooks rules, including no `setState` directly in effects: load data in an effect with
