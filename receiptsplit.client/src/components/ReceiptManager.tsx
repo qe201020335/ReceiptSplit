@@ -5,6 +5,7 @@ import { notifications } from '@mantine/notifications'
 import { api, errorMessage, type ReceiptSummary } from '../api.ts'
 import { formatDateTime, formatMoney } from '../format.ts'
 import { usePageTitle } from '../usePageTitle.ts'
+import { pathFor } from '../useRoute.ts'
 import { StatusBadge } from './StatusBadge.tsx'
 import classes from './ReceiptManager.module.css'
 
@@ -247,7 +248,7 @@ function ReceiptManagerRow({ receipt, checked, disabled, onToggle, onOpen }: Rec
         </Stack>
       </UnstyledButton>
       <Anchor
-        href={`/receipts/${receipt.id}`}
+        href={pathFor({ page: 'home', receiptId: receipt.id })}
         size="sm"
         className={classes.open}
         aria-label={`Open ${receipt.storeName ?? 'Unknown store'}, ${date}`}
