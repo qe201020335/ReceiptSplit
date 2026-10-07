@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\ReceiptSplit.Extraction\ReceiptSplit.Extraction.csproj" />
+        <ProjectReference Include="..\ReceiptSplit.Testing\ReceiptSplit.Testing.csproj" />
+    </ItemGroup>
+
+</Project>

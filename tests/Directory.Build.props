@@ -1,0 +1,21 @@
+<Project>
+
+    <!-- MSBuild only imports the nearest Directory.Build.props, so this one brings in the shared settings first. -->
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+    <!-- Only the test projects; ReceiptSplit.Testing is a plain library of helpers they share. -->
+    <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+        <OutputType>Exe</OutputType>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <!-- dotnet test runs on Microsoft.Testing.Platform (global.json) without the first two packages; tools that still
+         run tests through VSTest need them. -->
+    <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit.runner.visualstudio" />
+        <PackageReference Include="xunit.v3" />
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+</Project>

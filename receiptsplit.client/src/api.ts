@@ -1,4 +1,4 @@
-// Types and calls for the ReceiptSplit backend (ReceiptSplit/Contracts/ReceiptDtos.cs).
+// Types and calls for the ReceiptSplit backend (src/ReceiptSplit/Contracts/ReceiptDtos.cs).
 
 export type ReceiptStatus = 'Queued' | 'Processing' | 'Completed' | 'NeedsReview' | 'Failed'
 

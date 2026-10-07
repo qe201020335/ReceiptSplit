@@ -1,4 +1,5 @@
-// The photo formats the server accepts; keep in step with SupportedFormats in ReceiptSplit/Extraction/ImagePreparer.cs.
+// The photo formats the server accepts; keep in step with SupportedFormats in
+// src/ReceiptSplit.Receipts/ImagePreparer.cs.
 
 /** 30 MB, matching ReceiptService.MaxUploadBytes, so an oversized photo is refused before it is sent. */
 export const maxUploadBytes = 30 * 1024 * 1024

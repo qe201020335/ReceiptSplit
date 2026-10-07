@@ -1,0 +1,17 @@
+<Project>
+
+    <!-- MSBuild also imports this file into the client's .esproj, which must not get .NET settings. -->
+    <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <!-- GitHub Actions sets CI=true; local and Docker builds keep warnings as warnings. -->
+        <TreatWarningsAsErrors Condition="'$(CI)' == 'true'">true</TreatWarningsAsErrors>
+    </PropertyGroup>
+
+    <!-- Types are internal by default, so each project shows them to its own test project only. -->
+    <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' And !$(MSBuildProjectName.EndsWith('.Tests'))">
+        <InternalsVisibleTo Include="$(MSBuildProjectName).Tests" />
+    </ItemGroup>
+
+</Project>

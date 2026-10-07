@@ -1,0 +1,31 @@
+@ReceiptSplit_HostAddress = http://localhost:5015
+
+### Upload a receipt photo (samples/ is gitignored; point this at any photo)
+POST {{ReceiptSplit_HostAddress}}/api/receipts
+Content-Type: multipart/form-data; boundary=ReceiptBoundary
+
+--ReceiptBoundary
+Content-Disposition: form-data; name="file"; filename="receipt2.jpg"
+Content-Type: image/jpeg
+
+< ../../samples/receipt2.jpg
+--ReceiptBoundary--
+
+> {% client.global.set("receiptId", response.body.id); %}
+
+### List receipts, newest first
+GET {{ReceiptSplit_HostAddress}}/api/receipts
+Accept: application/json
+
+### Poll the uploaded receipt until its status is Completed, NeedsReview or Failed
+GET {{ReceiptSplit_HostAddress}}/api/receipts/{{receiptId}}
+Accept: application/json
+
+### Original uploaded photo
+GET {{ReceiptSplit_HostAddress}}/api/receipts/{{receiptId}}/image
+
+### Re-run extraction on the stored photo (409 while queued or processing)
+POST {{ReceiptSplit_HostAddress}}/api/receipts/{{receiptId}}/extract
+
+### Delete the receipt and its photo (409 while processing)
+DELETE {{ReceiptSplit_HostAddress}}/api/receipts/{{receiptId}}

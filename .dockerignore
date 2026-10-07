@@ -22,9 +22,12 @@
 **/secrets.dev.yaml
 **/values.dev.yaml
 LICENSE
-README.md
+*.md
+.claude
+.github
+openspec
 samples
 data
-ReceiptSplit.Tests
+tests
 receiptsplit.client/dist
 receiptsplit.client/obj*

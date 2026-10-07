@@ -1,0 +1,222 @@
+using System.Globalization;
+using ReceiptSplit.Testing;
+
+namespace ReceiptSplit.Extraction.Tests;
+
+public class ReceiptOutputParserTests
+{
+    [Fact]
+    public void Parses_rows_totals_store_and_date()
+    {
+        var parsed = ReceiptOutputParser.Parse(FakeLlamaClient.ValidOutput);
+
+        Assert.Equal(
+            new[]
+            {
+                new ParsedLine("BANANAS", null, 1.25m, 1.99m, null),
+                new ParsedLine("MILK 2L", "4011", 1m, 5.49m, "H"),
+            },
+            parsed.Lines);
+        Assert.Equal(7.48m, parsed.Subtotal);
+        Assert.Equal(0.71m, parsed.Tax);
+        Assert.Equal(8.19m, parsed.Total);
+        Assert.Equal("Corner Market", parsed.StoreName);
+        Assert.Equal(new DateOnly(2026, 9, 14), parsed.PurchaseDate);
+    }
+
+    [Fact]
+    public void Handles_code_fences_and_one_multiline_array()
+    {
+        const string output = """
+            ```json
+            [
+              ["A", null, 1, "1.00", null],
+              ["B", null, 1, "2.00", "G P"]
+            ]
+            ```
+            ```json
+            {"s": "3.00", "t": "0.00", "T": "3.00"}
+            ```
+            """;
+
+        var parsed = ReceiptOutputParser.Parse(output);
+
+        Assert.Equal(["A", "B"], parsed.Lines.Select(l => l.Name));
+        Assert.Equal("G P", parsed.Lines[1].TaxCode);
+        Assert.Equal(3.00m, parsed.Total);
+    }
+
+    [Fact]
+    public void Handles_rows_wrapped_in_double_brackets()
+    {
+        const string output = """
+            [["A","1",1,"1.00",null]]
+            [["B","2",1,"2.00",null]]
+            {"s":"3.00","t":"0.00","T":"3.00"}
+            """;
+
+        Assert.Equal([1.00m, 2.00m], ReceiptOutputParser.Parse(output).Lines.Select(l => l.Amount));
+    }
+
+    [Fact]
+    public void Handles_a_dropped_opening_bracket()
+    {
+        const string output = """[["A",null,1,"1.00",null],"B",null,1,"2.00",null],["C",null,1,"3.00",null]]""";
+
+        Assert.Equal(["A", "B", "C"], ReceiptOutputParser.Parse(output).Lines.Select(l => l.Name));
+    }
+
+    [Fact]
+    public void Reads_negative_discount_lines()
+    {
+        const string output = """
+            ["PF GOLDFISH", "339054", 1, "13.99", null]
+            ["TPD/339054", "2108345", -1, "3.00-", null]
+            """;
+
+        var discount = ReceiptOutputParser.Parse(output).Lines[1];
+
+        Assert.Equal(-3.00m, discount.Amount);
+        Assert.Equal(-1m, discount.Quantity);
+    }
+
+    [Fact]
+    public void Drops_zero_amount_info_rows()
+    {
+        const string output = """
+            [["GROCERY", null, 1, "0.00", null], ["CILANTRO", "W", 1, "1.98", null], ["Points 40", null, 1, "0.00", null]]
+            """;
+
+        Assert.Equal("CILANTRO", Assert.Single(ReceiptOutputParser.Parse(output).Lines).Name);
+    }
+
+    [Fact]
+    public void Reads_escaped_names_bare_codes_and_quoted_quantities()
+    {
+        const string output = """["12\" PIZZA", 4011, "2", "$19.98", null]""";
+
+        Assert.Equal(new ParsedLine("12\" PIZZA", "4011", 2m, 19.98m, null), Assert.Single(ReceiptOutputParser.Parse(output).Lines));
+    }
+
+    /// <summary>A real MIXUE receipt from Japan: yen have no cents, and the item numbers look like quantities.</summary>
+    [Fact]
+    public void Reads_amounts_in_a_currency_without_cents()
+    {
+        const string output = """
+            ```json
+            ["原葉紅茶","9",1,"130",null]
+            ["パ一ルミルクティー(700ml)","2",1,"500",null]
+            ["香橙·四季春","6",1,"480",null]
+            ["BIG SET",null,"2","1,200",null]
+            {"s":"1,110","t":"83","T":"1,110","store":"MIXUE","date":"2025-03-14"}
+            ```
+            """;
+
+        var parsed = ReceiptOutputParser.Parse(output);
+
+        Assert.Equal(
+            new[]
+            {
+                new ParsedLine("原葉紅茶", "9", 1m, 130m, null),
+                new ParsedLine("パ一ルミルクティー(700ml)", "2", 1m, 500m, null),
+                new ParsedLine("香橙·四季春", "6", 1m, 480m, null),
+                new ParsedLine("BIG SET", null, 2m, 1200m, null),
+            },
+            parsed.Lines);
+        Assert.Equal((1110m, 83m, 1110m), (parsed.Subtotal!.Value, parsed.Tax!.Value, parsed.Total!.Value));
+    }
+
+    /// <summary>From a real T&amp;T photo, where all but the first row came back in these shapes.</summary>
+    [Fact]
+    public void Reads_names_given_with_their_printed_translation_and_rows_without_a_code()
+    {
+        const string output = """
+            [["TTL DA HONG PAO OOLONG","040663446",1,"26.99","U"],[["MM NO ADDED SUGAR APPLE SODA","美粒果0加糖苹果苏打"],null,1,"2.49","G P"],[["CARROT","紅蘿蔔"],0.375,"1.23","U"],[["STRAWBERRY","草莓"],null,1,"6.99","U"],["ONION",2,"3.49",null]]
+            """;
+
+        Assert.Equal(
+            new[]
+            {
+                new ParsedLine("TTL DA HONG PAO OOLONG", "040663446", 1m, 26.99m, "U"),
+                new ParsedLine("MM NO ADDED SUGAR APPLE SODA", null, 1m, 2.49m, "G P"),
+                new ParsedLine("CARROT", null, 0.375m, 1.23m, "U"),
+                new ParsedLine("STRAWBERRY", null, 1m, 6.99m, "U"),
+                new ParsedLine("ONION", null, 2m, 3.49m, null),
+            },
+            ReceiptOutputParser.Parse(output).Lines);
+    }
+
+    [Theory]
+    [InlineData("4.99", "4.99")]
+    [InlineData("$1,234.50", "1234.50")]
+    [InlineData("-3.00", "-3.00")]
+    [InlineData("3.00-", "-3.00")]
+    [InlineData("(3.00)", "-3.00")]
+    [InlineData("-$3.00", "-3.00")]
+    [InlineData("$-3.00", "-3.00")]
+    [InlineData("", null)]
+    [InlineData("n/a", null)]
+    public void Parses_money_formats(string text, string? expected)
+    {
+        Assert.Equal(
+            expected is null ? null : decimal.Parse(expected, CultureInfo.InvariantCulture),
+            ReceiptOutputParser.ParseMoney(text));
+    }
+
+    [Theory]
+    [InlineData("\"2026-09-14\"", "2026-09-14")]
+    [InlineData("\"2026-09-14 16:51:13\"", "2026-09-14")]
+    [InlineData("\"Sept 14\"", null)]
+    [InlineData("null", null)]
+    public void Reads_purchase_date(string dateJson, string? expected)
+    {
+        var parsed = ReceiptOutputParser.Parse($$"""{"s":"1.00","t":"0.00","T":"1.00","store":null,"date":{{dateJson}}}""");
+
+        Assert.Equal(expected is null ? null : DateOnly.Parse(expected, CultureInfo.InvariantCulture), parsed.PurchaseDate);
+        Assert.Null(parsed.StoreName);
+    }
+
+    [Fact]
+    public void Reads_numeric_totals()
+    {
+        var parsed = ReceiptOutputParser.Parse("""{"s": 58.05, "t": 2.59, "T": 60.64}""");
+
+        Assert.Equal((58.05m, 2.59m, 60.64m), (parsed.Subtotal!.Value, parsed.Tax!.Value, parsed.Total!.Value));
+    }
+
+    [Theory]
+    [InlineData("\"d\":10,", "10")]
+    [InlineData("\"d\":\"10\",", "10")]
+    [InlineData("\"d\":\"10%\",", "10")]
+    [InlineData("\"d\":12.5,", "12.5")]
+    [InlineData("\"d\":null,", "0")]
+    [InlineData("\"d\":\"none\",", "0")]
+    [InlineData("\"d\":100,", "0")]
+    [InlineData("", "0")]
+    public void Reads_the_storewide_discount_percentage(string discountJson, string expected)
+    {
+        var parsed = ReceiptOutputParser.Parse($$"""{"s":"415.34",{{discountJson}}"t":"29.80","T":"403.60"}""");
+
+        Assert.Equal(decimal.Parse(expected, CultureInfo.InvariantCulture), parsed.DiscountPercent);
+        Assert.Equal(415.34m, parsed.Subtotal);
+    }
+
+    [Fact]
+    public void Leaves_totals_empty_without_a_totals_line()
+    {
+        var parsed = ReceiptOutputParser.Parse("""["A", null, 1, "1.00", null]""");
+
+        Assert.Single(parsed.Lines);
+        Assert.Null(parsed.Subtotal);
+        Assert.Null(parsed.Total);
+    }
+
+    [Fact]
+    public void Finds_nothing_in_prose()
+    {
+        var parsed = ReceiptOutputParser.Parse("I can't read this receipt, the photo is too blurry.");
+
+        Assert.Empty(parsed.Lines);
+        Assert.Null(parsed.Total);
+    }
+}

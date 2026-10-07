@@ -20,10 +20,10 @@ It has been tuned on receipts from Costco and T&T but should work with any gener
 
 ## Running it
 
-With the .NET 10 SDK and Node.js installed, and the model server set in `ReceiptSplit/appsettings.json`:
+With the .NET 10 SDK and Node.js installed, and the model server set in `src/ReceiptSplit/appsettings.json`:
 
 ```sh
-dotnet run --project ReceiptSplit
+dotnet run --project src/ReceiptSplit
 ```
 
 Then open <http://localhost:5173>. To host it, use `compose.yaml`. The app won't start unless the model server
