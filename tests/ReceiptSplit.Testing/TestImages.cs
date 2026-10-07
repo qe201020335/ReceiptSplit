@@ -1,8 +1,8 @@
 using ImageMagick;
 
-namespace ReceiptSplit.Tests.Support;
+namespace ReceiptSplit.Testing;
 
-internal static class TestImages
+public static class TestImages
 {
     public static byte[] Create(uint width, uint height, MagickFormat format, ushort? exifOrientation = null)
     {

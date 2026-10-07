@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using ReceiptSplit.Extraction;
-using ReceiptSplit.Tests.Support;
+using ReceiptSplit.Testing;
 
 namespace ReceiptSplit.Tests;
 

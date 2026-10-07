@@ -12,7 +12,8 @@ src/ReceiptSplit/             ASP.NET Core 10 backend (also serves the built cli
   Data/                       EF Core model, migrations, Precision (cents and tax rate rounding)
   Extraction/                 Upload handling, the extraction queue and worker, model client, parsing and checks
   Options/                    Llm and Storage settings
-tests/ReceiptSplit.Tests/     xUnit v3 tests on Microsoft.Testing.Platform, with a fake model client
+tests/ReceiptSplit.Tests/     xUnit v3 tests on Microsoft.Testing.Platform
+tests/ReceiptSplit.Testing/   Helpers the tests share: a fake model client, test images and paths, sample truth
 receiptsplit.client/          React 19 + TypeScript + Vite 8 + Mantine 9
   src/api.ts                  Types and calls mirroring ReceiptDtos.cs
   src/splits.ts               Split calculations, all in integer cents

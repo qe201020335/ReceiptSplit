@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using ImageMagick;
 using ReceiptSplit.Contracts;
 using ReceiptSplit.Data;
+using ReceiptSplit.Testing;
 using ReceiptSplit.Tests.Support;
 
 namespace ReceiptSplit.Tests;

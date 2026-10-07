@@ -18,6 +18,7 @@
   </Folder>
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
+    <Project Path="tests/ReceiptSplit.Testing/ReceiptSplit.Testing.csproj" />
     <Project Path="tests/ReceiptSplit.Tests/ReceiptSplit.Tests.csproj" />
   </Folder>
   <Project Path="receiptsplit.client/receiptsplit.client.esproj">

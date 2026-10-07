@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using ReceiptSplit.Extraction;
+using ReceiptSplit.Testing;
 using ReceiptSplit.Tests.Support;
 
 namespace ReceiptSplit.Tests;

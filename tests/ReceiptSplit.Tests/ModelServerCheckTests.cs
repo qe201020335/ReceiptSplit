@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
 using ReceiptSplit.Extraction;
 using ReceiptSplit.Options;
+using ReceiptSplit.Testing;
 using ReceiptSplit.Tests.Support;
 using MsOptions = Microsoft.Extensions.Options.Options;
 

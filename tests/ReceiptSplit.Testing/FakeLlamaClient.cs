@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using ReceiptSplit.Extraction;
 
-namespace ReceiptSplit.Tests.Support;
+namespace ReceiptSplit.Testing;
 
 public sealed class FakeLlamaClient : ILlamaClient
 {

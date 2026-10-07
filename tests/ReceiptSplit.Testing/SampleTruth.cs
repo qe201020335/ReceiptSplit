@@ -1,12 +1,12 @@
 using System.Globalization;
 using System.Text.Json;
 
-namespace ReceiptSplit.Tests.Support;
+namespace ReceiptSplit.Testing;
 
-internal sealed record TruthReceipt(IReadOnlyList<decimal> Amounts, decimal Subtotal, decimal Tax, decimal Total, DateOnly Date);
+public sealed record TruthReceipt(IReadOnlyList<decimal> Amounts, decimal Subtotal, decimal Tax, decimal Total, DateOnly Date);
 
 /// <summary>Known-correct answers for the sample photos in samples/.</summary>
-internal static class SampleTruth
+public static class SampleTruth
 {
     public static TruthReceipt For(string photoOrOutputPath) =>
         photoOrOutputPath.Contains("receipt2") || photoOrOutputPath.StartsWith("tnt") ? TnT() : Costco();

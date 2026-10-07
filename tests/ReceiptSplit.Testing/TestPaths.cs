@@ -1,6 +1,6 @@
-namespace ReceiptSplit.Tests.Support;
+namespace ReceiptSplit.Testing;
 
-internal static class TestPaths
+public static class TestPaths
 {
     public static string RepoRoot { get; } = FindRepoRoot();
 

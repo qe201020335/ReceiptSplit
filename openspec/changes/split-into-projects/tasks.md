@@ -62,7 +62,7 @@ outdated.
 
 ## 4. Shared test support library
 
-- [ ] 4.1 Create `tests/ReceiptSplit.Testing`, a plain library. Move `FakeLlamaClient`, `TestImages`,
+- [x] 4.1 Create `tests/ReceiptSplit.Testing`, a plain library. Move `FakeLlamaClient`, `TestImages`,
   `TestPaths` and `SampleTruth` into it and make them `public`; `ReceiptApiFactory` stays in
   `ReceiptSplit.Tests/Support`. It references the host for now and Magick.NET for `TestImages`. Verify that the
   project isn't treated as a test project (no test run for it) and that the tests match the baseline.

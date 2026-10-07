@@ -1,12 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+        <PackageReference Include="Magick.NET-Q8-AnyCPU" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\ReceiptSplit\ReceiptSplit.csproj" />
-        <ProjectReference Include="..\ReceiptSplit.Testing\ReceiptSplit.Testing.csproj" />
     </ItemGroup>
 
 </Project>
