@@ -248,7 +248,7 @@ function ReceiptManagerRow({ receipt, checked, disabled, onToggle, onOpen }: Rec
         </Stack>
       </UnstyledButton>
       <Anchor
-        href={pathFor({ page: 'home', receiptId: receipt.id })}
+        href={pathFor({ page: 'receipt', receiptId: receipt.id })}
         size="sm"
         className={classes.open}
         aria-label={`Open ${receipt.storeName ?? 'Unknown store'}, ${date}`}

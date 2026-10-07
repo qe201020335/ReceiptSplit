@@ -4,6 +4,7 @@ import { api, errorMessage, inProgress, type ReceiptSummary } from './api.ts'
 import { ReceiptDetail } from './components/ReceiptDetail.tsx'
 import { ReceiptList } from './components/ReceiptList.tsx'
 import { ReceiptManager } from './components/ReceiptManager.tsx'
+import { ReceiptPage } from './components/ReceiptPage.tsx'
 import { UploadForm } from './components/UploadForm.tsx'
 import { SplitsPage } from './components/SplitsPage.tsx'
 import { home, useRoute } from './useRoute.ts'
@@ -16,8 +17,7 @@ function App() {
   // Bumping this reloads the list.
   const [listVersion, setListVersion] = useState(0)
   const [route, go, goBack] = useRoute()
-  // Until receipts get a page of their own, /receipts/{id} opens them on the start page too.
-  const selectedId = route.page === 'home' || route.page === 'receipt' ? route.receiptId : null
+  const selectedId = route.page === 'home' ? route.receiptId : null
 
   // Receipts picked on the list to split together, or null when not picking. Kept while on the splits page, so
   // coming back lets people change the set.
@@ -78,8 +78,9 @@ function App() {
     return () => clearTimeout(timer)
   }, [receipts, anyInProgress, reloadList])
 
-  // The splits page has a wide table beside its summary, so it gets a wider page; the manager is a single list.
-  const containerSize = route.page === 'splits' ? 'xl' : route.page === 'manage' ? 'md' : 'lg'
+  // The splits page has a wide table beside its summary, so it gets a wider page; the manager and a receipt's own
+  // page are a single column.
+  const containerSize = route.page === 'splits' ? 'xl' : route.page === 'home' ? 'lg' : 'md'
 
   return (
     <Box mih="100vh" bg="var(--app-bg)">
@@ -108,7 +109,7 @@ function App() {
             key={route.ids.join(',')}
             ids={route.ids}
             // Opened by a link, a single receipt's split goes back to that receipt, several to the list.
-            onBack={() => goBack(route.ids.length === 1 ? { page: 'home', receiptId: route.ids[0] } : home)}
+            onBack={() => goBack(route.ids.length === 1 ? { page: 'receipt', receiptId: route.ids[0] } : home)}
           />
         </Container>
       ) : route.page === 'manage' ? (
@@ -117,8 +118,21 @@ function App() {
             receipts={receipts}
             error={listError}
             onChanged={reloadList}
-            onOpen={(id) => go({ page: 'home', receiptId: id })}
+            onOpen={(id) => go({ page: 'receipt', receiptId: id })}
             onBack={() => goBack(home)}
+          />
+        </Container>
+      ) : route.page === 'receipt' ? (
+        <Container size={containerSize} py="md" px="md">
+          <ReceiptPage
+            id={route.receiptId}
+            onChanged={reloadList}
+            onSplit={() => go({ page: 'splits', ids: [route.receiptId] })}
+            onDeleted={() => {
+              reloadList()
+              goBack({ page: 'manage' })
+            }}
+            onBack={() => goBack({ page: 'manage' })}
           />
         </Container>
       ) : (
