@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <!-- For authentication and the hosting abstractions, from the shared framework the host runs on. -->
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ReceiptSplit.Accounts\ReceiptSplit.Accounts.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -19,7 +19,7 @@ project's conventions apply throughout:
 
 ## 2. Account projects
 
-- [ ] 2.1 Create these projects and add them to `ReceiptSplit.slnx` under the `/src/` and `/tests/` solution
+- [x] 2.1 Create these projects and add them to `ReceiptSplit.slnx` under the `/src/` and `/tests/` solution
   folders:
   - `src/ReceiptSplit.Accounts`, referencing `ReceiptSplit.Data`
   - `src/ReceiptSplit.Accounts.CloudflareAccess`, referencing `ReceiptSplit.Accounts`
@@ -27,7 +27,10 @@ project's conventions apply throughout:
   - `tests/ReceiptSplit.Accounts.CloudflareAccess.Tests`
 
   The host references both libraries. Verify that the solution builds, the tests match the count before the
-  change, and `docker build .` restores the two new libraries without a Dockerfile change.
+  change, and `docker build .` restores the two new libraries without a Dockerfile change. Result: a test project
+  without tests fails `dotnet test` (exit code 8, zero tests ran), so each test project is added with its first
+  tests in 4.3, as AGENTS.md says. The tests matched (152, 3 skipped), and the image's build stage built both
+  libraries with the Dockerfile unchanged.
 
 ## 3. Users, external identities and receipt owners
 

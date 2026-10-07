@@ -15,6 +15,8 @@
     <File Path="README.md" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/ReceiptSplit.Accounts.CloudflareAccess/ReceiptSplit.Accounts.CloudflareAccess.csproj" />
+    <Project Path="src/ReceiptSplit.Accounts/ReceiptSplit.Accounts.csproj" />
     <Project Path="src/ReceiptSplit.Data/ReceiptSplit.Data.csproj" />
     <Project Path="src/ReceiptSplit.Extraction/ReceiptSplit.Extraction.csproj" />
     <Project Path="src/ReceiptSplit.Receipts/ReceiptSplit.Receipts.csproj" />

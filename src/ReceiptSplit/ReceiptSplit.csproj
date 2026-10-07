@@ -19,6 +19,8 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\ReceiptSplit.Accounts\ReceiptSplit.Accounts.csproj" />
+        <ProjectReference Include="..\ReceiptSplit.Accounts.CloudflareAccess\ReceiptSplit.Accounts.CloudflareAccess.csproj" />
         <ProjectReference Include="..\ReceiptSplit.Receipts\ReceiptSplit.Receipts.csproj" />
     </ItemGroup>
 
