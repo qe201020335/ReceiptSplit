@@ -104,6 +104,9 @@ public static class ReceiptMappings
             .Select(l => new ReceiptLineEdit(l.Name, l.Code, l.Quantity, l.Amount, l.Discount, l.TaxCode, l.IsTaxed))
             .ToList());
 
+    public static ReceiptSummaryDto ToDto(this ReceiptSummary summary) => new(
+        summary.Id, summary.CreatedAt, summary.Status, summary.StoreName, summary.PurchaseDate, summary.Total);
+
     public static ReceiptDetailDto ToDetailDto(this Receipt receipt)
     {
         var lines = receipt.Lines

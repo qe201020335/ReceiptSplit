@@ -142,12 +142,12 @@ project's conventions apply throughout:
 
 ## 6. Receipt ownership
 
-- [ ] 6.1 Make `ReceiptSplit.Receipts` reference `ReceiptSplit.Accounts`; Accounts must not reference Receipts.
+- [x] 6.1 Make `ReceiptSplit.Receipts` reference `ReceiptSplit.Accounts`; Accounts must not reference Receipts.
   Pass `Actor` (from `ReceiptSplit.Accounts`) to every `ReceiptService` method, and move `List` and
   `Get` out of `ReceiptsController` into the service. Add one visibility helper: admins see everything, members see
   their own. Set `OwnerId` in `CreateAsync`. The controller builds the `Actor` from the claims. Verify that the
   solution builds.
-- [ ] 6.2 Add API tests for `specs/receipt-access`:
+- [x] 6.2 Add API tests for `specs/receipt-access`:
   - an upload is owned by the uploader
   - a member's list holds only their own receipts
   - a member gets 404 for someone else's receipt on get, image, PUT, PATCH, extract and DELETE

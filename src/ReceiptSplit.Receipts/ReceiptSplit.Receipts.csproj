@@ -10,6 +10,8 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- Only for Actor, the user receipt operations are done for. -->
+        <ProjectReference Include="..\ReceiptSplit.Accounts\ReceiptSplit.Accounts.csproj" />
         <ProjectReference Include="..\ReceiptSplit.Data\ReceiptSplit.Data.csproj" />
         <ProjectReference Include="..\ReceiptSplit.Extraction\ReceiptSplit.Extraction.csproj" />
     </ItemGroup>
