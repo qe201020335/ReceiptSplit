@@ -28,7 +28,15 @@ internal sealed class ReceiptExtractor(
         }
 
         receipt.Status = ReceiptStatus.Processing;
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Deleted between being read above and being marked as read now; once it is Processing, deletes wait.
+            return;
+        }
 
         try
         {

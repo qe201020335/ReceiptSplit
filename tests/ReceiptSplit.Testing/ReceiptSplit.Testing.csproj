@@ -2,9 +2,11 @@
 
     <ItemGroup>
         <PackageReference Include="Magick.NET-Q8-AnyCPU" />
+        <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\src\ReceiptSplit.Accounts\ReceiptSplit.Accounts.csproj" />
         <ProjectReference Include="..\..\src\ReceiptSplit.Extraction\ReceiptSplit.Extraction.csproj" />
     </ItemGroup>
 

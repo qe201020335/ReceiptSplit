@@ -26,5 +26,8 @@ With the .NET 10 SDK and Node.js installed, and the model server set in `src/Rec
 dotnet run --project src/ReceiptSplit
 ```
 
-Then open <http://localhost:5173>. To host it, use `compose.yaml`. The app won't start unless the model server
+Then open <http://localhost:5173>. In Development every request is signed in as `dev@example.com`, an admin
+(`Auth:DevUser` and `Auth:Admins` in `appsettings.Development.json`). The app won't start unless the model server
 answers and offers the configured model.
+
+To host it, see [HOSTING.md](./HOSTING.md).

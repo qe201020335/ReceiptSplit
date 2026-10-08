@@ -12,9 +12,12 @@
     <File Path="Directory.Packages.props" />
     <File Path="Dockerfile" />
     <File Path="global.json" />
+    <File Path="HOSTING.md" />
     <File Path="README.md" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/ReceiptSplit.Accounts.CloudflareAccess/ReceiptSplit.Accounts.CloudflareAccess.csproj" />
+    <Project Path="src/ReceiptSplit.Accounts/ReceiptSplit.Accounts.csproj" />
     <Project Path="src/ReceiptSplit.Data/ReceiptSplit.Data.csproj" />
     <Project Path="src/ReceiptSplit.Extraction/ReceiptSplit.Extraction.csproj" />
     <Project Path="src/ReceiptSplit.Receipts/ReceiptSplit.Receipts.csproj" />
@@ -22,6 +25,8 @@
   </Folder>
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
+    <Project Path="tests/ReceiptSplit.Accounts.CloudflareAccess.Tests/ReceiptSplit.Accounts.CloudflareAccess.Tests.csproj" />
+    <Project Path="tests/ReceiptSplit.Accounts.Tests/ReceiptSplit.Accounts.Tests.csproj" />
     <Project Path="tests/ReceiptSplit.Extraction.Tests/ReceiptSplit.Extraction.Tests.csproj" />
     <Project Path="tests/ReceiptSplit.Receipts.Tests/ReceiptSplit.Receipts.Tests.csproj" />
     <Project Path="tests/ReceiptSplit.Testing/ReceiptSplit.Testing.csproj" />

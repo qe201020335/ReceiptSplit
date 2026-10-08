@@ -1,4 +1,4 @@
-// Types and calls for the ReceiptSplit backend (src/ReceiptSplit/Contracts/ReceiptDtos.cs).
+// Types and calls for the ReceiptSplit backend (src/ReceiptSplit/Contracts/ReceiptDtos.cs and UserDtos.cs).
 
 export type ReceiptStatus = 'Queued' | 'Processing' | 'Completed' | 'NeedsReview' | 'Failed'
 
@@ -93,19 +93,61 @@ export interface ReceiptDetail {
   extraction: Extraction | null
 }
 
-/** What a bulk delete removed, and the receipts it left because the model is reading them. */
-export interface ReceiptsDeleted {
-  deleted: string[]
-  busy: string[]
+/** The signed-in user. */
+export interface Account {
+  id: string
+  email: string | null
+  name: string | null
+  isAdmin: boolean
+  /** Where signing out goes; null when there is nothing to sign out of, as in development. */
+  signOutUrl: string | null
+}
+
+/** The codes the server's sign-in refusals carry (SignInProblem.cs). */
+const signInRefusalCodes = ['unsupported-sign-in', 'account-conflict', 'identity-unavailable'] as const
+
+/**
+ * Why the sign-in can't be used; the app shows a page for each instead of the receipts. Derived from the refusal
+ * codes, so a code added there needs its page in SignInProblemPage before the build passes.
+ */
+export type SignInProblemCode = (typeof signInRefusalCodes)[number] | 'signed-out'
+
+function isSignInRefusal(code: string | undefined): code is (typeof signInRefusalCodes)[number] {
+  return (signInRefusalCodes as readonly (string | undefined)[]).includes(code)
+}
+
+export interface SignInProblem {
+  code: SignInProblemCode
+  signOutUrl: string | null
+}
+
+const signInProblemListeners = new Set<(problem: SignInProblem) => void>()
+
+/** Calls the listener whenever a request shows the sign-in can't be used; returns a function that unsubscribes. */
+export function onSignInProblem(listener: (problem: SignInProblem) => void): () => void {
+  signInProblemListeners.add(listener)
+  return () => {
+    signInProblemListeners.delete(listener)
+  }
+}
+
+function reportSignInProblem(problem: SignInProblem) {
+  for (const listener of signInProblemListeners) {
+    listener(problem)
+  }
 }
 
 export class ApiError extends Error {
   readonly status: number
 
-  constructor(status: number, message: string) {
+  /** The problem's code, when the server gave one. */
+  readonly code: string | null
+
+  constructor(status: number, message: string, code: string | null = null) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.code = code
   }
 }
 
@@ -119,25 +161,48 @@ export function errorMessage(error: unknown): string {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, init)
+  // The API never redirects. A redirect means the proxy in front of the app is sending the browser to sign in again,
+  // which a fetch can't follow, so it's reported as signed out instead of failing on the sign-in page's HTML.
+  const response = await fetch(path, { ...init, redirect: 'manual' })
+  if (response.type === 'opaqueredirect') {
+    reportSignInProblem({ code: 'signed-out', signOutUrl: null })
+    throw new ApiError(response.status, 'You were signed out.', 'signed-out')
+  }
+
   if (!response.ok) {
-    throw new ApiError(response.status, await problemMessage(response))
+    const problem = await readProblem(response)
+    if (isSignInRefusal(problem.code)) {
+      reportSignInProblem({ code: problem.code, signOutUrl: problem.signOutUrl ?? null })
+    }
+    throw new ApiError(
+      response.status,
+      problem.detail ?? problem.title ?? `${response.status} ${response.statusText}`,
+      problem.code ?? null,
+    )
   }
 
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T)
 }
 
-/** Reads an ASP.NET ProblemDetails body, falling back to the HTTP status. */
-async function problemMessage(response: Response): Promise<string> {
+interface Problem {
+  title?: string
+  detail?: string
+  code?: string
+  signOutUrl?: string | null
+}
+
+/** Reads an ASP.NET ProblemDetails body; empty when the response isn't one. */
+async function readProblem(response: Response): Promise<Problem> {
   try {
-    const problem = (await response.json()) as { title?: string; detail?: string }
-    return problem.detail ?? problem.title ?? `${response.status} ${response.statusText}`
+    return (await response.json()) as Problem
   } catch {
-    return `${response.status} ${response.statusText}`
+    return {}
   }
 }
 
 export const api = {
+  me: () => request<Account>('/api/me'),
+
   listReceipts: () => request<ReceiptSummary[]>('/api/receipts'),
 
   getReceipt: (id: string) => request<ReceiptDetail>(`/api/receipts/${id}`),
@@ -170,9 +235,12 @@ export const api = {
 
   deleteReceipt: (id: string) => request<void>(`/api/receipts/${id}`, { method: 'DELETE' }),
 
-  /** Deletes several receipts; those being read are left and listed as busy. */
+  /**
+   * Deletes several receipts, or none: an unknown or someone else's receipt fails it with 404, and one being read
+   * with 409. The error's message then says why nothing was deleted.
+   */
   deleteReceipts: (ids: string[]) =>
-    request<ReceiptsDeleted>('/api/receipts/delete', {
+    request<void>('/api/receipts/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids }),

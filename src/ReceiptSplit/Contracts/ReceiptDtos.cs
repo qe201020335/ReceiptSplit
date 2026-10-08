@@ -32,9 +32,6 @@ public sealed record ReceiptLineEditDto(
 /// <summary>Body of the request that deletes several receipts at once.</summary>
 public sealed record ReceiptDeleteDto([Required, MinLength(1), MaxLength(1000)] IReadOnlyList<Guid> Ids);
 
-/// <summary>The receipts a bulk delete removed, and those it left because the model is reading them.</summary>
-public sealed record ReceiptsDeletedDto(IReadOnlyList<Guid> Deleted, IReadOnlyList<Guid> Busy);
-
 public sealed record ReceiptSummaryDto(
     Guid Id,
     DateTime CreatedAt,
@@ -103,6 +100,9 @@ public static class ReceiptMappings
         dto.Lines
             .Select(l => new ReceiptLineEdit(l.Name, l.Code, l.Quantity, l.Amount, l.Discount, l.TaxCode, l.IsTaxed))
             .ToList());
+
+    public static ReceiptSummaryDto ToDto(this ReceiptSummary summary) => new(
+        summary.Id, summary.CreatedAt, summary.Status, summary.StoreName, summary.PurchaseDate, summary.Total);
 
     public static ReceiptDetailDto ToDetailDto(this Receipt receipt)
     {

@@ -6,6 +6,9 @@ public class Receipt
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>The user who uploaded it; null for receipts from before there were users, which only admins see.</summary>
+    public Guid? OwnerId { get; set; }
+
     public required string OriginalFileName { get; set; }
 
     /// <summary>File name of the original upload inside the uploads directory.</summary>

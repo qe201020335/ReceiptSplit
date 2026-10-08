@@ -17,6 +17,39 @@ namespace ReceiptSplit.Data.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
+            modelBuilder.Entity("ReceiptSplit.Data.ExternalIdentity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LinkedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Provider", "Subject")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "Provider")
+                        .IsUnique();
+
+                    b.ToTable("ExternalIdentities");
+                });
+
             modelBuilder.Entity("ReceiptSplit.Data.Receipt", b =>
                 {
                     b.Property<Guid>("Id")
@@ -56,6 +89,9 @@ namespace ReceiptSplit.Data.Migrations
 
                     b.Property<string>("OriginalFileName")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("OwnerId")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("PromptTokens")
@@ -100,6 +136,8 @@ namespace ReceiptSplit.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("OwnerId", "CreatedAt");
 
                     b.ToTable("Receipts");
                 });
@@ -146,6 +184,48 @@ namespace ReceiptSplit.Data.Migrations
                     b.ToTable("ReceiptLines");
                 });
 
+            modelBuilder.Entity("ReceiptSplit.Data.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("ReceiptSplit.Data.ExternalIdentity", b =>
+                {
+                    b.HasOne("ReceiptSplit.Data.User", null)
+                        .WithMany("ExternalIdentities")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ReceiptSplit.Data.Receipt", b =>
+                {
+                    b.HasOne("ReceiptSplit.Data.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("ReceiptSplit.Data.ReceiptLine", b =>
                 {
                     b.HasOne("ReceiptSplit.Data.Receipt", null)
@@ -158,6 +238,11 @@ namespace ReceiptSplit.Data.Migrations
             modelBuilder.Entity("ReceiptSplit.Data.Receipt", b =>
                 {
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("ReceiptSplit.Data.User", b =>
+                {
+                    b.Navigation("ExternalIdentities");
                 });
 #pragma warning restore 612, 618
         }

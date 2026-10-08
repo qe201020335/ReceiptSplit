@@ -1,0 +1,8 @@
+/* Round, so the focus ring follows the avatar. */
+.trigger {
+  border-radius: 50%;
+}
+
+.email {
+  overflow-wrap: anywhere;
+}

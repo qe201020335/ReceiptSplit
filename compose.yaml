@@ -5,11 +5,21 @@ services:
     image: ${RECEIPTSPLIT_IMAGE:-ghcr.io/qe201020335/receiptsplit:latest}
     pull_policy: always
     ports:
-      - "${RECEIPTSPLIT_PORT:-8080}:8080"
+      # Only on this host's loopback by default, for cloudflared running on the host. Docker's published ports go
+      # around host firewalls such as ufw, so publishing on every interface would let anything on the network reach
+      # the app without passing Cloudflare Access. Set RECEIPTSPLIT_BIND to publish elsewhere.
+      - "${RECEIPTSPLIT_BIND:-127.0.0.1}:${RECEIPTSPLIT_PORT:-8080}:8080"
     environment:
       # Set these in a .env file next to this compose file (gitignored).
       Llm__BaseUrl: ${LLM_BASE_URL:-http://localhost:8000}
       Llm__ApiKey: ${LLM_API_KEY:-}
+      # The Cloudflare Access application in front of the app: the team domain (myteam.cloudflareaccess.com) and the
+      # application's Audience (AUD) tag. The app won't start without both.
+      Auth__CloudflareAccess__TeamDomain: ${ACCESS_TEAM_DOMAIN:-}
+      Auth__CloudflareAccess__Audience: ${ACCESS_AUD:-}
+      # The admin's email; admins see every receipt, including those from before there were users. Add more as
+      # Auth__Admins__1 and so on.
+      Auth__Admins__0: ${RECEIPTSPLIT_ADMIN:-}
     # Runs as your user so the app can write to the data folder below; find your ids with `id -u` and `id -g`.
     user: "${RECEIPTSPLIT_UID:-1000}:${RECEIPTSPLIT_GID:-1000}"
     volumes:

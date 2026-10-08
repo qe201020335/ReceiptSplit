@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Net.Http.Headers;
+using ReceiptSplit.Accounts;
 using ReceiptSplit.Contracts;
 using ReceiptSplit.Data;
 using ReceiptSplit.Receipts;
@@ -9,8 +9,11 @@ namespace ReceiptSplit.Controllers;
 
 [ApiController]
 [Route("api/receipts")]
-public class ReceiptsController(AppDbContext db, ReceiptService receipts) : ControllerBase
+public class ReceiptsController(ReceiptService receipts) : ControllerBase
 {
+    /// <summary>The signed-in user, whose receipts these are; admins reach everyone's.</summary>
+    private Actor Actor => Actor.From(User);
+
     /// <summary>Uploads a receipt photo and queues it for extraction; poll the returned location for the result.</summary>
     /// <param name="taxRatePercent">Sales tax rate the receipt was charged at; defaults to Ontario's 13%.</param>
     /// <param name="taxIncluded">Whether the printed prices already include the tax, which is then ignored.</param>
@@ -33,7 +36,8 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
         await using var stream = file.OpenReadStream();
         try
         {
-            var receipt = await receipts.CreateAsync(stream, file.FileName, taxRatePercent, taxIncluded, cancellationToken);
+            var receipt = await receipts.CreateAsync(
+                Actor, stream, file.FileName, taxRatePercent, taxIncluded, cancellationToken);
             return AcceptedAtAction(nameof(Get), new { id = receipt.Id }, new ReceiptQueuedDto(receipt.Id, receipt.Status));
         }
         catch (InvalidImageException ex)
@@ -42,26 +46,17 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
         }
     }
 
-    /// <summary>Lists receipts, newest first.</summary>
+    /// <summary>Lists the receipts the signed-in user can see, newest first.</summary>
     [HttpGet]
     public async Task<IReadOnlyList<ReceiptSummaryDto>> List(CancellationToken cancellationToken) =>
-        await db.Receipts
-            .OrderByDescending(r => r.CreatedAt)
-            .Select(r => new ReceiptSummaryDto(r.Id, r.CreatedAt, r.Status, r.StoreName, r.PurchaseDate, r.Total))
-            .ToListAsync(cancellationToken);
+        [.. (await receipts.ListAsync(Actor, cancellationToken)).Select(r => r.ToDto())];
 
     /// <summary>Gets a receipt's status, extracted lines, totals and totals checks.</summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType<ReceiptDetailDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ReceiptDetailDto>> Get(Guid id, CancellationToken cancellationToken)
-    {
-        var receipt = await db.Receipts
-            .AsNoTracking()
-            .Include(r => r.Lines)
-            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
-        return receipt is null ? NotFound() : receipt.ToDetailDto();
-    }
+    public async Task<ActionResult<ReceiptDetailDto>> Get(Guid id, CancellationToken cancellationToken) =>
+        await receipts.GetAsync(Actor, id, cancellationToken) is { } receipt ? receipt.ToDetailDto() : NotFound();
 
     /// <summary>Returns the uploaded photo, as a JPEG copy when browsers can't display the original format.</summary>
     [HttpGet("{id:guid}/image")]
@@ -69,7 +64,7 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Image(Guid id, CancellationToken cancellationToken)
     {
-        if (await receipts.GetImageAsync(id, cancellationToken) is not { } image)
+        if (await receipts.GetImageAsync(Actor, id, cancellationToken) is not { } image)
         {
             return NotFound();
         }
@@ -89,7 +84,7 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ReceiptDetailDto>> Update(Guid id, ReceiptEditDto request, CancellationToken cancellationToken) =>
-        await receipts.UpdateAsync(id, request.ToEdit(), cancellationToken) switch
+        await receipts.UpdateAsync(Actor, id, request.ToEdit(), cancellationToken) switch
         {
             ReceiptActionResult.Done => await Get(id, cancellationToken),
             ReceiptActionResult.Busy => Problem(
@@ -118,7 +113,8 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
             return InvalidTaxRate();
         }
 
-        return await receipts.UpdateTaxRateAsync(id, request.TaxRatePercent, request.TaxIncluded, cancellationToken) switch
+        return await receipts.UpdateTaxRateAsync(
+                Actor, id, request.TaxRatePercent, request.TaxIncluded, cancellationToken) switch
         {
             ReceiptActionResult.Done => await Get(id, cancellationToken),
             ReceiptActionResult.Busy => Problem(
@@ -135,7 +131,7 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Extract(Guid id, CancellationToken cancellationToken) =>
-        await receipts.RequeueAsync(id, cancellationToken) switch
+        await receipts.RequeueAsync(Actor, id, cancellationToken) switch
         {
             ReceiptActionResult.Done => AcceptedAtAction(nameof(Get), new { id }, new ReceiptQueuedDto(id, ReceiptStatus.Queued)),
             ReceiptActionResult.Busy => Problem(
@@ -151,7 +147,7 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken) =>
-        await receipts.DeleteAsync(id, cancellationToken) switch
+        await receipts.DeleteAsync(Actor, id, cancellationToken) switch
         {
             ReceiptActionResult.Done => NoContent(),
             ReceiptActionResult.Busy => Problem(
@@ -162,16 +158,40 @@ public class ReceiptsController(AppDbContext db, ReceiptService receipts) : Cont
         };
 
     /// <summary>
-    /// Deletes several receipts and their photos. Receipts being extracted are left and listed as busy; unknown ids
-    /// are ignored.
+    /// Deletes several receipts and their photos, or none: unknown ids and other users' receipts give 404, and
+    /// receipts being extracted give 409, each listing the receipts in <c>ids</c>.
     /// </summary>
     [HttpPost("delete")]
-    [ProducesResponseType<ReceiptsDeletedDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
-    public async Task<ReceiptsDeletedDto> DeleteMany(ReceiptDeleteDto request, CancellationToken cancellationToken)
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeleteMany(ReceiptDeleteDto request, CancellationToken cancellationToken)
     {
-        var result = await receipts.DeleteManyAsync([.. request.Ids.Distinct()], cancellationToken);
-        return new ReceiptsDeletedDto(result.Deleted, result.Busy);
+        var result = await receipts.DeleteManyAsync(Actor, [.. request.Ids.Distinct()], cancellationToken);
+        var count = result.Blocking.Count == 1 ? "1 receipt" : $"{result.Blocking.Count} receipts";
+        return result.Result switch
+        {
+            ReceiptActionResult.Done => NoContent(),
+            ReceiptActionResult.Busy => BulkProblem(
+                StatusCodes.Status409Conflict,
+                "Receipts are busy",
+                $"{count} {(result.Blocking.Count == 1 ? "is" : "are")} being read; nothing was deleted.",
+                result.Blocking),
+            _ => BulkProblem(
+                StatusCodes.Status404NotFound,
+                "Receipts not found",
+                $"{count} couldn't be found; nothing was deleted.",
+                result.Blocking),
+        };
+    }
+
+    /// <summary>A problem for a bulk request that changed nothing, listing the receipts that stopped it.</summary>
+    private ObjectResult BulkProblem(int status, string title, string detail, IReadOnlyList<Guid> ids)
+    {
+        var problem = ProblemDetailsFactory.CreateProblemDetails(HttpContext, status, title, detail: detail);
+        problem.Extensions["ids"] = ids;
+        return new ObjectResult(problem) { StatusCode = status, ContentTypes = { "application/problem+json" } };
     }
 
     private ObjectResult InvalidTaxRate() => Problem(
