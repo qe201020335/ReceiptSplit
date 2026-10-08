@@ -103,15 +103,23 @@ export interface Account {
   signOutUrl: string | null
 }
 
-/** Why the sign-in can't be used; the app shows a page for each instead of the receipts. */
-export type SignInProblemCode = 'unsupported-sign-in' | 'account-conflict' | 'identity-unavailable' | 'signed-out'
+/** The codes the server's sign-in refusals carry (SignInProblem.cs). */
+const signInRefusalCodes = ['unsupported-sign-in', 'account-conflict', 'identity-unavailable'] as const
+
+/**
+ * Why the sign-in can't be used; the app shows a page for each instead of the receipts. Derived from the refusal
+ * codes, so a code added there needs its page in SignInProblemPage before the build passes.
+ */
+export type SignInProblemCode = (typeof signInRefusalCodes)[number] | 'signed-out'
+
+function isSignInRefusal(code: string | undefined): code is (typeof signInRefusalCodes)[number] {
+  return (signInRefusalCodes as readonly (string | undefined)[]).includes(code)
+}
 
 export interface SignInProblem {
   code: SignInProblemCode
   signOutUrl: string | null
 }
-
-const signInProblemCodes: readonly string[] = ['unsupported-sign-in', 'account-conflict', 'identity-unavailable']
 
 const signInProblemListeners = new Set<(problem: SignInProblem) => void>()
 
@@ -163,8 +171,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const problem = await readProblem(response)
-    if (problem.code && signInProblemCodes.includes(problem.code)) {
-      reportSignInProblem({ code: problem.code as SignInProblemCode, signOutUrl: problem.signOutUrl ?? null })
+    if (isSignInRefusal(problem.code)) {
+      reportSignInProblem({ code: problem.code, signOutUrl: problem.signOutUrl ?? null })
     }
     throw new ApiError(
       response.status,
