@@ -55,8 +55,16 @@ internal sealed class CloudflareIdentityLookup(HttpClient http, ILogger<Cloudfla
             return IdentityLookupResult.Unavailable;
         }
 
+        // Without a sign-in method this isn't an identity at all, which asking again may fix; refusing it would be
+        // cached and tell the person their method isn't supported.
+        if (identity?.Idp?.Type is not { Length: > 0 } type)
+        {
+            logger.LogWarning("Cloudflare Access returned an identity without a sign-in method");
+            return IdentityLookupResult.Unavailable;
+        }
+
         // Google personal accounts sign in as "google" and Workspace ones as "google-apps", both with Google's id.
-        if (identity?.Idp?.Type is not ("google" or "google-apps"))
+        if (type is not ("google" or "google-apps"))
         {
             return IdentityLookupResult.Unsupported;
         }

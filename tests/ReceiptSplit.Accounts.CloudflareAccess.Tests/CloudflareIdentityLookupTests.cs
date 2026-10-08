@@ -52,6 +52,8 @@ public class CloudflareIdentityLookupTests
     [InlineData(HttpStatusCode.InternalServerError, Identity)]
     [InlineData(HttpStatusCode.OK, "{\"ip\": \"203.0.113.7\", ")]
     [InlineData(HttpStatusCode.OK, "{\"idp\": {\"type\": \"google\"}, \"ip\": \"203.0.113.7\"}")]
+    [InlineData(HttpStatusCode.OK, "null")]
+    [InlineData(HttpStatusCode.OK, "{\"id\": \"104738572036598370000\", \"ip\": \"203.0.113.7\"}")]
     public async Task Failures_are_unavailable_and_dont_log_the_response(HttpStatusCode status, string body)
     {
         var (result, _, logger) = await LookupAsync(status, body);
