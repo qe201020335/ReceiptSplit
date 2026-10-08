@@ -24,21 +24,23 @@ public sealed class FakeIdentityLookup : IIdentityLookup
     /// <summary>When set, every lookup fails as if the proxy couldn't be reached.</summary>
     public bool Unavailable { get; set; }
 
+    /// <summary>How long each lookup takes, so requests can overlap one.</summary>
+    public TimeSpan Delay { get; set; }
+
     /// <summary>The Google account a person has unless <see cref="Answers"/> says otherwise.</summary>
     public static ProviderIdentity GoogleAccount(string email, string? name = null) =>
         new(IdentityProvider.Google, $"google-{email.ToLowerInvariant()}", name ?? $"Name of {email}");
 
-    public Task<IdentityLookupResult> LookupAsync(HttpContext context, CancellationToken cancellationToken)
+    public async Task<IdentityLookupResult> LookupAsync(HttpContext context, CancellationToken cancellationToken)
     {
         var email = context.User.FindFirst(AccountClaims.Email)?.Value ?? "";
         Lookups.Enqueue(email);
+        await Task.Delay(Delay, cancellationToken);
         if (Unavailable)
         {
-            return Task.FromResult(IdentityLookupResult.Unavailable);
+            return IdentityLookupResult.Unavailable;
         }
 
-        return Task.FromResult(Answers.TryGetValue(email, out var answer)
-            ? answer
-            : IdentityLookupResult.Found(GoogleAccount(email)));
+        return Answers.TryGetValue(email, out var answer) ? answer : IdentityLookupResult.Found(GoogleAccount(email));
     }
 }

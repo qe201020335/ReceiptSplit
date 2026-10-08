@@ -61,6 +61,35 @@ public class AccountsApiTests
     }
 
     [Fact]
+    public async Task Concurrent_first_requests_of_a_session_share_one_lookup()
+    {
+        await using var factory = new ReceiptApiFactory();
+        factory.Identities.Delay = TimeSpan.FromMilliseconds(200);
+        using var client = factory.CreateClient();
+
+        // As the page does on load: several API calls before the session has been identified.
+        var accounts = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => MeAsync(client)));
+
+        Assert.Single(accounts.Select(a => a.Id).Distinct());
+        Assert.Single(factory.Identities.Lookups);
+        Assert.Equal(1, await QueryAsync(factory, db => db.Users.CountAsync(Ct)));
+    }
+
+    [Fact]
+    public async Task Concurrent_first_requests_of_the_development_user_create_it_once()
+    {
+        await using var factory = new ReceiptApiFactory();
+        await using var development = factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("Auth:DevUser", "dev@example.com"));
+        using var client = development.CreateClient();
+        client.DefaultRequestHeaders.Remove(AccessTokens.Header);
+
+        var accounts = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => MeAsync(client)));
+
+        Assert.Single(accounts.Select(a => a.Id).Distinct());
+    }
+
+    [Fact]
     public async Task A_returning_user_picks_up_a_changed_email_and_name()
     {
         await using var factory = new ReceiptApiFactory();
