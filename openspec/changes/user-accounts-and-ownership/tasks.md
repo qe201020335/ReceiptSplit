@@ -238,18 +238,25 @@ project's conventions apply throughout:
 
 ## 10. Integration check
 
-- [ ] 10.1 Run the full check from a clean build. All must pass; report the test counts.
+- [x] 10.1 Run the full check from a clean build. All must pass; report the test counts.
   - `CI=true dotnet test`, so warnings are errors
   - `npm run build`
   - `npm run lint`
   - `docker build .`
-- [ ] 10.2 On a scratch backend over a copy of `data/`, signed in as the dev admin:
+
+  Result: 214 tests, 211 passed and 3 skipped (the sample and live model tests), with no warnings; the client
+  built and linted clean; the image built. The image, run with the owner's team domain and a stub model server,
+  served `/`, a client route, the favicon and a built asset without a token, and answered 401 on the API without a
+  token, with only the email header and with a bogus token.
+- [x] 10.2 On a scratch backend over a copy of `data/`, signed in as the dev admin:
   - existing receipts appear on the start page, in the manager and in Multi Split
   - an upload is read to Completed
   - a bulk delete of two receipts succeeds
 
   Then as a dev member, the existing receipts are gone and their URLs give the not-found state. Stop the servers,
-  and delete the copy and the browser profile.
+  and delete the copy and the browser profile. Result: 28 receipts on the start page and in the manager, a Multi
+  Split of two, a T&T photo read to Completed and owned by the dev admin, and a bulk delete going from 29 to 27. As
+  a dev member: no receipts, and a receipt's page shows Not Found.
 - [ ] 10.3 Ask the owner to deploy the branch's image behind Access and confirm:
   - sign-in works
   - `/api/me` shows their name and admin status
