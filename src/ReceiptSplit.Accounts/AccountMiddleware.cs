@@ -44,8 +44,9 @@ internal sealed class AccountMiddleware(
         if (outcome.UserId is { } userId)
         {
             List<Claim> claims = [new(AccountClaims.UserId, userId.ToString())];
-            // Decided on every request from the current settings, so it isn't cached with the user.
-            if (auth.Value.IsAdmin(email))
+            // The account's email rather than the token's: an email held by another user doesn't make this one an
+            // admin. Compared on every request, so a change to the admin list applies at once.
+            if (outcome.Email is { } accountEmail && auth.Value.IsAdmin(accountEmail))
             {
                 claims.Add(new Claim(AccountClaims.Admin, "true"));
             }
@@ -110,7 +111,8 @@ internal sealed class AccountMiddleware(
         DateTimeOffset until;
         if (development)
         {
-            outcome = new Outcome((await accounts.ResolveDevelopmentAsync(email, CancellationToken.None)).Id, null);
+            var user = await accounts.ResolveDevelopmentAsync(email, CancellationToken.None);
+            outcome = new Outcome(user.Id, user.Email, null);
             until = now + DefaultLifetime;
         }
         else
@@ -125,7 +127,7 @@ internal sealed class AccountMiddleware(
                     var resolution = await accounts.ResolveAsync(email, result.Identity!, CancellationToken.None);
                     if (resolution.UserId is { } userId)
                     {
-                        outcome = new Outcome(userId, null);
+                        outcome = new Outcome(userId, resolution.Email, null);
                         until = SessionEnd(principal) ?? now + DefaultLifetime;
                     }
                     else
@@ -133,19 +135,19 @@ internal sealed class AccountMiddleware(
                         logger.LogWarning(
                             "Refused the sign-in of {Email}: another user holds the email; an admin can release it",
                             email);
-                        outcome = new Outcome(null, SignInProblem.AccountConflict);
+                        outcome = new Outcome(null, null, SignInProblem.AccountConflict);
                         until = now + RefusalLifetime;
                     }
 
                     break;
                 case IdentityLookupStatus.Unsupported:
                     logger.LogWarning("Refused the sign-in of {Email}: the sign-in method isn't supported", email);
-                    outcome = new Outcome(null, SignInProblem.UnsupportedSignIn);
+                    outcome = new Outcome(null, null, SignInProblem.UnsupportedSignIn);
                     until = now + RefusalLifetime;
                     break;
                 default:
                     // Not cached: the next request tries again.
-                    return new Outcome(null, SignInProblem.IdentityUnavailable);
+                    return new Outcome(null, null, SignInProblem.IdentityUnavailable);
             }
         }
 
@@ -165,7 +167,8 @@ internal sealed class AccountMiddleware(
             ? DateTimeOffset.FromUnixTimeSeconds(seconds)
             : null;
 
-    private sealed record Outcome(Guid? UserId, SignInProblem? Problem);
+    /// <param name="Email">The account's stored email, which decides whether the user is an admin.</param>
+    private sealed record Outcome(Guid? UserId, string? Email, SignInProblem? Problem);
 
     private sealed record Cached(Outcome Outcome, DateTimeOffset Until);
 }

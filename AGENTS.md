@@ -95,8 +95,9 @@ browser.
   account id through `ExternalIdentities`, never matched by email alone. The account middleware (`UseAccounts`)
   looks up the full identity once per Access session (cached by `identity_nonce`), lets `AccountService` find or
   create the user, and adds the user id and admin claims; sign-ins it can't accept get 403 or 503 problems with a
-  `code` the client shows a page for. Admins are the emails in `Auth:Admins`, matched on each request, not stored.
-  In Development, `Auth:DevUser` signs every request in without a token.
+  `code` the client shows a page for. Admins are the emails in `Auth:Admins`, matched on each request against the
+  account's stored email (not the token's), and not stored as a role. In Development, `Auth:DevUser` signs every
+  request in without a token.
 - **Ownership.** Every `ReceiptService` method takes the `Actor` (user id and admin) it acts for, and every lookup
   goes through one visibility rule: members reach their own receipts, admins all of them, including those without
   an owner. A receipt someone can't reach is `NotFound`, never 403. The worker acts on receipt ids and needs no user.

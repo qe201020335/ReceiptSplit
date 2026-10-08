@@ -112,8 +112,9 @@ identified SHALL keep working.
 - **THEN** the request succeeds
 
 ### Requirement: Admins are configured by email
-A user SHALL be an admin when the email in their token matches an entry in the configured admin list, ignoring
-case. The list is read from configuration, not stored per user.
+A user SHALL be an admin when their account's email matches an entry in the configured admin list, ignoring case.
+The list is read from configuration, not stored per user. An email in the token that another user holds SHALL NOT
+make anyone an admin.
 
 #### Scenario: Listed email
 - **WHEN** a user whose email is in the admin list, in any letter case, makes a request
@@ -122,6 +123,10 @@ case. The list is read from configuration, not stored per user.
 #### Scenario: Unlisted email
 - **WHEN** a user whose email is not in the admin list makes a request
 - **THEN** they are treated as a member
+
+#### Scenario: Admin email held by another user
+- **WHEN** a linked user signs in with an admin's email that the admin's user still holds
+- **THEN** they keep their own email and are treated as a member
 
 ### Requirement: Admins can release an email
 An admin SHALL be able to release an email, which clears it from the user holding it. That user keeps their

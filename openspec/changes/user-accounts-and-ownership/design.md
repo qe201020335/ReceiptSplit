@@ -225,7 +225,9 @@ the account middleware added.
 - **The page:** `MapStaticAssets` and the SPA fallback (`MapFallbackToFile`) are marked `AllowAnonymous`. The
   page holds no data, and it has to load to show a refusal.
 - **Admin-only endpoints:** an `Admin` policy, used as `[Authorize(Policy = "Admin")]`.
-- **Admin status:** decided per request from the token's email against `Auth:Admins`, ignoring case.
+- **Admin status:** decided per request from the account's stored email against `Auth:Admins`, ignoring case.
+  The stored email is the token's unless another user holds it, so an email someone else's account has never
+  makes a user an admin.
 
 ### Problem responses
 Every sign-in refusal is a `ProblemDetails` with a `code` extension: `unsupported-sign-in`, `account-conflict`
@@ -318,8 +320,10 @@ token checks.
   releases the email. → That's intended: a human decides who owns the receipts.
 - **[Risk]** The only admin hits `account-conflict` and can't call release email. → HOSTING.md documents the
   SQL to clear the email by hand.
-- **[Trade-off]** The admin list is matched against the token's current email. → If an admin's email changes,
-  the configuration has to change too, which is the same step as updating the Access policy.
+- **[Trade-off]** The admin list is matched against the account's stored email. → If an admin's email changes,
+  the configuration has to change too, which is the same step as updating the Access policy. The stored email is
+  cached with the session, so releasing an admin's email takes their admin rights away only when their Access
+  session ends.
 - **[Trade-off]** Receipts without an owner are only visible to admins. → `AuthSettingsCheck` warns when no
   admins are configured. Reassigning comes later.
 - **[Trade-off]** Bulk delete now fails as a whole on a race with extraction. → The manager already prevents

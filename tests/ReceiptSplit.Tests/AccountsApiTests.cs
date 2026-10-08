@@ -233,6 +233,28 @@ public class AccountsApiTests
     }
 
     [Fact]
+    public async Task An_admin_email_held_by_another_user_doesnt_make_someone_an_admin()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        using var member = factory.CreateClient();
+        await MeAsync(admin);
+        var memberAccount = await MeAsync(member);
+        // The member's account now reports the admin's email, which the admin's user still holds.
+        factory.Identities.Answers[ReceiptApiFactory.AdminEmail] =
+            IdentityLookupResult.Found(FakeIdentityLookup.GoogleAccount(ReceiptApiFactory.MemberEmail));
+
+        using var moved = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        var resolved = await MeAsync(moved);
+
+        Assert.Equal(
+            (memberAccount.Id, ReceiptApiFactory.MemberEmail, false), (resolved.Id, resolved.Email, resolved.IsAdmin));
+        using var release = await moved.PostAsJsonAsync(
+            "/api/users/release-email", new ReleaseEmailDto(ReceiptApiFactory.AdminEmail), Ct);
+        Assert.Equal(HttpStatusCode.Forbidden, release.StatusCode);
+    }
+
+    [Fact]
     public async Task The_development_user_has_nothing_to_sign_out_of()
     {
         await using var factory = new ReceiptApiFactory();

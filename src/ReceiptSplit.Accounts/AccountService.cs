@@ -107,7 +107,7 @@ public sealed class AccountService(
         {
             var user = await db.Users.FirstAsync(u => u.Id == userId, cancellationToken);
             await UpdateAsync(user, email, identity.Name, cancellationToken);
-            return AccountResolution.Resolved(user.Id);
+            return AccountResolution.Resolved(user);
         }
 
         if (await db.Users.AnyAsync(u => u.Email == email, cancellationToken))
@@ -121,7 +121,7 @@ public sealed class AccountService(
         db.Users.Add(created);
         await db.SaveChangesAsync(cancellationToken);
         logger.LogInformation("Created user {UserId} on their first sign-in", created.Id);
-        return AccountResolution.Resolved(created.Id);
+        return AccountResolution.Resolved(created);
     }
 
     /// <summary>Picks up a name or email changed at the provider, unless the new email is another user's.</summary>
@@ -157,9 +157,10 @@ public sealed class AccountService(
 public sealed record CurrentAccount(Guid Id, string? Email, string? Name, bool IsAdmin, string? SignOutUrl);
 
 /// <summary>The user a sign-in resolved to, or a conflict when the email belongs to another account.</summary>
-internal sealed record AccountResolution(Guid? UserId)
+/// <param name="Email">The user's stored email, which can differ from the token's when another user holds that.</param>
+internal sealed record AccountResolution(Guid? UserId, string? Email)
 {
-    public static AccountResolution Conflict { get; } = new((Guid?)null);
+    public static AccountResolution Conflict { get; } = new(null, null);
 
-    public static AccountResolution Resolved(Guid userId) => new(userId);
+    public static AccountResolution Resolved(User user) => new(user.Id, user.Email);
 }
