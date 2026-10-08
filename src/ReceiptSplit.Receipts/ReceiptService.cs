@@ -280,7 +280,8 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
         Actor actor, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
     {
         // SQLite transactions from Microsoft.Data.Sqlite start IMMEDIATE, taking the write lock now, so the worker
-        // can't start reading one of these receipts between the check and the delete.
+        // can't mark one of these receipts Processing between the check and the delete. It may already have read one
+        // that is still Queued; its own save then finds the receipt gone, and it skips it.
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var receipts = await Visible(actor).Where(r => ids.Contains(r.Id)).ToListAsync(cancellationToken);
         var missing = ids.Except(receipts.Select(r => r.Id)).ToList();
