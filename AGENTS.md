@@ -6,13 +6,17 @@ it and how to configure it.
 ## Layout
 
 ```
-src/                              The backend; the host references Receipts, which references Data and Extraction
+src/                              The backend: host → Receipts → Accounts → Data, and Receipts → Extraction
   ReceiptSplit/                   ASP.NET Core 10 host (also serves the built client from wwwroot)
-    Program.cs                    Logging, each library's Add… call, the pipeline and the model server check
+    Program.cs                    Logging, each library's Add… call, the pipeline and the startup checks
     Controllers/                  Thin HTTP layer; ReceiptsController maps results to status codes and ProblemDetails
-    Contracts/ReceiptDtos.cs      Request/response records and the entity → DTO mapping
+    Contracts/                    Request/response records (ReceiptDtos.cs, UserDtos.cs) and the entity → DTO mapping
   ReceiptSplit.Receipts/          ReceiptService, the extraction queue, worker and extractor, images, checks, discount
                                   and tax codes
+  ReceiptSplit.Accounts/          AccountService, the account middleware, Actor, admins, development sign-in and the
+                                  IIdentityLookup the proxy's library implements
+  ReceiptSplit.Accounts.CloudflareAccess/
+                                  Access token checks (JWT bearer), the get-identity lookup and the Access settings
   ReceiptSplit.Data/              Entities, AppDbContext, migrations, Precision (cents and tax rate rounding), Storage
                                   settings
   ReceiptSplit.Extraction/        Model client, prompt, output parser, promotions, model server check, Llm settings
@@ -20,10 +24,14 @@ tests/                            xUnit v3 on Microsoft.Testing.Platform, one te
   Directory.Build.props           Test setup for every project whose name ends in .Tests
   ReceiptSplit.Tests/             API tests through the host (Support/ReceiptApiFactory), startup and live model tests
   ReceiptSplit.Receipts.Tests/    Tests for Receipts, including the sample model outputs
+  ReceiptSplit.Accounts.Tests/    The account rules, against the real schema in in-memory SQLite
+  ReceiptSplit.Accounts.CloudflareAccess.Tests/
+                                  The identity lookup and the Access startup check
   ReceiptSplit.Extraction.Tests/  Tests for Extraction
-  ReceiptSplit.Testing/           Plain library of shared helpers: FakeLlamaClient, TestImages, TestPaths, SampleTruth
+  ReceiptSplit.Testing/           Plain library of shared helpers: FakeLlamaClient, AccessTokens, FakeIdentityLookup,
+                                  TestImages, TestPaths, SampleTruth
 receiptsplit.client/              React 19 + TypeScript + Vite 8 + Mantine 9
-  src/api.ts                      Types and calls mirroring ReceiptDtos.cs
+  src/api.ts                      Types and calls mirroring the DTOs, and sign-in problems
   src/splits.ts                   Split calculations, all in integer cents
   src/photoEdits.ts               Cropping and rotating a photo on a canvas before upload
   src/theme.ts                    Mantine theme and color tokens
@@ -71,14 +79,27 @@ browser.
   (`POST /api/receipts/delete`) runs in one transaction and answers 404 for unknown ids or other users' receipts,
   409 when any is being read, and otherwise 204. New bulk endpoints follow the same rule.
 - **Business logic lives in `ReceiptService`**, not in the controller, so other entry points can reuse it.
-- **The model server is checked at startup.** `ModelServerCheck` lists the models (`GET /v1/models`, which doesn't
-  load one); `Program.cs` runs it through `CheckModelServerAsync()` and exits with code 1 when the server can't be
-  reached, rejects the API key or doesn't offer `Llm:Model` by id or alias. `ReceiptApiFactory` sets `Llm:Model` to
-  the fake client's model for this.
+- **Startup checks.** `Program.cs` exits with code 1 when one fails. `CheckAccountSettingsAsync()` refuses
+  `Auth:DevUser` outside Development. `CheckCloudflareAccessAsync()` needs the team domain and audience and fetches
+  Access's keys, unless the development user signs requests in. `CheckModelServerAsync()` lists the models (`GET
+  /v1/models`, which doesn't load one) and fails when the server can't be reached, rejects the API key or doesn't
+  offer `Llm:Model` by id or alias. `ReceiptApiFactory` sets `Llm:Model` to the fake client's model for this.
 - **Logging is Serilog, console only**: the container's stdout is the log, so there is no file sink. Levels live
   in the `Serilog` section of `appsettings.json` (`MinimumLevel`), not in `Logging`, which nothing reads any more.
-- **No authentication in the app yet.** It will first be deployed behind an identity-aware proxy (IAP), with sign-in
-  and users (each receipt belonging to one) added later. Don't assume a trusted home network.
+- **Sign-in comes from Cloudflare Access.** The app is deployed behind it and never signs anyone in itself. Every
+  request needs the token Access adds in `Cf-Access-Jwt-Assertion`, checked by the JWT bearer handler (signature
+  against Access's key set, issuer, audience, expiry); the plain email header is never trusted. Only
+  `ReceiptSplit.Accounts.CloudflareAccess` knows about Cloudflare. A different proxy would be another library
+  beside it, implementing `IIdentityLookup`.
+- **Accounts** (`ReceiptSplit.Accounts`). Users have the app's own ids and are linked to the provider's stable
+  account id through `ExternalIdentities`, never matched by email alone. The account middleware (`UseAccounts`)
+  looks up the full identity once per Access session (cached by `identity_nonce`), lets `AccountService` find or
+  create the user, and adds the user id and admin claims; sign-ins it can't accept get 403 or 503 problems with a
+  `code` the client shows a page for. Admins are the emails in `Auth:Admins`, matched on each request, not stored.
+  In Development, `Auth:DevUser` signs every request in without a token.
+- **Ownership.** Every `ReceiptService` method takes the `Actor` (user id and admin) it acts for, and every lookup
+  goes through one visibility rule: members reach their own receipts, admins all of them, including those without
+  an owner. A receipt someone can't reach is `NotFound`, never 403. The worker acts on receipt ids and needs no user.
 
 ### Money and precision
 
@@ -142,15 +163,18 @@ The app is in use, and its data must be preserved. Migrations are applied at sta
 - Doc comments explain why, not what. Keep lines around 120 characters.
 - Projects enforce the layers: the host only holds `Program.cs`, the controllers and their DTOs; business logic goes
   in `ReceiptSplit.Receipts` (or a new domain library); Data and Extraction don't reference each other or anything
-  above them.
+  above them. Accounts references only Data, never Receipts, and Receipts uses it only for `Actor`. Apart from the
+  host wiring it in, nothing outside `ReceiptSplit.Accounts.CloudflareAccess` names Cloudflare or references the JWT
+  bearer package.
 - Types in the libraries are `internal` unless another production project uses them. `Directory.Build.props` shows
   each project's internals to its own `<project>.Tests`, so tests don't need anything public. The generated
   migrations stay `public`, as `dotnet ef` writes them.
 - Each library registers its own settings and services with an `Add…` extension on `IHostApplicationBuilder`
-  (`AddDatabase`, `AddExtraction`, `AddReceipts`), so `Program.cs` never registers library types. The method
+  (`AddDatabase`, `AddExtraction`, `AddAccounts`, `AddCloudflareAccess`, `AddReceipts`), so `Program.cs` never
+  registers library types. The method
   calls the `Add…` methods of the libraries it depends on first, which also fixes the order of hosted services
   (migrations before the extraction worker), and does nothing when called again. Middleware a library adds gets a
-  `Use…` extension on the application instead.
+  `Use…` extension on the application instead (`UseAccounts`).
 - A library that needs the hosting, logging or options abstractions takes `<FrameworkReference
   Include="Microsoft.AspNetCore.App" />`, the framework the host runs on, rather than separate packages.
 - A new library goes in `src/` and needs an entry in `ReceiptSplit.slnx`; the Dockerfile's restore stage copies
@@ -162,6 +186,11 @@ The app is in use, and its data must be preserved. Migrations are applied at sta
 - Tests are named as sentences (`Hand_corrections_are_checked_at_the_precision_they_are_stored`). API tests use
   `ReceiptApiFactory` with `FakeLlamaClient` (`Content`, `Failure`, `Block()`/`Release()`), and images come from
   `TestImages.Create`.
+- `ReceiptApiFactory` runs the real token checks: it signs Access tokens with a generated key (`AccessTokens`), and
+  `CreateClient()` sends one for a default member. `CreateClientFor(email)` signs in someone else (the admin is
+  `ReceiptApiFactory.AdminEmail`), `CreateClientWithToken` sends any token or none, `Identities`
+  (`FakeIdentityLookup`) decides what each person's identity lookup returns, and `Clock` moves the account cache's
+  time.
 
 ## Frontend conventions
 

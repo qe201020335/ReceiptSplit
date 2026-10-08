@@ -213,10 +213,11 @@ project's conventions apply throughout:
 
 ## 9. Deployment and docs
 
-- [ ] 9.1 In `compose.yaml`, publish on `${RECEIPTSPLIT_BIND:-127.0.0.1}:${RECEIPTSPLIT_PORT:-8080}:8080` and pass
+- [x] 9.1 In `compose.yaml`, publish on `${RECEIPTSPLIT_BIND:-127.0.0.1}:${RECEIPTSPLIT_PORT:-8080}:8080` and pass
   through the `Auth__CloudflareAccess__TeamDomain`, `Auth__CloudflareAccess__Audience` and `Auth__Admins__0`
-  environment variables, with comments. Verify with `docker compose config`.
-- [ ] 9.2 Add a README section on hosting behind Cloudflare Access:
+  environment variables, with comments. Verify with `docker compose config`. Result: like the existing settings,
+  they are read from `.env` as `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` and `RECEIPTSPLIT_ADMIN`.
+- [x] 9.2 Add a README section on hosting behind Cloudflare Access:
   - the team domain and AUD tag
   - admins
   - the loopback binding, and why Docker's published ports need it
@@ -226,7 +227,7 @@ project's conventions apply throughout:
   - the supported sign-in methods
 
   Verify by following the snippet's endpoint and body against `UsersController`.
-- [ ] 9.3 In AGENTS.md:
+- [x] 9.3 In AGENTS.md:
   - replace "No authentication in the app yet" with how sign-in works: the Access JWT, the two account
     libraries and the rule that only the Cloudflare one knows about Cloudflare, `AccountService`, external
     identities, admins from config, `Actor` in `ReceiptService`, and the test factory's tokens
