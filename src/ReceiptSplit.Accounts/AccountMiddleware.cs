@@ -30,7 +30,7 @@ internal sealed class AccountMiddleware(
     /// <summary>Resolutions under way, by cache key. Lazy, so a lost race to add one never starts a second.</summary>
     private readonly ConcurrentDictionary<string, Lazy<Task<Outcome>>> _pending = new();
 
-    public async Task InvokeAsync(HttpContext context, AccountService accounts)
+    public async Task InvokeAsync(HttpContext context)
     {
         var principal = context.User;
         if (principal.Identity?.IsAuthenticated != true
@@ -40,7 +40,7 @@ internal sealed class AccountMiddleware(
             return;
         }
 
-        var outcome = await ResolveAsync(context, accounts, email);
+        var outcome = await ResolveAsync(context, email);
         if (outcome.UserId is { } userId)
         {
             List<Claim> claims = [new(AccountClaims.UserId, userId.ToString())];
@@ -63,7 +63,7 @@ internal sealed class AccountMiddleware(
         await next(context);
     }
 
-    private async Task<Outcome> ResolveAsync(HttpContext context, AccountService accounts, string email)
+    private async Task<Outcome> ResolveAsync(HttpContext context, string email)
     {
         var principal = context.User;
         var now = time.GetUtcNow();
@@ -75,7 +75,7 @@ internal sealed class AccountMiddleware(
             // A proxy that names no session (Access always does) gets no caching, and so nothing to share either:
             // every request resolves on its own, and overlapping first requests race to create the user. The
             // unique indexes and AccountService's retry keep that correct; EF just logs the losing insert as an error.
-            return await ResolveUncachedAsync(context, accounts, email, development, null);
+            return await ResolveUncachedAsync(context, email, development, null);
         }
 
         if (cache.TryGetValue(key, out Cached? cached) && cached!.Until > now)
@@ -85,9 +85,10 @@ internal sealed class AccountMiddleware(
 
         // Only saves the work, it doesn't guarantee a single insert: this is one process, and two sessions of the
         // same new person still resolve separately. The unique indexes and AccountService's retry are what make a
-        // race end in one user.
+        // race end in one user. The waiting requests share the outcome whatever it is: if the resolution throws, all
+        // of them fail with it, and nothing is cached, so the next request starts again.
         var pending = _pending.GetOrAdd(key, _ => new Lazy<Task<Outcome>>(
-            () => ResolveUncachedAsync(context, accounts, email, development, key)));
+            () => ResolveUncachedAsync(context, email, development, key)));
         try
         {
             return await pending.Value;
@@ -100,11 +101,12 @@ internal sealed class AccountMiddleware(
 
     /// <summary>
     /// Looks the account up and caches the outcome under <paramref name="key"/>. Other requests may be waiting on it,
-    /// so it isn't cancelled with the request that started it.
+    /// so it isn't cancelled with the request that started it. The account service, and the lookup's HTTP client
+    /// with it, are only created here, on a cache miss.
     /// </summary>
-    private async Task<Outcome> ResolveUncachedAsync(
-        HttpContext context, AccountService accounts, string email, bool development, string? key)
+    private async Task<Outcome> ResolveUncachedAsync(HttpContext context, string email, bool development, string? key)
     {
+        var accounts = context.RequestServices.GetRequiredService<AccountService>();
         var principal = context.User;
         var now = time.GetUtcNow();
         Outcome outcome;
