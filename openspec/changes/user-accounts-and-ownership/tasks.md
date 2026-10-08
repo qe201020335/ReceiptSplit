@@ -258,10 +258,14 @@ project's conventions apply throughout:
   and delete the copy and the browser profile. Result: 28 receipts on the start page and in the manager, a Multi
   Split of two, a T&T photo read to Completed and owned by the dev admin, and a bulk delete going from 29 to 27. As
   a dev member: no receipts, and a receipt's page shows Not Found.
-- [ ] 10.3 Ask the owner to deploy the branch's image behind Access and confirm:
+- [x] 10.3 Ask the owner to deploy the branch's image behind Access and confirm:
   - sign-in works
   - `/api/me` shows their name and admin status
   - a direct request to the host's LAN address on the app port is refused or unreachable
+
+  Result: deployed to a staging Access application. Sign-in and `/api/me` worked. With the port published on
+  every interface on purpose, the LAN address loaded the page but the API answered 401 and no account showed, so
+  even an exposed port gives nothing away.
 
 ## Workflow follow-up
 
