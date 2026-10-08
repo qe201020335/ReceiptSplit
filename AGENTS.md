@@ -1,7 +1,7 @@
 # AGENTS.md
 
-Guidance for coding agents working in this repository. See [README.md](README.md) for what the app does, how to run
-it and how to configure it.
+Guidance for coding agents working in this repository. See [README.md](README.md) for what the app does and how to
+run it, and [HOSTING.md](HOSTING.md) for deploying it behind Cloudflare Access.
 
 ## Layout
 

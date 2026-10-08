@@ -80,6 +80,6 @@ None. There are no specs yet.
 - **Tests:** the test host signs its own Access tokens, and it fakes the identity lookup.
 - **Deployment:**
   - `compose.yaml`: port binding and the Access settings.
-  - README: hosting behind Cloudflare Access.
+  - HOSTING.md, linked from the README: hosting behind Cloudflare Access.
   - AGENTS.md.
 - **Data:** existing receipts are kept, without an owner. Only admins see them until reassigning exists.

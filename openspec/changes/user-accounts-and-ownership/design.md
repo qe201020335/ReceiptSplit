@@ -299,7 +299,7 @@ token checks.
 - **`compose.yaml`:** publishes on `${RECEIPTSPLIT_BIND:-127.0.0.1}:${RECEIPTSPLIT_PORT:-8080}:8080`, and passes
   through `Auth__CloudflareAccess__TeamDomain`, `Auth__CloudflareAccess__Audience` and `Auth__Admins__0` from
   `.env`. Docker's published ports bypass host firewalls, so the loopback binding is what keeps the LAN out.
-- **README:** a section on hosting behind Cloudflare Access covering:
+- **HOSTING.md**, linked from the README: hosting behind Cloudflare Access, covering:
   - where to find the team domain and AUD tag
   - admins
   - cloudflared's optional `originRequest.access.required` check
@@ -316,7 +316,7 @@ token checks.
 - **[Trade-off]** The cache is lost on restart. → One extra get-identity call per active session after a deploy.
 - **[Trade-off]** A Google account whose email was reused by another account is refused until an admin
   releases the email. → That's intended: a human decides who owns the receipts.
-- **[Risk]** The only admin hits `account-conflict` and can't call release email. → The README documents the
+- **[Risk]** The only admin hits `account-conflict` and can't call release email. → HOSTING.md documents the
   SQL to clear the email by hand.
 - **[Trade-off]** The admin list is matched against the token's current email. → If an admin's email changes,
   the configuration has to change too, which is the same step as updating the Access policy.

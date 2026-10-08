@@ -226,7 +226,8 @@ project's conventions apply throughout:
   - the SQL for clearing an email when the only admin is refused
   - the supported sign-in methods
 
-  Verify by following the snippet's endpoint and body against `UsersController`.
+  Verify by following the snippet's endpoint and body against `UsersController`. Result: the section later moved
+  to its own HOSTING.md, which the README links to.
 - [x] 9.3 In AGENTS.md:
   - replace "No authentication in the app yet" with how sign-in works: the Access JWT, the two account
     libraries and the rule that only the Cloudflare one knows about Cloudflare, `AccountService`, external

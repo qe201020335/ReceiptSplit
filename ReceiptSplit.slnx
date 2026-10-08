@@ -12,6 +12,7 @@
     <File Path="Directory.Packages.props" />
     <File Path="Dockerfile" />
     <File Path="global.json" />
+    <File Path="HOSTING.md" />
     <File Path="README.md" />
   </Folder>
   <Folder Name="/src/">
