@@ -158,16 +158,40 @@ public class ReceiptsController(ReceiptService receipts) : ControllerBase
         };
 
     /// <summary>
-    /// Deletes several receipts and their photos. Receipts being extracted are left and listed as busy; unknown ids
-    /// are ignored.
+    /// Deletes several receipts and their photos, or none: unknown ids and other users' receipts give 404, and
+    /// receipts being extracted give 409, each listing the receipts in <c>ids</c>.
     /// </summary>
     [HttpPost("delete")]
-    [ProducesResponseType<ReceiptsDeletedDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
-    public async Task<ReceiptsDeletedDto> DeleteMany(ReceiptDeleteDto request, CancellationToken cancellationToken)
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeleteMany(ReceiptDeleteDto request, CancellationToken cancellationToken)
     {
         var result = await receipts.DeleteManyAsync(Actor, [.. request.Ids.Distinct()], cancellationToken);
-        return new ReceiptsDeletedDto(result.Deleted, result.Busy);
+        var count = result.Blocking.Count == 1 ? "1 receipt" : $"{result.Blocking.Count} receipts";
+        return result.Result switch
+        {
+            ReceiptActionResult.Done => NoContent(),
+            ReceiptActionResult.Busy => BulkProblem(
+                StatusCodes.Status409Conflict,
+                "Receipts are busy",
+                $"{count} {(result.Blocking.Count == 1 ? "is" : "are")} being read; nothing was deleted.",
+                result.Blocking),
+            _ => BulkProblem(
+                StatusCodes.Status404NotFound,
+                "Receipts not found",
+                $"{count} couldn't be found; nothing was deleted.",
+                result.Blocking),
+        };
+    }
+
+    /// <summary>A problem for a bulk request that changed nothing, listing the receipts that stopped it.</summary>
+    private ObjectResult BulkProblem(int status, string title, string detail, IReadOnlyList<Guid> ids)
+    {
+        var problem = ProblemDetailsFactory.CreateProblemDetails(HttpContext, status, title, detail: detail);
+        problem.Extensions["ids"] = ids;
+        return new ObjectResult(problem) { StatusCode = status, ContentTypes = { "application/problem+json" } };
     }
 
     private ObjectResult InvalidTaxRate() => Problem(

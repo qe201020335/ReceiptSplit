@@ -32,9 +32,6 @@ public sealed record ReceiptLineEditDto(
 /// <summary>Body of the request that deletes several receipts at once.</summary>
 public sealed record ReceiptDeleteDto([Required, MinLength(1), MaxLength(1000)] IReadOnlyList<Guid> Ids);
 
-/// <summary>The receipts a bulk delete removed, and those it left because the model is reading them.</summary>
-public sealed record ReceiptsDeletedDto(IReadOnlyList<Guid> Deleted, IReadOnlyList<Guid> Busy);
-
 public sealed record ReceiptSummaryDto(
     Guid Id,
     DateTime CreatedAt,

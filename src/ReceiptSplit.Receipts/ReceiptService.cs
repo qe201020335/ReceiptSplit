@@ -273,24 +273,37 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
     }
 
     /// <summary>
-    /// Deletes several receipts and their photos in one go, leaving out those the model is reading, as
-    /// <see cref="DeleteAsync"/> does. Ids that don't exist or the actor can't see are ignored.
+    /// Deletes several receipts and their photos, or none of them: ids that don't exist or the actor can't see make
+    /// it not found, and receipts the model is reading make it busy, as they would for <see cref="DeleteAsync"/>.
     /// </summary>
-    public async Task<ReceiptsDeleted> DeleteManyAsync(
+    public async Task<BulkReceiptResult> DeleteManyAsync(
         Actor actor, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
     {
+        // SQLite transactions from Microsoft.Data.Sqlite start IMMEDIATE, taking the write lock now, so the worker
+        // can't start reading one of these receipts between the check and the delete.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var receipts = await Visible(actor).Where(r => ids.Contains(r.Id)).ToListAsync(cancellationToken);
-        var busy = receipts.Where(r => r.Status == ReceiptStatus.Processing).ToList();
-        var deleted = receipts.Except(busy).ToList();
+        var missing = ids.Except(receipts.Select(r => r.Id)).ToList();
+        if (missing.Count > 0)
+        {
+            return new BulkReceiptResult(ReceiptActionResult.NotFound, missing);
+        }
 
-        db.Receipts.RemoveRange(deleted);
+        var busy = receipts.Where(r => r.Status == ReceiptStatus.Processing).Select(r => r.Id).ToList();
+        if (busy.Count > 0)
+        {
+            return new BulkReceiptResult(ReceiptActionResult.Busy, busy);
+        }
+
+        db.Receipts.RemoveRange(receipts);
         await db.SaveChangesAsync(cancellationToken);
-        foreach (var receipt in deleted)
+        await transaction.CommitAsync(cancellationToken);
+        foreach (var receipt in receipts)
         {
             DeletePhotos(receipt);
         }
 
-        return new ReceiptsDeleted([.. deleted.Select(r => r.Id)], [.. busy.Select(r => r.Id)]);
+        return BulkReceiptResult.Done;
     }
 
     /// <summary>

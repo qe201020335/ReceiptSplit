@@ -65,8 +65,11 @@ browser.
 - **Statuses.** `Completed` when all three checks in `ReceiptChecks` pass (lines = subtotal, subtotal + tax = total,
   expected tax within a cent), otherwise `NeedsReview`. Hand edits (`PUT`) and tax rate changes (`PATCH`) recheck
   without calling the model. Actions that would clash with an extraction return `ReceiptActionResult.Busy` (409);
-  which statuses count as busy differs per action, see `ReceiptService`. The bulk delete (`POST
-  /api/receipts/delete`) leaves busy receipts and lists them in its response instead of failing.
+  which statuses count as busy differs per action, see `ReceiptService`.
+- **Bulk operations are all or nothing.** A request that acts on several receipts either succeeds for every one or
+  changes none, and its problem response lists the receipts that stopped it in an `ids` extension. The bulk delete
+  (`POST /api/receipts/delete`) runs in one transaction and answers 404 for unknown ids or other users' receipts,
+  409 when any is being read, and otherwise 204. New bulk endpoints follow the same rule.
 - **Business logic lives in `ReceiptService`**, not in the controller, so other entry points can reuse it.
 - **The model server is checked at startup.** `ModelServerCheck` lists the models (`GET /v1/models`, which doesn't
   load one); `Program.cs` runs it through `CheckModelServerAsync()` and exits with code 1 when the server can't be

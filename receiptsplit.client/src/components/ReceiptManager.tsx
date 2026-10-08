@@ -96,25 +96,16 @@ export function ReceiptManager({ receipts, error, onChanged, onOpen, onBack }: R
   async function remove(ids: string[]) {
     setDeleting(true)
     try {
-      const { deleted, busy } = await api.deleteReceipts(ids)
+      await api.deleteReceipts(ids)
       setSelected(new Set())
-      onChanged()
-      const left =
-        busy.length === 0
-          ? null
-          : busy.length === 1
-            ? '1 is being read; delete it once it finishes.'
-            : `${busy.length} are being read; delete them once they finish.`
-      notifications.show({
-        message: [deleted.length > 0 ? `${receiptCount(deleted.length)} deleted` : null, left]
-          .filter(Boolean)
-          .join('. '),
-        color: busy.length > 0 ? 'yellow' : 'green',
-      })
+      notifications.show({ message: `${receiptCount(ids.length)} deleted`, color: 'green' })
     } catch (e) {
+      // Nothing was deleted, and the message says which receipts stopped it. The selection stays for another try;
+      // the reload drops receipts that are gone or being read from it.
       notifications.show({ title: "Couldn't delete the receipts", message: errorMessage(e), color: 'red' })
     } finally {
       setDeleting(false)
+      onChanged()
     }
   }
 

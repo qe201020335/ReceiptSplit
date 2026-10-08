@@ -93,12 +93,6 @@ export interface ReceiptDetail {
   extraction: Extraction | null
 }
 
-/** What a bulk delete removed, and the receipts it left because the model is reading them. */
-export interface ReceiptsDeleted {
-  deleted: string[]
-  busy: string[]
-}
-
 export class ApiError extends Error {
   readonly status: number
 
@@ -170,9 +164,12 @@ export const api = {
 
   deleteReceipt: (id: string) => request<void>(`/api/receipts/${id}`, { method: 'DELETE' }),
 
-  /** Deletes several receipts; those being read are left and listed as busy. */
+  /**
+   * Deletes several receipts, or none: an unknown or someone else's receipt fails it with 404, and one being read
+   * with 409. The error's message then says why nothing was deleted.
+   */
   deleteReceipts: (ids: string[]) =>
-    request<ReceiptsDeleted>('/api/receipts/delete', {
+    request<void>('/api/receipts/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids }),

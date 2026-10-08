@@ -159,11 +159,11 @@ project's conventions apply throughout:
 
 ## 7. All-or-nothing bulk delete
 
-- [ ] 7.1 Rewrite `ReceiptService.DeleteManyAsync` to run in one transaction. It returns not found (with ids) when
+- [x] 7.1 Rewrite `ReceiptService.DeleteManyAsync` to run in one transaction. It returns not found (with ids) when
   any id is missing or not visible, busy (with ids) when any is `Processing`, and otherwise deletes them all.
   Photos are deleted after the commit. The controller answers 204, or 404 or 409 problems with an `ids`
   extension and a `detail` saying nothing was deleted. Remove `ReceiptsDeletedDto` and `ReceiptsDeleted`.
-- [ ] 7.2 Replace the bulk delete tests with the scenarios in `specs/receipt-access`:
+- [x] 7.2 Replace the bulk delete tests with the scenarios in `specs/receipt-access`:
   - all deletable → 204
   - someone else's receipt → 404, nothing deleted
   - an unknown id → 404, nothing deleted
@@ -171,7 +171,7 @@ project's conventions apply throughout:
   - empty → 400
 
   Verify by running the tests.
-- [ ] 7.3 Update the client:
+- [x] 7.3 Update the client:
   - `api.deleteReceipts` returns nothing
   - `ApiError` keeps the problem detail
   - `ReceiptManager` shows a green notification on success, or the problem's detail in red on 404 or 409, and
@@ -179,7 +179,7 @@ project's conventions apply throughout:
   - remove the `ReceiptsDeleted` type
 
   Verify with `npm run build` and `npm run lint`.
-- [ ] 7.4 Update AGENTS.md. Add the rule that bulk operations are all or nothing and list what blocked them.
+- [x] 7.4 Update AGENTS.md. Add the rule that bulk operations are all or nothing and list what blocked them.
   Replace the bulk delete sentence under "Statuses", which says it leaves busy receipts. Verify by reading the
   section.
 
