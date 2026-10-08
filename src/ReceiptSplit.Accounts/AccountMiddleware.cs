@@ -149,7 +149,9 @@ internal sealed class AccountMiddleware(
             }
         }
 
-        if (key is not null)
+        // A token the handler accepted within its clock skew can already be past its expiry, and so past the end of
+        // what it could be cached for; Access replaces it soon, so it just isn't cached.
+        if (key is not null && until > now)
         {
             // The cache's own expiry only frees memory; the time provider decides, so tests can move the clock.
             cache.Set(key, new Cached(outcome, until), until - now);

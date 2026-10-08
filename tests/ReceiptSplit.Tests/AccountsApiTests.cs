@@ -90,6 +90,17 @@ public class AccountsApiTests
     }
 
     [Fact]
+    public async Task A_token_just_past_its_expiry_is_still_resolved()
+    {
+        // The token handler allows five minutes of clock skew, so this token is still accepted.
+        await using var factory = new ReceiptApiFactory();
+        using var client = factory.CreateClientWithToken(
+            AccessTokens.Create(ReceiptApiFactory.MemberEmail, expires: DateTime.UtcNow.AddMinutes(-2)));
+
+        Assert.Equal(ReceiptApiFactory.MemberEmail, (await MeAsync(client)).Email);
+    }
+
+    [Fact]
     public async Task A_returning_user_picks_up_a_changed_email_and_name()
     {
         await using var factory = new ReceiptApiFactory();
