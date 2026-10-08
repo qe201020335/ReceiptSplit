@@ -191,6 +191,16 @@ specs and a task list, made and worked through with the `openspec-*` skills (or 
 `/opsx:archive`). Archiving merges the delta specs into `openspec/specs/`, which describe what the app does now.
 `openspec/config.yaml` holds project context and rules for the artifacts.
 
+When a change being explored or proposed grows large and has parts that could ship on their own, say so and
+suggest a split, then let the owner decide; don't split unasked. Signs of a seam:
+- something that doesn't depend on the feature ("while we're at it" fixes, deployment hardening)
+- a schema change that can land first, additive and unused
+- groundwork that is useful without the feature, such as verifying a proxy's token before there are accounts
+- the change people actually see, which is easiest to review last and on its own
+
+Each part would be its own change and PR, archived when it merges, so `openspec/specs/` follows what is deployed.
+Merge one before branching the next: squash merges leave a stacked branch to rebase with `git rebase --onto`.
+
 ## Git
 
 - Work on a branch. When implementing a plan, including an OpenSpec change's tasks, make one commit per step, and
