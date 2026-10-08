@@ -185,7 +185,7 @@ project's conventions apply throughout:
 
 ## 8. Account menu and sign-in problem pages
 
-- [ ] 8.1 In `api.ts`:
+- [x] 8.1 In `api.ts`:
   - add the `Account` type and `api.me()`
   - make `request` use `redirect: 'manual'` and turn an `opaqueredirect` into a `signed-out` problem
   - turn problems with code `unsupported-sign-in`, `account-conflict` or `identity-unavailable` into sign-in
@@ -193,19 +193,23 @@ project's conventions apply throughout:
   - publish sign-in problems through a small subscribe function
 
   Verify with `npm run build`.
-- [ ] 8.2 Add `useAccount`, and `AccountMenu`: a Mantine `Avatar` with `name` and `color="initials"`, triggering
+- [x] 8.2 Add `useAccount`, and `AccountMenu`: a Mantine `Avatar` with `name` and `color="initials"`, triggering
   a `Menu` with the name, email, an Admin badge, and Sign out only when `signOutUrl` is set. Place it on the right
   of the header. Verify with `npm run build` and `npm run lint`.
-- [ ] 8.3 Add `SignInProblemPage` with the four messages and actions in `specs/user-identity`, worded without
+- [x] 8.3 Add `SignInProblemPage` with the four messages and actions in `specs/user-identity`, worded without
   any provider name. `App` renders it in place of the routes while a problem is set. Verify with `npm run build`
-  and `npm run lint`.
-- [ ] 8.4 Check in headless Chromium, against a scratch backend and Vite on spare ports, at 1280px and 390px in
+  and `npm run lint`. Result: the page can't get the sign-out URL from `/api/me` when that is refused, so the
+  sign-in problems also carry `signOutUrl` from `IIdentityLookup`.
+- [x] 8.4 Check in headless Chromium, against a scratch backend and Vite on spare ports, at 1280px and 390px in
   light and dark mode:
   - the avatar and the menu (by click and by keyboard)
   - the admin badge for the dev admin, and its absence for a dev member (restart with another `Auth__DevUser`)
   - each problem page, by having the scratch backend's `/api/me` return each problem; the signed-out page by
     making a fetch get an opaque redirect
   - no sideways scroll
+
+  Result: checked by script, with `/api/me` intercepted in the browser for an account with a sign-out URL, each
+  problem and a 302; 76 checks passed in two runs.
 
 ## 9. Deployment and docs
 

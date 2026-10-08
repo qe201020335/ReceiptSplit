@@ -49,7 +49,8 @@ internal sealed class AccountMiddleware(
         }
         else if (context.Request.Path.StartsWithSegments("/api"))
         {
-            await outcome.Problem!.WriteAsync(context);
+            var signOutUrl = context.RequestServices.GetService<IIdentityLookup>()?.SignOutUrl;
+            await outcome.Problem!.WriteAsync(context, signOutUrl);
             return;
         }
 

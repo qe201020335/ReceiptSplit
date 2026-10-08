@@ -285,6 +285,7 @@ public class AccountsApiTests
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         var problem = (await response.Content.ReadFromJsonAsync<ProblemDetails>(Json, Ct))!;
         Assert.Equal(code, problem.Extensions["code"]?.ToString());
+        Assert.Equal(FakeIdentityLookup.SignOutPath, problem.Extensions["signOutUrl"]?.ToString());
         Assert.False(string.IsNullOrEmpty(problem.Detail));
         Assert.DoesNotContain("Google", problem.Detail);
         Assert.DoesNotContain("Google", problem.Title);

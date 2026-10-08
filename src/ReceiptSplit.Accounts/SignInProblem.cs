@@ -4,7 +4,8 @@ namespace ReceiptSplit.Accounts;
 
 /// <summary>
 /// Why a sign-in can't be used, answered to API requests as a problem whose <c>code</c> the client shows a page
-/// for. The wording names no provider, so it stays right whichever ones are turned on.
+/// for, with the proxy's <c>signOutUrl</c> when it has one, since the page can't ask for it. The wording names no
+/// provider, so it stays right whichever ones are turned on.
 /// </summary>
 internal sealed record SignInProblem(int Status, string Code, string Title, string Detail)
 {
@@ -26,10 +27,10 @@ internal sealed record SignInProblem(int Status, string Code, string Title, stri
         "Account couldn't be confirmed",
         "Your account couldn't be confirmed right now. Try again in a moment.");
 
-    public Task WriteAsync(HttpContext context) => Results.Problem(
+    public Task WriteAsync(HttpContext context, string? signOutUrl) => Results.Problem(
             detail: Detail,
             statusCode: Status,
             title: Title,
-            extensions: new Dictionary<string, object?> { ["code"] = Code })
+            extensions: new Dictionary<string, object?> { ["code"] = Code, ["signOutUrl"] = signOutUrl })
         .ExecuteAsync(context);
 }

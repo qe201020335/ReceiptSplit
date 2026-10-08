@@ -1,18 +1,26 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Anchor, Box, Card, Container, Grid, Paper, Stack, Text, Title } from '@mantine/core'
+import { Anchor, Box, Card, Container, Grid, Group, Paper, Stack, Text, Title } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
-import { api, errorMessage, inProgress, type ReceiptSummary } from './api.ts'
+import { api, errorMessage, inProgress, onSignInProblem, type ReceiptSummary, type SignInProblem } from './api.ts'
+import { AccountMenu } from './components/AccountMenu.tsx'
 import { ReceiptDetail } from './components/ReceiptDetail.tsx'
 import { ReceiptList } from './components/ReceiptList.tsx'
 import { ReceiptManager } from './components/ReceiptManager.tsx'
 import { ReceiptPage } from './components/ReceiptPage.tsx'
+import { SignInProblemPage } from './components/SignInProblemPage.tsx'
 import { UploadForm } from './components/UploadForm.tsx'
 import { SplitsPage } from './components/SplitsPage.tsx'
+import { useAccount } from './useAccount.ts'
 import { home, useRoute, type Route } from './useRoute.ts'
 
 const pollIntervalMs = 2000
 
 function App() {
+  // Set by any request that shows the sign-in can't be used; the app then explains instead of showing receipts.
+  // Subscribed before the requests below start.
+  const [signInProblem, setSignInProblem] = useState<SignInProblem | null>(null)
+  useEffect(() => onSignInProblem(setSignInProblem), [])
+  const account = useAccount()
   const [receipts, setReceipts] = useState<ReceiptSummary[] | null>(null)
   const [listError, setListError] = useState<string | null>(null)
   // Bumping this reloads the list.
@@ -78,23 +86,30 @@ function App() {
       <Paper component="header" radius={0} py="sm" bd="0 0 1px 0 solid var(--mantine-color-default-border)">
         {/* The same container as the page below, so the name lines up with the cards' left edge. */}
         <Container size={containerSize} px="md">
-          <Title order={1} fz="lg" fw={600} lh={1.55}>
-            <Anchor
-              href="/"
-              inherit
-              underline="never"
-              c="var(--mantine-color-text)"
-              onClick={(event) => {
-                event.preventDefault()
-                go(home)
-              }}
-            >
-              ReceiptSplit
-            </Anchor>
-          </Title>
+          <Group justify="space-between" wrap="nowrap" gap="md">
+            <Title order={1} fz="lg" fw={600} lh={1.55}>
+              <Anchor
+                href="/"
+                inherit
+                underline="never"
+                c="var(--mantine-color-text)"
+                onClick={(event) => {
+                  event.preventDefault()
+                  go(home)
+                }}
+              >
+                ReceiptSplit
+              </Anchor>
+            </Title>
+            {account && !signInProblem && <AccountMenu account={account} />}
+          </Group>
         </Container>
       </Paper>
-      {route.page === 'splits' ? (
+      {signInProblem ? (
+        <Container size={containerSize} py="xl" px="md">
+          <SignInProblemPage problem={signInProblem} />
+        </Container>
+      ) : route.page === 'splits' ? (
         <Container size={containerSize} py="md" px="md">
           <SplitsPage
             key={route.ids.join(',')}
