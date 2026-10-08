@@ -19,4 +19,7 @@ public sealed class AuthOptions
     /// <summary>Whether requests are signed in as <see cref="DevUser"/> instead of through the proxy.</summary>
     public bool SignsInDevUser(IHostEnvironment environment) =>
         environment.IsDevelopment() && !string.IsNullOrWhiteSpace(DevUser);
+
+    internal bool IsAdmin(string email) =>
+        Admins.Any(admin => string.Equals(admin.Trim(), email.Trim(), StringComparison.OrdinalIgnoreCase));
 }

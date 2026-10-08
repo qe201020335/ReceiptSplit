@@ -100,7 +100,7 @@ project's conventions apply throughout:
 
 ## 5. Accounts, admins and sign-in refusals
 
-- [ ] 5.1 Add `IIdentityLookup` and its result types to `ReceiptSplit.Accounts`. Add `CloudflareIdentityLookup`
+- [x] 5.1 Add `IIdentityLookup` and its result types to `ReceiptSplit.Accounts`. Add `CloudflareIdentityLookup`
   to the Cloudflare library. It calls `<team>/cdn-cgi/access/get-identity` with the token as the
   `CF_Authorization` cookie (confirmed in 1.1), maps `idp.type` `google` and `google-apps` to `Google`, treats
   anything else as unsupported, and treats failures as unavailable. The response body is never logged. Register it
@@ -108,7 +108,7 @@ project's conventions apply throughout:
   "unsupported" or "unavailable", and use it in `ReceiptApiFactory`. Verify with unit tests in
   `ReceiptSplit.Accounts.CloudflareAccess.Tests` on a canned response, covering both Google types, an unknown type
   and a failure.
-- [ ] 5.2 Add `AccountService` to `ReceiptSplit.Accounts`, with the resolution rules from design.md:
+- [x] 5.2 Add `AccountService` to `ReceiptSplit.Accounts`, with the resolution rules from design.md:
   - found by identity, updating the name and the email unless the new email is held (then log a warning)
   - `account-conflict` when the email is held
   - create the user and identity together
@@ -117,7 +117,7 @@ project's conventions apply throughout:
 
   Verify with tests in `ReceiptSplit.Accounts.Tests` for each rule in `specs/user-identity`. Those tests use
   `AppDbContext` over in-memory SQLite.
-- [ ] 5.3 Add the account middleware to `ReceiptSplit.Accounts`, exposed as `UseAccounts()`, and call it after
+- [x] 5.3 Add the account middleware to `ReceiptSplit.Accounts`, exposed as `UseAccounts()`, and call it after
   `UseAuthentication`. It:
   - caches by `identity_nonce` (a resolved user until `exp`, a refusal for one minute, failures not at all)
   - adds the user-id and admin claims
@@ -131,7 +131,7 @@ project's conventions apply throughout:
   - refusals carry the right status and code
   - a session already identified keeps working while lookups fail
   - admin by email, in any letter case
-- [ ] 5.4 Add `UsersController` to the host with `GET /api/me`, returning `AccountDto(Id, Email, Name, IsAdmin,
+- [x] 5.4 Add `UsersController` to the host with `GET /api/me`, returning `AccountDto(Id, Email, Name, IsAdmin,
   SignOutUrl)` with `SignOutUrl` null in development. Add admin-only `POST /api/users/release-email` (204, 404 for
   an unknown email, 403 for members), with its logic in `AccountService`. Verify with API tests:
   - the `/api/me` fields for a member and for an admin

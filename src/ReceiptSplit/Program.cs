@@ -43,6 +43,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseAuthentication();
+app.UseAccounts();
 app.UseAuthorization();
 
 app.MapControllers();

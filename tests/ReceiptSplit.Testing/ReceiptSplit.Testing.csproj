@@ -6,6 +6,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\src\ReceiptSplit.Accounts\ReceiptSplit.Accounts.csproj" />
         <ProjectReference Include="..\..\src\ReceiptSplit.Extraction\ReceiptSplit.Extraction.csproj" />
     </ItemGroup>
 

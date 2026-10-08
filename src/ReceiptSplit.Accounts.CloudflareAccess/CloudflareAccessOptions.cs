@@ -11,7 +11,7 @@ internal sealed class CloudflareAccessOptions
     /// <summary>The application's Audience (AUD) tag.</summary>
     public string? Audience { get; set; }
 
-    /// <summary>The team domain as Access writes it in a token's issuer, which is also where its endpoints are.</summary>
+    /// <summary>The team domain as a token's issuer gives it, which is also where Access's endpoints are.</summary>
     public string Issuer
     {
         get

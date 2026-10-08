@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,7 +21,8 @@ public static class CloudflareAccessExtensions
 
     /// <summary>
     /// Signs requests in from the token Cloudflare Access adds to each one, after checking its signature, issuer,
-    /// audience and expiry. Registers the accounts first. A second call does nothing.
+    /// audience and expiry, and looks up the full identity behind it. Registers the accounts first. A second call
+    /// does nothing.
     /// </summary>
     public static IHostApplicationBuilder AddCloudflareAccess(this IHostApplicationBuilder builder)
     {
@@ -70,8 +72,33 @@ public static class CloudflareAccessExtensions
 
                         return Task.CompletedTask;
                     },
+                    // Access changes identity_nonce when someone signs in again, and documents it as the key for
+                    // caching the identity.
+                    OnTokenValidated = context =>
+                    {
+                        if (context.Principal?.Identity is ClaimsIdentity identity
+                            && identity.FindFirst("identity_nonce")?.Value is { Length: > 0 } nonce)
+                        {
+                            identity.AddClaim(new Claim(AccountClaims.Session, nonce));
+                        }
+
+                        return Task.CompletedTask;
+                    },
                 };
             });
+        builder.Services.AddHttpClient<IIdentityLookup, CloudflareIdentityLookup>((services, http) =>
+            {
+                var access = services.GetRequiredService<IOptions<CloudflareAccessOptions>>().Value;
+                // Left unset without a team domain, as in development, where the lookup is never used.
+                if (!string.IsNullOrWhiteSpace(access.TeamDomain))
+                {
+                    http.BaseAddress = new Uri($"{access.Issuer}/");
+                }
+
+                http.Timeout = TimeSpan.FromSeconds(10);
+            })
+            // The token goes in a Cookie header of its own, which a cookie container would replace.
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { UseCookies = false });
         // Development sign-in, when it's on, has already claimed the default.
         builder.Services.AddOptions<AuthenticationOptions>()
             .Configure(options => options.DefaultScheme ??= AuthenticationScheme);

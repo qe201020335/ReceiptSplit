@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using ReceiptSplit.Accounts;
 using ReceiptSplit.Extraction;
 using ReceiptSplit.Testing;
 
@@ -15,7 +16,8 @@ namespace ReceiptSplit.Tests.Support;
 /// <summary>
 /// Runs the app against a throwaway storage directory, with a fake model unless told otherwise. Requests are signed
 /// in with Access tokens made by <see cref="AccessTokens"/>, checked by the app's real token handler; clients from
-/// <see cref="WebApplicationFactory{TEntryPoint}.CreateClient()"/> carry one for <see cref="MemberEmail"/>.
+/// <see cref="WebApplicationFactory{TEntryPoint}.CreateClient()"/> carry one for <see cref="MemberEmail"/>. The
+/// identity behind a token comes from <see cref="Identities"/>.
 /// </summary>
 public sealed class ReceiptApiFactory(bool useFakeLlm = true) : WebApplicationFactory<Program>
 {
@@ -26,6 +28,11 @@ public sealed class ReceiptApiFactory(bool useFakeLlm = true) : WebApplicationFa
     public string StorageRoot { get; } = Path.Combine(Path.GetTempPath(), "receiptsplit-tests", Guid.NewGuid().ToString("N"));
 
     public FakeLlamaClient Llm { get; } = new();
+
+    public FakeIdentityLookup Identities { get; } = new();
+
+    /// <summary>The clock the account cache's lifetimes are measured on.</summary>
+    public ManualTimeProvider Clock { get; } = new();
 
     /// <summary>The default member's Access session, the same for every client, as in one browser.</summary>
     private readonly string _memberNonce = Guid.NewGuid().ToString("N");
@@ -60,6 +67,10 @@ public sealed class ReceiptApiFactory(bool useFakeLlm = true) : WebApplicationFa
             // The test key in place of the keys Access publishes, which the startup check also reads.
             services.PostConfigureAll<JwtBearerOptions>(options => options.ConfigurationManager =
                 new StaticConfigurationManager<OpenIdConnectConfiguration>(AccessTokens.Configuration));
+            services.RemoveAll<IIdentityLookup>();
+            services.AddSingleton<IIdentityLookup>(Identities);
+            services.RemoveAll<TimeProvider>();
+            services.AddSingleton<TimeProvider>(Clock);
         });
 
         if (useFakeLlm)
