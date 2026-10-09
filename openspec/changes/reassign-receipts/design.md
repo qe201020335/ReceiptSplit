@@ -142,7 +142,7 @@ whose" at a glance. Everything else stays as quiet as the existing list.
 | No owner avatar | a transparent fill with a 1px dashed `--mantine-color-default-border` outline and an empty-person glyph in `--mantine-color-dimmed` |
 | Owner name | `--mantine-color-text` at size `sm` |
 | "No owner" text | `--mantine-color-dimmed`, in italic. It's what the admin is hunting for, so it differs in shape rather than color, and both schemes keep their contrast |
-| "Owner" / "You" marks in the picker | dimmed `xs` text, not badges, so the list doesn't look like a status board |
+| "Current" / "You" marks in the picker | dimmed `xs` text, not badges, so the list doesn't look like a status board |
 
 **Type.** No new faces or sizes:
 - row title `fw 500`
@@ -193,7 +193,7 @@ The count line reads "*N* of *M* receipts" while a filter is on.
 +-------------------------------+
 | [ Search people             ] |
 |-------------------------------|
-| (AC) Alice Chen        Owner  |  <- disabled on a row
+| (AC) Alice Chen      Current  |  <- disabled on a row
 |      alice@example.com        |
 | (BK) Ben Kim                  |
 |      ben@example.com          |
@@ -206,12 +206,17 @@ The count line reads "*N* of *M* receipts" while a filter is on.
 ```
 
 - The dropdown is 300px wide and fits inside 390px.
-- Its height is capped at about 6 options, then it scrolls.
+- Its height is capped at about 6 options, then it scrolls. It uses a plain `overflow-y: auto` box, because
+  Mantine's `ScrollArea` sizes its content to the widest row, which stops long emails from truncating.
 - The search field takes focus on open.
+- The dropdown is mounted only while it's open (`keepMounted={false}`). Combobox keeps closed dropdowns in the page
+  by default, which would add a hidden search box for every row.
 
 **Footer.** The buttons are `[Clear] ... [Reassign N] [Delete N]`. Reassign is `variant="default"` and Delete is
-red, so the action that can't be undone keeps the strong color. At 390px both labels have to fit with "N" at 3 digits, which
-task 6.3 checks. The Clear button already makes room by leaving the count to the buttons.
+red, so the action that can't be undone keeps the strong color. At 390px the three buttons don't fit with full
+labels and a 3-digit count. Below the `xs` breakpoint the labels drop the word "receipts" ("Reassign 100", "Delete
+100"), and the buttons and the gap between them get less padding. Each button's `aria-label` keeps the whole phrase,
+and the confirmation names the count in full.
 
 **Copy.**
 

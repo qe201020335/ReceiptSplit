@@ -115,3 +115,34 @@ section + section .month {
   color: var(--mantine-color-dimmed);
   padding-inline-end: 0.15em;
 }
+
+/* Under Open, in the actions column; a button that looks like the Open link beside it. */
+.reassign {
+  align-self: center;
+  padding: 0 var(--mantine-spacing-md) var(--mantine-spacing-xs) 0;
+}
+
+.reassign:disabled {
+  cursor: default;
+  color: var(--mantine-color-dimmed);
+  text-decoration: none;
+}
+
+/* On a phone the footer's three buttons drop the word "receipts" and some padding, to fit a 3-digit count. */
+@media (max-width: $mantine-breakpoint-xs) {
+  .countNoun {
+    display: none;
+  }
+
+  .footer {
+    gap: var(--mantine-spacing-xs);
+  }
+
+  .footer button {
+    --button-padding-x: 10px;
+  }
+}
+
+.footer > button {
+  flex-shrink: 0;
+}

@@ -1,0 +1,37 @@
+/* A plain scrolling box: Mantine's ScrollArea sizes its content to the widest row, so names wouldn't truncate. */
+.people {
+  max-height: 290px;
+  overflow-y: auto;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+}
+
+/* The current owner can't be picked again; it stays readable, only its mark says why. */
+.option[data-combobox-disabled] {
+  opacity: 0.6;
+}
+
+.person {
+  flex: 1;
+  min-width: 0;
+}
+
+.mark {
+  flex-shrink: 0;
+}
+
+.divider {
+  margin: 4px 0;
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+/* As on the manager's rows: told apart by shape, with room for the slanted last letter. */
+.noOwner {
+  font-style: italic;
+  color: var(--mantine-color-dimmed);
+  padding-inline-end: 0.15em;
+}

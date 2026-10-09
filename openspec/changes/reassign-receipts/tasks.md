@@ -110,7 +110,7 @@ a dev user who isn't.
 
 ## 6. Reassigning from the manager
 
-- [ ] 6.1 Add `OwnerPicker.tsx` and `OwnerPicker.module.css`: a `Combobox` with `Combobox.Search` and options, as
+- [x] 6.1 Add `OwnerPicker.tsx` and `OwnerPicker.module.css`: a `Combobox` with `Combobox.Search` and options, as
   design.md describes.
   - people, with their avatar, name and email
   - "Owner" disabled on a row, and "You" on the signed-in admin
@@ -119,7 +119,7 @@ a dev user who isn't.
   - 300px wide, scrolling after about 6 options
 
   Verify that the client builds and lints.
-- [ ] 6.2 Add Reassign to each admin row, as an `Anchor` button in the right column with the aria-label "Reassign
+- [x] 6.2 Add Reassign to each admin row, as an `Anchor` button in the right column with the aria-label "Reassign
   {store}, {date}". Picking calls `api.reassignReceipts([id], ownerId)`, then shows "Reassigned to {name}" (or "Set
   to no owner"), or "Couldn't reassign the receipts" with the error, and calls `onChanged()`. Disable it while a
   delete or a reassign is running. Verify in the browser as the admin:
@@ -128,7 +128,7 @@ a dev user who isn't.
   - Escape changes nothing
   - the row shows the new owner after the reload
   - set a receipt back to No owner
-- [ ] 6.3 Add Reassign *N* to the footer, before Delete, with `variant="default"`. Picking opens
+- [x] 6.3 Add Reassign *N* to the footer, before Delete, with `variant="default"`. Picking opens
   `modals.openConfirmModal`, with the title "Reassign *N* receipts to {name}?" and the owner breakdown counted from
   the selected summaries. Confirming sends one request, clears the selection and shows "*N* receipts reassigned to
   {name}". Cancelling keeps the selection. A rejection shows the server's message and reloads. Verify in the
@@ -136,7 +136,8 @@ a dev user who isn't.
   - a mixed selection gives the right breakdown
   - Cancel changes nothing
   - Confirm moves them all
-  - at 390px the footer fits three buttons with a 3-digit count, in light and dark mode
+  - at 390px the footer fits three buttons with a 3-digit count, in light and dark mode. Result: it didn't fit with
+    full labels, so on phones the labels drop "receipts" and the buttons get less padding, as design.md now says.
 
 ## 7. End-to-end check
 

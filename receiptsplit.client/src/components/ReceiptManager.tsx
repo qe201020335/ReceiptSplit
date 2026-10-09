@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
   Alert,
   Anchor,
@@ -20,6 +20,7 @@ import { ownerFilter, userLabel } from '../owners.ts'
 import { usePageTitle } from '../usePageTitle.ts'
 import { pathFor } from '../useRoute.ts'
 import { OwnerAvatar } from './OwnerAvatar.tsx'
+import { OwnerPicker } from './OwnerPicker.tsx'
 import { StatusBadge } from './StatusBadge.tsx'
 import classes from './ReceiptManager.module.css'
 
@@ -31,7 +32,7 @@ interface ReceiptManagerProps {
   /** The owner filter from the URL: 'none', a user id, or null for everyone. Only admins filter. */
   owner: string | null
   onOwnerChange: (owner: string | null) => void
-  /** Called after receipts were deleted, to reload the list. */
+  /** Called after receipts were deleted or reassigned, to reload the list. */
   onChanged: () => void
   onOpen: (id: string) => void
   onBack: () => void
@@ -48,6 +49,41 @@ const everyone = 'everyone'
 
 function receiptCount(count: number): string {
   return `${count} receipt${count === 1 ? '' : 's'}`
+}
+
+/** "a", "a and b", "a, b and c". */
+function joined(parts: string[]): string {
+  return parts.length <= 1 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`
+}
+
+/**
+ * Whose the receipts are now, for confirming a bulk reassign: "7 have no owner and 3 are Alice Chen's", or "All 10
+ * are Ben Kim's".
+ */
+function ownerBreakdown(receipts: ReceiptSummary[], nameOf: (ownerId: string) => string): string {
+  const counts = new Map<string | null, number>()
+  for (const { ownerId } of receipts) {
+    counts.set(ownerId, (counts.get(ownerId) ?? 0) + 1)
+  }
+  const describe = (ownerId: string | null, count: number, all = false) => {
+    const subject = all ? (count === 1 ? 'It' : `All ${count}`) : String(count)
+    const one = count === 1
+    return ownerId === null
+      ? `${subject} ${one ? 'has' : 'have'} no owner`
+      : `${subject} ${one ? 'is' : 'are'} ${nameOf(ownerId)}'s`
+  }
+  if (counts.size === 1) {
+    const [[ownerId, count]] = counts
+    return `${describe(ownerId, count, true)}.`
+  }
+  // No owner first, then the largest groups.
+  const groups = [...counts].sort(([a, x], [b, y]) => (a === null ? -1 : b === null ? 1 : y - x))
+  return `${joined(groups.map(([ownerId, count]) => describe(ownerId, count)))}.`
+}
+
+/** The date a row shows: the purchase date, or when it was added for a receipt that has none. */
+function dateOf(receipt: ReceiptSummary): string {
+  return receipt.purchaseDate ?? formatDateTime(receipt.createdAt)
 }
 
 /** Groups the newest-first list by the month each receipt was added, so the groups keep the list's order. */
@@ -79,6 +115,8 @@ export function ReceiptManager({
   const admin = account?.isAdmin === true
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
   const [deleting, setDeleting] = useState(false)
+  const [reassigning, setReassigning] = useState(false)
+  const busy = deleting || reassigning
   const [users, setUsers] = useState<UserSummary[] | null>(null)
   const [usersError, setUsersError] = useState<string | null>(null)
   usePageTitle('Manage receipts')
@@ -169,6 +207,49 @@ export function ReceiptManager({
       notifications.show({ title: "Couldn't delete the receipts", message: errorMessage(e), color: 'red' })
     } finally {
       setDeleting(false)
+      onChanged()
+    }
+  }
+
+  function nameOf(ownerId: string): string {
+    const user = usersById.get(ownerId)
+    return user ? userLabel(user) : 'Unknown user'
+  }
+
+  function confirmReassign(ownerId: string | null) {
+    const chosen = selectedReceipts
+    const count = receiptCount(chosen.length)
+    const target = ownerId === null ? 'no owner' : nameOf(ownerId)
+    modals.openConfirmModal({
+      title: `Reassign ${count} to ${target}?`,
+      centered: true,
+      children: <Text size="sm">{ownerBreakdown(chosen, nameOf)}</Text>,
+      labels: { confirm: `Reassign ${count}`, cancel: 'Cancel' },
+      onConfirm: () => void reassign(chosen.map(({ id }) => id), ownerId),
+    })
+  }
+
+  async function reassign(ids: string[], ownerId: string | null) {
+    const target = ownerId === null ? null : nameOf(ownerId)
+    const several = ids.length > 1
+    setReassigning(true)
+    try {
+      await api.reassignReceipts(ids, ownerId)
+      if (several) {
+        setSelected(new Set())
+      }
+      const message = several
+        ? `${receiptCount(ids.length)} ${target === null ? 'set to no owner' : `reassigned to ${target}`}`
+        : target === null
+          ? 'Set to no owner'
+          : `Reassigned to ${target}`
+      notifications.show({ message, color: 'green' })
+    } catch (e) {
+      // Nothing was reassigned, and the message says why; the reload shows what changed meanwhile.
+      const title = several ? "Couldn't reassign the receipts" : "Couldn't reassign the receipt"
+      notifications.show({ title, message: errorMessage(e), color: 'red' })
+    } finally {
+      setReassigning(false)
       onChanged()
     }
   }
@@ -288,7 +369,7 @@ export function ReceiptManager({
                     aria-label={`Select all from ${month.label}`}
                     checked={checkedCount === ids.length}
                     indeterminate={checkedCount > 0 && checkedCount < ids.length}
-                    disabled={deleting}
+                    disabled={busy}
                     onChange={() => toggle(ids, checkedCount < ids.length)}
                     classNames={{ label: classes.monthLabel }}
                   />
@@ -302,35 +383,92 @@ export function ReceiptManager({
                     receipt={receipt}
                     owner={ownerOf(receipt)}
                     checked={selected.has(receipt.id)}
-                    disabled={deleting}
+                    disabled={busy}
                     onToggle={(on) => toggle([receipt.id], on)}
                     onOpen={() => onOpen(receipt.id)}
+                    reassign={
+                      admin && (
+                        <OwnerPicker
+                          users={users}
+                          usersError={usersError}
+                          currentOwnerId={receipt.ownerId}
+                          meId={account.id}
+                          onPick={(ownerId) => void reassign([receipt.id], ownerId)}
+                        >
+                          {(toggleOpen) => (
+                            <Anchor
+                              component="button"
+                              type="button"
+                              size="sm"
+                              className={classes.reassign}
+                              disabled={busy}
+                              aria-label={`Reassign ${receipt.storeName ?? 'Unknown store'}, ${dateOf(receipt)}`}
+                              onClick={toggleOpen}
+                            >
+                              Reassign
+                            </Anchor>
+                          )}
+                        </OwnerPicker>
+                      )
+                    }
                   />
                 ))}
               </section>
             )
           })}
           {selectedIds.length > 0 && (
-            // The count is in the Delete button, which leaves the footer room for both buttons on a phone.
+            // The count is in the action buttons, which leaves the footer room for all three on a phone.
             <div className={classes.footer}>
-              <Button variant="default" disabled={deleting} onClick={() => setSelected(new Set())}>
+              <Button variant="default" disabled={busy} onClick={() => setSelected(new Set())}>
                 Clear
               </Button>
-              {/* Not disabled while a selected receipt is being read: it stays clickable, to say why it won't delete. */}
-              <Button
-                color="red"
-                loading={deleting}
-                data-disabled={readingCount > 0 || undefined}
-                aria-disabled={readingCount > 0 || undefined}
-                onClick={confirmDelete}
-              >
-                Delete {receiptCount(selectedIds.length)}
-              </Button>
+              <Group gap="xs" wrap="nowrap">
+                {admin && (
+                  <OwnerPicker users={users} usersError={usersError} meId={account.id} onPick={confirmReassign}>
+                    {(toggleOpen) => (
+                      <Button
+                        variant="default"
+                        loading={reassigning}
+                        disabled={deleting}
+                        aria-label={`Reassign ${receiptCount(selectedIds.length)}`}
+                        onClick={toggleOpen}
+                      >
+                        <CountLabel verb="Reassign" count={selectedIds.length} />
+                      </Button>
+                    )}
+                  </OwnerPicker>
+                )}
+                {/* Not disabled while a selected receipt is being read: it stays clickable, to say why. */}
+                <Button
+                  color="red"
+                  loading={deleting}
+                  disabled={reassigning}
+                  data-disabled={readingCount > 0 || undefined}
+                  aria-disabled={readingCount > 0 || undefined}
+                  aria-label={`Delete ${receiptCount(selectedIds.length)}`}
+                  onClick={confirmDelete}
+                >
+                  <CountLabel verb="Delete" count={selectedIds.length} />
+                </Button>
+              </Group>
             </div>
           )}
         </Card>
       )}
     </Stack>
+  )
+}
+
+/**
+ * "Delete 3 receipts", shortened to "Delete 3" on phones, where the footer's three buttons have to fit a 3-digit
+ * count. The button's aria-label keeps the whole phrase.
+ */
+function CountLabel({ verb, count }: { verb: string; count: number }) {
+  return (
+    <>
+      {verb} {count}
+      <span className={classes.countNoun}> {count === 1 ? 'receipt' : 'receipts'}</span>
+    </>
   )
 }
 
@@ -343,8 +481,9 @@ interface OwnerLine {
 
 interface ReceiptManagerRowProps {
   receipt: ReceiptSummary
-  /** Only admins' rows have an owner line. */
+  /** Only admins' rows have an owner line, with its Reassign button. */
   owner: OwnerLine | undefined
+  reassign: ReactNode
   checked: boolean
   disabled: boolean
   onToggle: (on: boolean) => void
@@ -355,8 +494,8 @@ interface ReceiptManagerRowProps {
  * One receipt: the row itself selects it, and Open sits beside it rather than inside, so the two never clash. An
  * admin's row adds the owner on a line of its own below, outside the toggle, so its actions can be buttons too.
  */
-function ReceiptManagerRow({ receipt, owner, checked, disabled, onToggle, onOpen }: ReceiptManagerRowProps) {
-  const date = receipt.purchaseDate ?? formatDateTime(receipt.createdAt)
+function ReceiptManagerRow({ receipt, owner, reassign, checked, disabled, onToggle, onOpen }: ReceiptManagerRowProps) {
+  const date = dateOf(receipt)
   return (
     <div className={classes.row} data-checked={checked || undefined} data-with-owner={owner ? true : undefined}>
       <UnstyledButton
@@ -402,6 +541,7 @@ function ReceiptManagerRow({ receipt, owner, checked, disabled, onToggle, onOpen
           </Text>
         </div>
       )}
+      {owner && reassign}
     </div>
   )
 }
