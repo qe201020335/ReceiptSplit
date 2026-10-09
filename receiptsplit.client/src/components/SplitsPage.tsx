@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Button, Card, Grid, Group, Stack, Text, Title } from '@mantine/core'
+import { Alert, Box, Button, Card, Grid, Group, Stack, Text, Title } from '@mantine/core'
 import { api, errorMessage, type ReceiptDetail } from '../api.ts'
 import { formatMoney } from '../format.ts'
 import { formatCents, splitLines, summarize, summaryText, toCents } from '../splits.ts'
 import { usePageTitle } from '../usePageTitle.ts'
 import { useSplitState } from '../useSplitState.ts'
+import { Bar, Loading } from './Placeholder.tsx'
 import { SplitPeople } from './SplitPeople.tsx'
 import { SplitSummary } from './SplitSummary.tsx'
 import { SplitTable } from './SplitTable.tsx'
@@ -26,6 +27,9 @@ function combinedTotal(receipts: ReceiptDetail[]): string {
     ? formatMoney(null)
     : formatCents(receipts.reduce((sum, receipt) => sum + toCents(receipt.total ?? 0), 0))
 }
+
+/** Line widths for the placeholder rows, fixed so they differ but render the same every time. */
+const splitPlaceholderWidths = ['48%', '36%', '57%', '42%', '30%', '52%']
 
 export function SplitsPage({ ids, onBack }: SplitsPageProps) {
   const [receipts, setReceipts] = useState<ReceiptDetail[] | null>(null)
@@ -66,6 +70,28 @@ export function SplitsPage({ ids, onBack }: SplitsPageProps) {
           <Button variant="default" onClick={onBack} style={{ flexShrink: 0 }}>
             {several ? '← Back to receipts' : '← Back to receipt'}
           </Button>
+          {!receipts && !error && (
+            // The title and summary lines, so the header keeps its height when they arrive.
+            // On a phone the title and summary wrap below Back, as the loaded ones do, and several receipts' summary
+            // takes two lines.
+            <Box flex={{ base: '1 0 100%', xs: 1 }} miw={0}>
+              <Loading label="Loading the split">
+                <Stack gap={0}>
+                  <Group h="calc(1.05rem * 1.3)">
+                    <Bar height={16} width="45%" />
+                  </Group>
+                  <Group h="calc(0.875rem * 1.45)">
+                    <Bar height={10} width="75%" />
+                  </Group>
+                  {several && (
+                    <Group h="calc(0.875rem * 1.45)" hiddenFrom="xs">
+                      <Bar height={10} width="40%" />
+                    </Group>
+                  )}
+                </Stack>
+              </Loading>
+            </Box>
+          )}
           {receipts && (
             <Stack gap={0} miw={0}>
               <Title order={2}>{title}</Title>
@@ -83,7 +109,21 @@ export function SplitsPage({ ids, onBack }: SplitsPageProps) {
           {error}
         </Alert>
       )}
-      {!receipts && !error && <Text c="dimmed">Loading…</Text>}
+      {!receipts && !error && (
+        // Rows where the lines to split go.
+        <Loading label="Loading the receipts to split">
+          <Card withBorder padding="md">
+            <Stack gap={0}>
+              {splitPlaceholderWidths.map((width) => (
+                <Group key={width} h={44} justify="space-between" wrap="nowrap">
+                  <Bar height={12} width={width} />
+                  <Bar height={12} width={56} />
+                </Group>
+              ))}
+            </Stack>
+          </Card>
+        </Loading>
+      )}
       {notReady.length > 0 &&
         (several ? (
           <Alert color="yellow" variant="light">

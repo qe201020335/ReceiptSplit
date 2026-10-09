@@ -75,15 +75,21 @@ screenshots while it waits. Stop everything afterwards.
 
 ## 3. A receipt and the splits page
 
-- [ ] 3.1 In `ReceiptDetail.tsx`, replace the "Loading…" card with the placeholder card from design.md: the title,
+- [x] 3.1 In `ReceiptDetail.tsx`, replace the "Loading…" card with the placeholder card from design.md: the title,
   details and tax bars, and 5 line rows. Verify with `/api/receipts/{id}` delayed:
   - placeholders on the start page and on the receipt's own page, at both widths
   - while a receipt is being read, polling never shows placeholders again. Hold a receipt in Processing by updating
     the copy's status after the backend starts.
   - a failing load shows the error in the card
-- [ ] 3.2 In `SplitsPage.tsx`, draw the header's title and summary as bars while loading, and one card of row bars
+
+  Result: with a receipt held in Processing, 4 polls passed with no placeholder appearing.
+- [x] 3.2 In `SplitsPage.tsx`, draw the header's title and summary as bars while loading, and one card of row bars
   where the table goes. Verify with the receipt route delayed: the header keeps its height when the title arrives,
   and nothing scrolls sideways at 390px.
+
+  Result: on a phone the loaded title and summary wrap below Back, and several receipts' summary takes two lines, so
+  the placeholder does the same below `xs`. The header is 76px on desktop and 148px on a phone, loading and loaded
+  alike.
 
 ## 4. End-to-end check
 

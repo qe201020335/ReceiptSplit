@@ -78,7 +78,8 @@ Two shapes repeat across pages, so they're built once:
   - a details bar (70%) and a tax bar (25%)
   - then 5 line rows, each a name bar with an amount bar on the right
 - **SplitsPage:**
-  - The header's title and summary become two bars beside Back, so the header keeps its height.
+  - The header's title and summary become bars beside Back, so the header keeps its height. On a phone they wrap
+    below Back, as the loaded ones do, with a second summary bar for several receipts.
   - The body is one card with 6 row bars where the table goes.
 - **App header:** the avatar circle until the account arrives. The header no longer renders nothing in its place.
 - **Owner lines (admin):** while the people first load, a 22px circle and a 90px bar replace "…" and the gray
