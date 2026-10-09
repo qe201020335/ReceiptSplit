@@ -153,3 +153,10 @@ section + section .month {
 .footer > button {
   flex-shrink: 0;
 }
+
+/* Stands in for the count under the title: one line of small text, so the header keeps its height. */
+.countPlaceholder {
+  display: flex;
+  align-items: center;
+  height: calc(0.875rem * 1.45);
+}

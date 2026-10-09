@@ -2,6 +2,7 @@ import { Alert, Button, Card, Checkbox, Group, NavLink, Stack, Text, Title } fro
 import { useHotkeys } from '@mantine/hooks'
 import type { ReceiptSummary } from '../api.ts'
 import { formatDateTime, formatMoney } from '../format.ts'
+import { Bar, Loading, ReceiptRowsPlaceholder } from './Placeholder.tsx'
 import { StatusBadge } from './StatusBadge.tsx'
 import classes from './ReceiptList.module.css'
 
@@ -81,63 +82,78 @@ export function ReceiptList({
             {error}
           </Alert>
         )}
-        {receipts === null && !error && <Text c="dimmed">Loading…</Text>}
+        {receipts === null && !error && (
+          // The newest few rows and the footer below them, so the card keeps its size when the receipts arrive.
+          <Loading label="Loading receipts">
+            <Stack gap="sm">
+              <Stack gap={2}>
+                <ReceiptRowsPlaceholder rows={recentCount} variant="list" />
+              </Stack>
+              <Group justify="flex-end">
+                <Bar height={30} width={140} />
+              </Group>
+            </Stack>
+          </Loading>
+        )}
         {receipts?.length === 0 && <Text c="dimmed">No receipts yet.</Text>}
-        <Stack gap={2}>
-          {shown?.map((receipt) => {
-            const label = (
-              <Group justify="space-between" wrap="nowrap" gap="xs">
-                <Text fw={500} truncate>
-                  {receipt.storeName ?? 'Unknown store'}
-                </Text>
-                <Text fw={500}>{formatMoney(receipt.total)}</Text>
-              </Group>
-            )
-            const description = (
-              <Group justify="space-between" wrap="nowrap" gap="xs">
-                <span>{receipt.purchaseDate ?? formatDateTime(receipt.createdAt)}</span>
-                <StatusBadge status={receipt.status} />
-              </Group>
-            )
+        {shown && shown.length > 0 && (
+          // Not drawn empty, where its gap would make the loading card taller than the loaded one.
+          <Stack gap={2}>
+            {shown.map((receipt) => {
+              const label = (
+                <Group justify="space-between" wrap="nowrap" gap="xs">
+                  <Text fw={500} truncate>
+                    {receipt.storeName ?? 'Unknown store'}
+                  </Text>
+                  <Text fw={500}>{formatMoney(receipt.total)}</Text>
+                </Group>
+              )
+              const description = (
+                <Group justify="space-between" wrap="nowrap" gap="xs">
+                  <span>{receipt.purchaseDate ?? formatDateTime(receipt.createdAt)}</span>
+                  <StatusBadge status={receipt.status} />
+                </Group>
+              )
 
-            if (picking) {
-              const canPick = splittable(receipt)
-              const checked = pickedIds.includes(receipt.id)
+              if (picking) {
+                const canPick = splittable(receipt)
+                const checked = pickedIds.includes(receipt.id)
+                return (
+                  <NavLink
+                    key={receipt.id}
+                    component="button"
+                    type="button"
+                    role="checkbox"
+                    aria-checked={checked}
+                    // NavLink's disabled only styles the row and blocks the pointer; the keyboard still reaches it.
+                    disabled={!canPick}
+                    aria-disabled={!canPick || undefined}
+                    classNames={{ root: classes.item }}
+                    onClick={canPick ? () => toggle(receipt.id) : undefined}
+                    leftSection={<Checkbox.Indicator checked={checked} disabled={!canPick} />}
+                    label={label}
+                    description={description}
+                  />
+                )
+              }
+
+              const open = receipt.id === selectedId
               return (
                 <NavLink
                   key={receipt.id}
-                  component="button"
-                  type="button"
-                  role="checkbox"
-                  aria-checked={checked}
-                  // NavLink's disabled only styles the row and blocks the pointer; the keyboard still reaches it.
-                  disabled={!canPick}
-                  aria-disabled={!canPick || undefined}
+                  component={open ? 'div' : 'button'}
+                  type={open ? undefined : 'button'}
+                  active={open}
+                  aria-current={open ? 'page' : undefined}
                   classNames={{ root: classes.item }}
-                  onClick={canPick ? () => toggle(receipt.id) : undefined}
-                  leftSection={<Checkbox.Indicator checked={checked} disabled={!canPick} />}
+                  onClick={open ? undefined : () => onSelect(receipt.id)}
                   label={label}
                   description={description}
                 />
               )
-            }
-
-            const open = receipt.id === selectedId
-            return (
-              <NavLink
-                key={receipt.id}
-                component={open ? 'div' : 'button'}
-                type={open ? undefined : 'button'}
-                active={open}
-                aria-current={open ? 'page' : undefined}
-                classNames={{ root: classes.item }}
-                onClick={open ? undefined : () => onSelect(receipt.id)}
-                label={label}
-                description={description}
-              />
-            )
-          })}
-        </Stack>
+            })}
+          </Stack>
+        )}
         {!picking && receipts && receipts.length > 0 && (
           <Group justify="space-between" wrap="nowrap" gap="xs">
             <Text size="sm" c="dimmed">

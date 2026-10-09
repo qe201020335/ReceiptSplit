@@ -215,6 +215,11 @@ The app is in use, and its data must be preserved. Migrations are applied at sta
 - `api.ts` types mirror `ReceiptDtos.cs`; update both together. Split math stays in integer cents in `splits.ts`.
 - Oxlint enforces the React hooks rules, including no `setState` directly in effects: load data in an effect with
   a `current` flag, as `ReceiptDetail` does.
+- Loading states come from `components/Placeholder.tsx`. Content that needs data before it can render (lists,
+  cards, text) shows a skeleton of its own shape and size (`Bar`, `ReceiptRowsPlaceholder`) inside `Loading`, which
+  marks it busy for screen readers. A control that's already drawn (button, input, dropdown) shows Mantine's
+  `Loader` in its own place while what it offers loads, and stays usable for the rest. Both show only until the
+  first response: reloads and polling keep the content on screen, and a failed first load shows its error in place.
 - Choose libraries on fit, not bundle size; don't report bundle size.
 
 ## Verifying changes

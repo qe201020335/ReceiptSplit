@@ -35,3 +35,9 @@
   color: var(--mantine-color-dimmed);
   padding-inline-end: 0.15em;
 }
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--mantine-spacing-md) 0;
+}

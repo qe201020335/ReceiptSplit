@@ -24,6 +24,7 @@ import { api, errorMessage, inProgress, type ReceiptDetail as Receipt } from '..
 import { formatDateTime, formatMoney, formatPercent, formatSeconds } from '../format.ts'
 import { isValidTaxRate, maxTaxRatePercent, minTaxRatePercent } from '../taxRate.ts'
 import { usePageTitle } from '../usePageTitle.ts'
+import { Bar, Loading } from './Placeholder.tsx'
 import { ReceiptEditor } from './ReceiptEditor.tsx'
 import { StatusBadge } from './StatusBadge.tsx'
 
@@ -165,7 +166,7 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
             {error}
           </Alert>
         ) : (
-          <Text c="dimmed">Loading…</Text>
+          <ReceiptPlaceholder />
         )}
       </Card>
     )
@@ -464,5 +465,43 @@ export function ReceiptDetail({ id, onChanged, onDeleted, onSplit }: ReceiptDeta
         </Accordion>
       </Stack>
     </Card>
+  )
+}
+
+/** Line widths for the placeholder's lines, fixed so they differ but render the same every time. */
+const placeholderLineWidths = ['52%', '38%', '61%', '45%', '33%']
+
+/**
+ * The receipt card's shape while it loads: the store name, the details and tax line under it with the status on the
+ * right, then rows where the lines go. Line boxes use the real text's heights, so the header doesn't move.
+ */
+function ReceiptPlaceholder() {
+  return (
+    <Loading label="Loading the receipt">
+      <Stack gap="md">
+        <Group justify="space-between" align="flex-start" wrap="nowrap">
+          <Stack gap={4} flex={1}>
+            <Group h="calc(1.05rem * 1.3)">
+              <Bar height={16} width="40%" />
+            </Group>
+            <Group h="calc(0.875rem * 1.45)">
+              <Bar height={10} width="70%" />
+            </Group>
+            <Group h="calc(0.875rem * 1.45)">
+              <Bar height={10} width="25%" />
+            </Group>
+          </Stack>
+          <Bar height={18} width={78} radius="xl" />
+        </Group>
+        <Stack gap={0}>
+          {placeholderLineWidths.map((width) => (
+            <Group key={width} h={44} justify="space-between" wrap="nowrap" px="xs">
+              <Bar height={12} width={width} />
+              <Bar height={12} width={56} />
+            </Group>
+          ))}
+        </Stack>
+      </Stack>
+    </Loading>
   )
 }
