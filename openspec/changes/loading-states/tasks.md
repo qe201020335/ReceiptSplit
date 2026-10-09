@@ -93,7 +93,7 @@ screenshots while it waits. Stop everything afterwards.
 
 ## 4. End-to-end check
 
-- [ ] 4.1 With every API route delayed by a second, open each page:
+- [x] 4.1 With every API route delayed by a second, open each page:
   - the start page
   - the start page with a receipt
   - a receipt's own page
@@ -104,6 +104,14 @@ screenshots while it waits. Stop everything afterwards.
   `emulateMedia({ reducedMotion: 'reduce' })`, confirm no placeholder animates (the computed `animation-name` of
   the skeleton's `::after` is `none`). Confirm a placeholder area has `aria-busy="true"` and its hidden label. Run
   `dotnet test`, `npm run build` and `npm run lint`.
+
+  Result:
+  - Every page showed placeholders and then content in all four combinations, with no "Loading…" line left and no
+    sideways scroll. Each placeholder area carried its hidden label, such as "Loading receipts" or "Loading the
+    split".
+  - With reduced motion, none of the 41 skeletons on the manager animated; without it, all 41 did.
+  - On a phone, a start page link to a receipt redirects to the receipt's own page, so that case shows the receipt
+    placeholder there.
 
 ## Workflow follow-up
 
