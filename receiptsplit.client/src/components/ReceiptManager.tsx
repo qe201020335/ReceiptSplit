@@ -66,7 +66,7 @@ function ownerBreakdown(receipts: ReceiptSummary[], nameOf: (ownerId: string) =>
     counts.set(ownerId, (counts.get(ownerId) ?? 0) + 1)
   }
   const describe = (ownerId: string | null, count: number, all = false) => {
-    const subject = all ? (count === 1 ? 'It' : `All ${count}`) : String(count)
+    const subject = !all ? String(count) : count === 1 ? 'It' : count === 2 ? 'Both' : `All ${count}`
     const one = count === 1
     return ownerId === null
       ? `${subject} ${one ? 'has' : 'have'} no owner`

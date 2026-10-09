@@ -141,7 +141,7 @@ a dev user who isn't.
 
 ## 7. End-to-end check
 
-- [ ] 7.1 Work through the No owner backlog on a fresh copy of `data/` as the admin:
+- [x] 7.1 Work through the No owner backlog on a fresh copy of `data/` as the admin:
   - filter by No owner
   - open a receipt and go back (the filter stays)
   - reassign one from its row
