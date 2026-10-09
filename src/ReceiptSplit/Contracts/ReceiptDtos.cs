@@ -32,13 +32,15 @@ public sealed record ReceiptLineEditDto(
 /// <summary>Body of the request that deletes several receipts at once.</summary>
 public sealed record ReceiptDeleteDto([Required, MinLength(1), MaxLength(1000)] IReadOnlyList<Guid> Ids);
 
+/// <param name="OwnerId">The owner's user id; null for a receipt without an owner.</param>
 public sealed record ReceiptSummaryDto(
     Guid Id,
     DateTime CreatedAt,
     ReceiptStatus Status,
     string? StoreName,
     DateOnly? PurchaseDate,
-    decimal? Total);
+    decimal? Total,
+    Guid? OwnerId);
 
 public sealed record ReceiptDetailDto(
     Guid Id,
@@ -102,7 +104,13 @@ public static class ReceiptMappings
             .ToList());
 
     public static ReceiptSummaryDto ToDto(this ReceiptSummary summary) => new(
-        summary.Id, summary.CreatedAt, summary.Status, summary.StoreName, summary.PurchaseDate, summary.Total);
+        summary.Id,
+        summary.CreatedAt,
+        summary.Status,
+        summary.StoreName,
+        summary.PurchaseDate,
+        summary.Total,
+        summary.OwnerId);
 
     public static ReceiptDetailDto ToDetailDto(this Receipt receipt)
     {

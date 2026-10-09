@@ -37,6 +37,29 @@ public class ReceiptAccessTests
     }
 
     [Fact]
+    public async Task A_listed_receipt_names_its_owner()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var member = factory.CreateClient();
+        await UploadAsync(member);
+
+        var me = (await member.GetFromJsonAsync<AccountDto>("/api/me", Json, Ct))!;
+        var summary = Assert.Single(await SummariesAsync(member));
+        Assert.Equal(me.Id, summary.OwnerId);
+    }
+
+    [Fact]
+    public async Task A_listed_receipt_without_an_owner_has_a_null_owner()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        var id = await AddUnownedReceiptAsync(factory);
+
+        var summary = Assert.Single(await SummariesAsync(admin));
+        Assert.Equal((id, null), (summary.Id, summary.OwnerId));
+    }
+
+    [Fact]
     public async Task Members_list_only_their_own_receipts()
     {
         await using var factory = new ReceiptApiFactory();
@@ -134,7 +157,10 @@ public class ReceiptAccessTests
     ];
 
     private static async Task<List<Guid>> ListAsync(HttpClient client) =>
-        [.. (await client.GetFromJsonAsync<List<ReceiptSummaryDto>>("/api/receipts", Json, Ct))!.Select(s => s.Id)];
+        [.. (await SummariesAsync(client)).Select(s => s.Id)];
+
+    private static async Task<List<ReceiptSummaryDto>> SummariesAsync(HttpClient client) =>
+        (await client.GetFromJsonAsync<List<ReceiptSummaryDto>>("/api/receipts", Json, Ct))!;
 
     private static async Task<Guid> UploadAsync(HttpClient client)
     {

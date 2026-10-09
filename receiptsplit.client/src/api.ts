@@ -14,6 +14,8 @@ export interface ReceiptSummary {
   storeName: string | null
   purchaseDate: string | null
   total: number | null
+  /** The owner's user id; null for a receipt without an owner, which only admins see. */
+  ownerId: string | null
 }
 
 export interface ReceiptLine {

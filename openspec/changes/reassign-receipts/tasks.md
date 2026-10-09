@@ -13,7 +13,7 @@ a dev user who isn't.
 
 ## 1. Owner id on receipt summaries
 
-- [ ] 1.1 Add `Guid? OwnerId` to `ReceiptSummary` and `ReceiptSummaryDto`. Fill it in the projection in
+- [x] 1.1 Add `Guid? OwnerId` to `ReceiptSummary` and `ReceiptSummaryDto`. Fill it in the projection in
   `ReceiptService.ListAsync` and in `ReceiptMappings.ToDto`, and add `ownerId: string | null` to `ReceiptSummary`
   in `api.ts`. Verify with new `ReceiptAccessTests`:
   - a member's listed receipt carries their `/api/me` id

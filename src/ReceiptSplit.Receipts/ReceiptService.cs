@@ -27,7 +27,8 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
     public async Task<IReadOnlyList<ReceiptSummary>> ListAsync(Actor actor, CancellationToken cancellationToken) =>
         await Visible(actor)
             .OrderByDescending(r => r.CreatedAt)
-            .Select(r => new ReceiptSummary(r.Id, r.CreatedAt, r.Status, r.StoreName, r.PurchaseDate, r.Total))
+            .Select(r => new ReceiptSummary(
+                r.Id, r.CreatedAt, r.Status, r.StoreName, r.PurchaseDate, r.Total, r.OwnerId))
             .ToListAsync(cancellationToken);
 
     /// <summary>The receipt with its lines, or null when it doesn't exist or the actor can't see it.</summary>
