@@ -13,20 +13,24 @@ screenshots while it waits. Stop everything afterwards.
 
 ## 1. Placeholder pieces, the start page and the header
 
-- [ ] 1.1 Add `components/Placeholder.tsx` and `Placeholder.module.css` as design.md describes:
+- [x] 1.1 Add `components/Placeholder.tsx` and `Placeholder.module.css` as design.md describes:
   - `Loading`: an `aria-busy` wrapper with a `VisuallyHidden` label
   - `Bar`: a `Skeleton` that doesn't animate under `useReducedMotion()`
   - `ReceiptRowsPlaceholder`: summary-shaped rows with fixed, varied widths and an optional owner line
 
   Verify that the client builds and lints.
-- [ ] 1.2 In `ReceiptList.tsx`, replace the "Loading…" line with 5 placeholder rows inside the card. In `App.tsx`,
+- [x] 1.2 In `ReceiptList.tsx`, replace the "Loading…" line with 5 placeholder rows inside the card. In `App.tsx`,
   draw a 28px circle in the avatar's place while the account loads. Verify in the browser, with
   `/api/receipts` and `/api/me` delayed:
   - the start page shows placeholder rows and the circle, at both widths and in both schemes
   - when the data arrives the rows replace them, and the header doesn't shift (compare the avatar's position)
   - a list reload, such as uploading, doesn't bring the placeholders back
   - with the list route failing, the error shows where the rows were
-- [ ] 1.3 In AGENTS.md's frontend conventions, add the rule:
+
+  Result: an empty rows `Stack` still drew its gap while loading, which made the card 12px taller than when
+  loaded. The rows `Stack` now renders only once there are rows. The placeholder also stands in for the footer
+  (Manage receipts), so the card is the same height loading and loaded (423px), and the avatar keeps its position.
+- [x] 1.3 In AGENTS.md's frontend conventions, add the rule:
   - content that needs data before it can render (lists, cards, text) shows a skeleton of its own shape from
     `Placeholder.tsx` until the first response
   - a control that's already drawn (button, input, dropdown) shows Mantine's `Loader` in its own place while what

@@ -1,0 +1,82 @@
+/* The placeholder rows copy the real rows' boxes, so the page doesn't move when receipts replace them. Line boxes
+   use the real text's line heights: 16px text at 1.55, 14px at 1.45 and 12px at 1.55. */
+
+.lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.titleLine,
+.dateLine,
+.dateLineSmall {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-xs);
+}
+
+.titleLine {
+  height: calc(1rem * 1.55);
+}
+
+.dateLine {
+  height: calc(0.875rem * 1.45);
+}
+
+.dateLineSmall {
+  height: calc(0.75rem * 1.55);
+}
+
+/* The start page's list rows are Mantine NavLinks: 8px by 12px of padding, no gap between the lines. */
+.listRow {
+  padding: 8px 12px;
+}
+
+.listRow .lines {
+  gap: 0;
+}
+
+/* The receipt manager's rows, as ReceiptManager.module.css lays them out. */
+.managerRow {
+  display: flex;
+  align-items: center;
+}
+
+.managerMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-xs) var(--mantine-spacing-xs) var(--mantine-spacing-md);
+}
+
+.managerRow[data-with-owner] .toggle {
+  padding-bottom: 2px;
+}
+
+.checkbox {
+  flex-shrink: 0;
+}
+
+.owner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--mantine-spacing-md) var(--mantine-spacing-xs)
+    calc(var(--mantine-spacing-md) + 20px + var(--mantine-spacing-sm));
+}
+
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: var(--mantine-spacing-md);
+}

@@ -3,6 +3,7 @@ import { Anchor, Box, Card, Container, Grid, Group, Paper, Stack, Text, Title } 
 import { useMediaQuery } from '@mantine/hooks'
 import { api, errorMessage, inProgress, onSignInProblem, type ReceiptSummary, type SignInProblem } from './api.ts'
 import { AccountMenu } from './components/AccountMenu.tsx'
+import { Bar, Loading } from './components/Placeholder.tsx'
 import { ReceiptDetail } from './components/ReceiptDetail.tsx'
 import { ReceiptList } from './components/ReceiptList.tsx'
 import { ReceiptManager } from './components/ReceiptManager.tsx'
@@ -101,7 +102,15 @@ function App() {
                 ReceiptSplit
               </Anchor>
             </Title>
-            {account && !signInProblem && <AccountMenu account={account} />}
+            {!signInProblem &&
+              (account ? (
+                <AccountMenu account={account} />
+              ) : (
+                // Holds the avatar's place, so the header doesn't shift when the account arrives.
+                <Loading label="Loading your account">
+                  <Bar height={28} circle />
+                </Loading>
+              ))}
           </Group>
         </Container>
       </Paper>
