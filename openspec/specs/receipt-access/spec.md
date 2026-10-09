@@ -151,7 +151,8 @@ A request SHALL name 1 to 1000 receipts and SHALL state the new owner, which may
 ### Requirement: The receipt manager shows owners to admins
 For an admin, each receipt in the receipt manager SHALL show its owner as an initials avatar and name, falling back
 to the email, or as "No owner". For a member, the manager SHALL show no owners, no Reassign button and no owner
-filter.
+filter. Until the manager knows whether the signed-in user is an admin, it SHALL show placeholders, not a member's
+rows.
 
 #### Scenario: Admin
 - **WHEN** an admin opens the receipt manager
@@ -160,6 +161,10 @@ filter.
 #### Scenario: Member
 - **WHEN** a member opens the receipt manager
 - **THEN** no receipt shows an owner, and there is no Reassign button or owner filter
+
+#### Scenario: Account still loading
+- **WHEN** an admin opens the receipt manager before their account has loaded
+- **THEN** the manager shows placeholder rows, and never rows without owners first
 
 ### Requirement: Admins reassign a receipt from its row
 For an admin, each receipt in the manager SHALL have a Reassign button. It opens a picker that searches people by
@@ -212,6 +217,14 @@ owner value that names no one SHALL show everyone. Members SHALL get no filter, 
 #### Scenario: Unknown owner in the URL
 - **WHEN** an admin opens `/receipts?owner=` followed by an id no user has
 - **THEN** every receipt is listed, with the filter on Everyone
+
+#### Scenario: A person's filter while the people load
+- **WHEN** an admin opens `/receipts?owner=` followed by a user's id before the people have loaded
+- **THEN** the manager shows placeholder rows, not every receipt or none, until it can show that person's receipts
+
+#### Scenario: The people can't be loaded
+- **WHEN** an admin opens `/receipts?owner=` followed by a user's id and the people fail to load
+- **THEN** every receipt is listed with the filter on Everyone, and the manager says the people couldn't be loaded
 
 ### Requirement: Bulk actions act only on receipts the manager shows
 The selection footer's actions SHALL act only on selected receipts that are listed under the current filter.
