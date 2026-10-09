@@ -73,6 +73,10 @@ screenshots while it waits. Stop everything afterwards.
   Result: the filter's spinner is wrapped in `Loading`, so it's announced while the filter shows Everyone. design.md
   now says so.
 
+  Result, after review: each row's owner placeholder had its own `Loading`, so screen readers heard "Loading owner"
+  once per row. The bars are now `aria-hidden`, and one "Loading owners" busy region in the list announces them.
+  With `/api/users` held, the busy labels are just "Loading people" (the filter) and "Loading owners".
+
 ## 3. A receipt and the splits page
 
 - [x] 3.1 In `ReceiptDetail.tsx`, replace the "Loading…" card with the placeholder card from design.md: the title,
@@ -90,6 +94,17 @@ screenshots while it waits. Stop everything afterwards.
   Result: on a phone the loaded title and summary wrap below Back, and several receipts' summary takes two lines, so
   the placeholder does the same below `xs`. The header is 76px on desktop and 148px on a phone, loading and loaded
   alike.
+
+  Result, after review: the body was one card of rows, so the page rearranged on load. It now mirrors `SplitBoard`'s
+  People card and `Grid`. At 1280px, loading → loaded:
+  - People card: y 160, height 95 → 160, 95
+  - lines card: y 271 → 271
+  - Who owes what: y 271, height 118 → 271, 118
+  - Summary text: y 406 → 405
+
+  The x positions differ by about 10px only because the loaded page's scrollbar narrows it. At 390px the People card
+  stays put (y 232, height 95). The summary cards sit below the lines card, so their final place depends on how many
+  lines there are (y 708 → 2583 with 18 lines).
 
 ## 4. End-to-end check
 

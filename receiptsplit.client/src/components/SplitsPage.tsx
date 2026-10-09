@@ -31,6 +31,80 @@ function combinedTotal(receipts: ReceiptDetail[]): string {
 /** Line widths for the placeholder rows, fixed so they differ but render the same every time. */
 const splitPlaceholderWidths = ['48%', '36%', '57%', '42%', '30%', '52%']
 
+/** One line of small text, as the cards' hints and totals are. */
+const smallLine = 'calc(0.875rem * 1.45)'
+
+/** A card heading's line: the h2's size and line height from theme.ts. */
+const headingLine = 'calc(1.05rem * 1.3)'
+
+/**
+ * SplitBoard's shape while the receipts load, in the same Grid: the People input, the lines table on the left, and
+ * Who owes what and Summary text on the right (below it on smaller screens), so the cards stay where they'll be.
+ */
+function SplitBoardPlaceholder() {
+  return (
+    <Loading label="Loading the receipts to split">
+      <Stack gap="md">
+        <Card withBorder padding="md">
+          <Stack gap={3}>
+            <Group h={22}>
+              <Bar height={12} width={56} />
+            </Group>
+            <Bar height={36} />
+          </Stack>
+        </Card>
+        <Grid gap="md" align="flex-start">
+          <Grid.Col span={{ base: 12, lg: 8 }}>
+            <Card withBorder padding="md">
+              <Stack gap={0} mb="xs">
+                <Group h={smallLine}>
+                  <Bar height={10} width="90%" />
+                </Group>
+                <Group h={smallLine}>
+                  <Bar height={10} width="60%" />
+                </Group>
+              </Stack>
+              {splitPlaceholderWidths.map((width) => (
+                <Group key={width} h={44} justify="space-between" wrap="nowrap">
+                  <Bar height={12} width={width} />
+                  <Bar height={12} width={56} />
+                </Group>
+              ))}
+            </Card>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, lg: 4 }}>
+            <Stack gap="md">
+              <Card withBorder padding="md">
+                <Group h={headingLine} mb="xs">
+                  <Bar height={16} width="55%" />
+                </Group>
+                <Group h={smallLine}>
+                  <Bar height={10} width="70%" />
+                </Group>
+                <Group h={smallLine} mt="sm">
+                  <Bar height={10} width="85%" />
+                </Group>
+              </Card>
+              <Card withBorder padding="md">
+                <Group h={30} justify="space-between" wrap="nowrap" mb="xs">
+                  <Bar height={16} width="45%" />
+                  <Bar height={30} width={120} />
+                </Group>
+                <Group h={smallLine}>
+                  <Bar height={10} width="90%" />
+                </Group>
+                <Group h={smallLine}>
+                  <Bar height={10} width="50%" />
+                </Group>
+              </Card>
+            </Stack>
+          </Grid.Col>
+        </Grid>
+      </Stack>
+    </Loading>
+  )
+}
+
 export function SplitsPage({ ids, onBack }: SplitsPageProps) {
   const [receipts, setReceipts] = useState<ReceiptDetail[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -109,21 +183,7 @@ export function SplitsPage({ ids, onBack }: SplitsPageProps) {
           {error}
         </Alert>
       )}
-      {!receipts && !error && (
-        // Rows where the lines to split go.
-        <Loading label="Loading the receipts to split">
-          <Card withBorder padding="md">
-            <Stack gap={0}>
-              {splitPlaceholderWidths.map((width) => (
-                <Group key={width} h={44} justify="space-between" wrap="nowrap">
-                  <Bar height={12} width={width} />
-                  <Bar height={12} width={56} />
-                </Group>
-              ))}
-            </Stack>
-          </Card>
-        </Loading>
-      )}
+      {!receipts && !error && <SplitBoardPlaceholder />}
       {notReady.length > 0 &&
         (several ? (
           <Alert color="yellow" variant="light">

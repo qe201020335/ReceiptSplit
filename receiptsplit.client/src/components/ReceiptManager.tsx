@@ -425,6 +425,10 @@ export function ReceiptManager({
       )}
       {months.length > 0 && (
         <Card withBorder padding={0} className={classes.card}>
+          {usersLoading && (
+            // One busy region for every row's owner placeholder, rather than one per row.
+            <Loading label="Loading owners">{null}</Loading>
+          )}
           {months.map((month) => {
             const ids = month.receipts.map(({ id }) => id)
             const checkedCount = ids.filter((id) => selected.has(id)).length
@@ -617,12 +621,11 @@ function ReceiptManagerRow({ receipt, owner, reassign, checked, disabled, onTogg
         {reassign}
       </div>
       {owner?.loading && (
-        <Loading label="Loading owner" className={classes.owner}>
-          <Group gap={6} wrap="nowrap">
-            <Bar height={22} circle />
-            <Bar height={10} width={90} />
-          </Group>
-        </Loading>
+        // Announced once for the whole list, so it's hidden here rather than wrapped in a Loading of its own.
+        <div className={classes.owner} aria-hidden>
+          <Bar height={22} circle />
+          <Bar height={10} width={90} />
+        </div>
       )}
       {owner && !owner.loading && (
         <div className={classes.owner}>

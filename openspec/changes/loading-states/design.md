@@ -80,10 +80,18 @@ Two shapes repeat across pages, so they're built once:
 - **SplitsPage:**
   - The header's title and summary become bars beside Back, so the header keeps its height. On a phone they wrap
     below Back, as the loaded ones do, with a second summary bar for several receipts.
-  - The body is one card with 6 row bars where the table goes.
+  - The body mirrors `SplitBoard` in the same `Grid` spans:
+    - a People card with a label bar and an input-height bar
+    - the lines card (8 of 12 columns from `lg`), with two intro bars and 6 row bars
+    - "Who owes what" and "Summary text" in the other 4 columns, stacked below the lines on smaller screens, each
+      with a heading bar and a line or two
+
+    The cards stay where they'll be, without copying the table's columns.
 - **App header:** the avatar circle until the account arrives. The header no longer renders nothing in its place.
 - **Owner lines (admin):** while the people first load, a 22px circle and a 90px bar replace "…" and the gray
   placeholder avatar. A known-but-missing owner still reads "Unknown user", as #25 made it.
+  - The bars are `aria-hidden` and have no `Loading` of their own. A single "Loading owners" busy region in the
+    list announces them once, rather than once per row.
 - **OwnerPicker:** while the people first load, a centered `Loader` (size `sm`) where the people go, with a hidden
   "Loading people" label. No owner stays below it and can be chosen. A failed load keeps its message.
 - **Owner filter `Select`:** while the people first load, a `Loader` (size `xs`) in `rightSection` in place of the
