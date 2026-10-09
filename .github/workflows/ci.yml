@@ -92,13 +92,15 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE }}
-          # latest follows master, a pull request publishes pr-<number>, and a v1.2.3 tag also publishes 1.2.3 and 1.2.
+          # latest follows master, and every master build keeps sha-<commit> for rolling back. A pull request
+          # publishes pr-<number>, and a v1.2.3 tag also publishes 1.2.3 and 1.2.
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,enable={{is_default_branch}}
 
       - uses: docker/build-push-action@v6
         with:
@@ -109,3 +111,58 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  prune:
+    # Keeps the package to the last few master builds and the other tagged images.
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      # A workflow can delete versions of a package it published: the repository gets the package's admin role.
+      packages: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      KEEP: 10
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Each tag names an image index, whose platform image and provenance are untagged versions of their own. So
+      # every untagged version that no kept index lists goes too: the pieces of the master builds deleted here, and
+      # older pushes to pull requests. Anything updated in the last hour may be a build still pushing, so it stays.
+      - run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          versions="/users/$GITHUB_REPOSITORY_OWNER/packages/container/${image##*/}/versions"
+
+          # id, digest, created, updated, tags
+          gh api --paginate "$versions" \
+            --jq '.[] | [.id, .name, .created_at, .updated_at, (.metadata.container.tags | join(","))] | @tsv' \
+            > versions.tsv
+
+          # Master builds past the newest $KEEP, unless they also carry a tag such as latest.
+          awk -F '\t' '$5 ~ /(^|,)sha-/' versions.tsv | sort -t $'\t' -k3,3r | tail -n +$((KEEP + 1)) \
+            | awk -F '\t' '{ n = split($5, t, ","); for (i = 1; i <= n; i++) if (t[i] !~ /^sha-/) next; print }' \
+            > old.tsv
+
+          awk -F '\t' 'FILENAME == ARGV[1] { old[$1]; next } $5 != "" && !($1 in old) { print $2 }' \
+            old.tsv versions.tsv > kept.txt
+          while read -r digest; do
+            docker buildx imagetools inspect --raw "$image@$digest" < /dev/null | jq -r '.manifests[]?.digest'
+          done < kept.txt > children.txt
+          cat children.txt >> kept.txt
+
+          cutoff=$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ)
+          awk -F '\t' -v cutoff="$cutoff" \
+            'FILENAME == ARGV[1] { kept[$1]; next } $5 == "" && $4 < cutoff && !($2 in kept)' \
+            kept.txt versions.tsv > orphans.tsv
+
+          failed=0
+          while IFS=$'\t' read -r id digest _ _ tags; do
+            echo "Deleting $digest${tags:+ ($tags)}"
+            gh api -X DELETE "$versions/$id" > /dev/null < /dev/null || failed=1
+          done < <(cat old.tsv orphans.tsv)
+          exit "$failed"

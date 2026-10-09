@@ -39,8 +39,8 @@ jobs:
 
           gh api --paginate "$versions" --jq '.[] | [.id, .name, (.metadata.container.tags | join(","))] | @tsv' \
             > versions.tsv
-          tagged=$(awk -F '\t' -v tag="$TAG" '{ n = split($3, t, ","); for (i = 1; i <= n; i++) if (t[i] == tag) print }' \
-            versions.tsv)
+          tagged=$(awk -F '\t' -v tag="$TAG" \
+            '{ n = split($3, t, ","); for (i = 1; i <= n; i++) if (t[i] == tag) print }' versions.tsv)
           if [ -z "$tagged" ]; then
             echo "There is no $TAG image."
             exit 0
