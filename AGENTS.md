@@ -240,7 +240,8 @@ The app is in use, and its data must be preserved. Migrations are applied at sta
   merge commit. A `v1.2.3` git tag (which a GitHub release pushes too) publishes `1.2.3` and `1.2` instead, and
   those are never pruned.
   Pull requests from this repository's branches publish `pr-<number>` for testing in staging, updated on every push;
-  a newer push cancels the run for the older one. Closing the pull request deletes the image. After a push to master
+  a newer push cancels the run for the older one. Runs for master go one at a time in push order, so `latest` is
+  always its newest build. Closing the pull request deletes the image. After a push to master
   the `prune` job keeps the newest 10 master builds, and deletes other images left with only `sha-<commit>` and any
   untagged version no kept image lists.
 

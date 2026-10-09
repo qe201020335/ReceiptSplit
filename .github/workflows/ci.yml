@@ -12,11 +12,12 @@ on:
   workflow_dispatch:
 
 # A newer push to a pull request cancels the run for the older one, so pr-<number> never goes back to an older commit.
-# The image cleanup joins the same group, so a run still going when the pull request closes can't push after it. Other
-# events get a group of their own and are never cancelled.
+# The image cleanup joins the same group, so a run still going when the pull request closes can't push after it.
+# Runs for a branch or a tag go one at a time in the order they were pushed, so latest always ends on master's newest
+# build and two prune jobs never overlap; a run still waiting is replaced by a newer one.
 concurrency:
-  group: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
-  cancel-in-progress: true
+  group: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}
