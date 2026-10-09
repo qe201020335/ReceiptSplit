@@ -37,6 +37,29 @@ public class ReceiptAccessTests
     }
 
     [Fact]
+    public async Task A_listed_receipt_names_its_owner()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var member = factory.CreateClient();
+        await UploadAsync(member);
+
+        var me = (await member.GetFromJsonAsync<AccountDto>("/api/me", Json, Ct))!;
+        var summary = Assert.Single(await SummariesAsync(member));
+        Assert.Equal(me.Id, summary.OwnerId);
+    }
+
+    [Fact]
+    public async Task A_listed_receipt_without_an_owner_has_a_null_owner()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        var id = await AddUnownedReceiptAsync(factory);
+
+        var summary = Assert.Single(await SummariesAsync(admin));
+        Assert.Equal((id, null), (summary.Id, summary.OwnerId));
+    }
+
+    [Fact]
     public async Task Members_list_only_their_own_receipts()
     {
         await using var factory = new ReceiptApiFactory();
@@ -113,6 +136,187 @@ public class ReceiptAccessTests
         Assert.Empty(await ListAsync(member));
     }
 
+    [Fact]
+    public async Task Admins_reassign_a_receipt_to_another_user()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var member = factory.CreateClient();
+        using var other = factory.CreateClientFor("other@example.com");
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        var id = await UploadAsync(member);
+        await WaitForResultAsync(member, id);
+        var otherId = (await other.GetFromJsonAsync<AccountDto>("/api/me", Json, Ct))!.Id;
+
+        using var response = await ReassignAsync(admin, otherId, id);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal([id], await ListAsync(other));
+        using var opened = await other.GetAsync($"/api/receipts/{id}", Ct);
+        Assert.Equal(HttpStatusCode.OK, opened.StatusCode);
+        Assert.Empty(await ListAsync(member));
+        using var gone = await member.GetAsync($"/api/receipts/{id}", Ct);
+        Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
+    }
+
+    [Fact]
+    public async Task Admins_give_a_receipt_without_an_owner_to_a_member()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var member = factory.CreateClient();
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        var id = await AddUnownedReceiptAsync(factory);
+        var memberId = (await member.GetFromJsonAsync<AccountDto>("/api/me", Json, Ct))!.Id;
+
+        using var response = await ReassignAsync(admin, memberId, id);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal([id], await ListAsync(member));
+        using var opened = await member.GetAsync($"/api/receipts/{id}", Ct);
+        Assert.Equal(HttpStatusCode.OK, opened.StatusCode);
+    }
+
+    [Fact]
+    public async Task Admins_set_a_receipt_back_to_no_owner()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var member = factory.CreateClient();
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        var id = await UploadAsync(member);
+        await WaitForResultAsync(member, id);
+
+        using var response = await ReassignAsync(admin, null, id);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Empty(await ListAsync(member));
+        using var gone = await member.GetAsync($"/api/receipts/{id}", Ct);
+        Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
+        var summary = Assert.Single(await SummariesAsync(admin));
+        Assert.Equal((id, null), (summary.Id, summary.OwnerId));
+    }
+
+    [Fact]
+    public async Task Admins_reassign_receipts_with_different_owners_together()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var member = factory.CreateClient();
+        using var other = factory.CreateClientFor("other@example.com");
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        Guid[] ids = [await UploadAsync(member), await UploadAsync(other), await AddUnownedReceiptAsync(factory)];
+        var adminId = (await admin.GetFromJsonAsync<AccountDto>("/api/me", Json, Ct))!.Id;
+
+        using var response = await ReassignAsync(admin, adminId, ids);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.All(await SummariesAsync(admin), s => Assert.Equal(adminId, s.OwnerId));
+        Assert.Empty(await ListAsync(member));
+        Assert.Empty(await ListAsync(other));
+    }
+
+    [Fact]
+    public async Task A_receipt_being_read_keeps_the_owner_it_was_given()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var member = factory.CreateClient();
+        using var other = factory.CreateClientFor("other@example.com");
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        var otherId = (await other.GetFromJsonAsync<AccountDto>("/api/me", Json, Ct))!.Id;
+        factory.Llm.Block();
+        var id = await UploadAsync(member);
+        await WaitForStatusAsync(member, id, ReceiptStatus.Processing);
+
+        using var response = await ReassignAsync(admin, otherId, id);
+        factory.Llm.Release();
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var result = await WaitForResultAsync(other, id);
+        Assert.Equal(ReceiptStatus.Completed, result.Status);
+        Assert.NotEmpty(result.Lines);
+        Assert.Equal(otherId, await OwnerOfAsync(factory, id));
+    }
+
+    [Fact]
+    public async Task A_reassign_with_an_unknown_id_changes_nothing()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var member = factory.CreateClient();
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        var id = await UploadAsync(member);
+        var memberId = (await member.GetFromJsonAsync<AccountDto>("/api/me", Json, Ct))!.Id;
+        var unknown = Guid.NewGuid();
+
+        using var response = await ReassignAsync(admin, null, id, unknown);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(Json, Ct);
+        Assert.Equal("1 receipt couldn't be found; nothing was reassigned.", problem.GetProperty("detail").GetString());
+        Assert.Equal([unknown], problem.GetProperty("ids").EnumerateArray().Select(i => i.GetGuid()));
+        Assert.Equal(memberId, await OwnerOfAsync(factory, id));
+    }
+
+    [Fact]
+    public async Task A_reassign_to_an_unknown_user_changes_nothing()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var member = factory.CreateClient();
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        var id = await UploadAsync(member);
+        var memberId = (await member.GetFromJsonAsync<AccountDto>("/api/me", Json, Ct))!.Id;
+
+        using var response = await ReassignAsync(admin, Guid.NewGuid(), id);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(Json, Ct);
+        Assert.Equal("User not found", problem.GetProperty("title").GetString());
+        Assert.Equal(memberId, await OwnerOfAsync(factory, id));
+    }
+
+    [Fact]
+    public async Task Members_cant_reassign_receipts()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var member = factory.CreateClient();
+        using var other = factory.CreateClientFor("other@example.com");
+        var own = await UploadAsync(member);
+        var theirs = await UploadAsync(other);
+        var memberId = (await member.GetFromJsonAsync<AccountDto>("/api/me", Json, Ct))!.Id;
+        var otherId = (await other.GetFromJsonAsync<AccountDto>("/api/me", Json, Ct))!.Id;
+
+        using var giving = await ReassignAsync(member, otherId, own);
+        using var taking = await ReassignAsync(member, memberId, theirs);
+
+        Assert.Equal(HttpStatusCode.Forbidden, giving.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, taking.StatusCode);
+        Assert.Equal((memberId, otherId), (await OwnerOfAsync(factory, own), await OwnerOfAsync(factory, theirs)));
+    }
+
+    [Fact]
+    public async Task A_reassign_needs_at_least_one_receipt()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+
+        using var response = await ReassignAsync(admin, null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_reassign_that_leaves_out_the_owner_changes_nothing()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var member = factory.CreateClient();
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        var id = await UploadAsync(member);
+        var memberId = (await member.GetFromJsonAsync<AccountDto>("/api/me", Json, Ct))!.Id;
+
+        using var response = await admin.PostAsync(
+            "/api/receipts/reassign", JsonContent.Create(new { ids = new[] { id } }), Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(memberId, await OwnerOfAsync(factory, id));
+    }
+
     private static readonly ReceiptEditDto OneLineEdit = new(
         "By an admin",
         null,
@@ -134,7 +338,10 @@ public class ReceiptAccessTests
     ];
 
     private static async Task<List<Guid>> ListAsync(HttpClient client) =>
-        [.. (await client.GetFromJsonAsync<List<ReceiptSummaryDto>>("/api/receipts", Json, Ct))!.Select(s => s.Id)];
+        [.. (await SummariesAsync(client)).Select(s => s.Id)];
+
+    private static async Task<List<ReceiptSummaryDto>> SummariesAsync(HttpClient client) =>
+        (await client.GetFromJsonAsync<List<ReceiptSummaryDto>>("/api/receipts", Json, Ct))!;
 
     private static async Task<Guid> UploadAsync(HttpClient client)
     {
@@ -145,6 +352,28 @@ public class ReceiptAccessTests
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<ReceiptQueuedDto>(Json, Ct))!.Id;
+    }
+
+    private static Task<HttpResponseMessage> ReassignAsync(HttpClient client, Guid? ownerId, params Guid[] ids) =>
+        client.PostAsJsonAsync("/api/receipts/reassign", new ReceiptReassignDto(ids, ownerId), Json, Ct);
+
+    private static Task<Guid?> OwnerOfAsync(ReceiptApiFactory factory, Guid id) =>
+        QueryAsync(factory, db => db.Receipts.Where(r => r.Id == id).Select(r => r.OwnerId).SingleAsync(Ct));
+
+    private static async Task WaitForStatusAsync(HttpClient client, Guid id, ReceiptStatus status)
+    {
+        for (var attempt = 0; attempt < 200; attempt++)
+        {
+            var receipt = (await client.GetFromJsonAsync<ReceiptDetailDto>($"/api/receipts/{id}", Json, Ct))!;
+            if (receipt.Status == status)
+            {
+                return;
+            }
+
+            await Task.Delay(50, Ct);
+        }
+
+        throw new TimeoutException($"Receipt {id} did not reach {status} within 10 seconds.");
     }
 
     private static async Task<ReceiptDetailDto> WaitForResultAsync(HttpClient client, Guid id)

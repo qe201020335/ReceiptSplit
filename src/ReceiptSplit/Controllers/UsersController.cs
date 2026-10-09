@@ -17,6 +17,14 @@ public class UsersController(AccountService accounts) : ControllerBase
             ? new AccountDto(account.Id, account.Email, account.Name, account.IsAdmin, account.SignOutUrl)
             : Unauthorized();
 
+    /// <summary>Every user, sorted by name or else email, for admins choosing who owns a receipt.</summary>
+    [HttpGet("users")]
+    [Authorize(Policy = AccountPolicies.Admin)]
+    [ProducesResponseType<IReadOnlyList<UserSummaryDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IReadOnlyList<UserSummaryDto>> List(CancellationToken cancellationToken) =>
+        [.. (await accounts.ListUsersAsync(cancellationToken)).Select(u => new UserSummaryDto(u.Id, u.Email, u.Name))];
+
     /// <summary>
     /// Clears an email from the user holding it, who keeps their sign-in and receipts. Someone refused because
     /// their email belonged to that user can sign in as a new user within a minute.

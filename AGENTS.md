@@ -77,7 +77,8 @@ browser.
 - **Bulk operations are all or nothing.** A request that acts on several receipts either succeeds for every one or
   changes none, and its problem response lists the receipts that stopped it in an `ids` extension. The bulk delete
   (`POST /api/receipts/delete`) runs in one transaction and answers 404 for unknown ids or other users' receipts,
-  409 when any is being read, and otherwise 204. New bulk endpoints follow the same rule.
+  409 when any is being read, and otherwise 204. The bulk reassign (`POST /api/receipts/reassign`) follows the same
+  rule. New bulk endpoints do too.
 - **Business logic lives in `ReceiptService`**, not in the controller, so other entry points can reuse it.
 - **Startup checks.** `Program.cs` exits with code 1 when one fails. `CheckAccountSettingsAsync()` refuses
   `Auth:DevUser` outside Development. `CheckCloudflareAccessAsync()` needs the team domain and audience and fetches
@@ -101,6 +102,9 @@ browser.
 - **Ownership.** Every `ReceiptService` method takes the `Actor` (user id and admin) it acts for, and every lookup
   goes through one visibility rule: members reach their own receipts, admins all of them, including those without
   an owner. A receipt someone can't reach is `NotFound`, never 403. The worker acts on receipt ids and needs no user.
+  Only admins change owners, through the bulk reassign, which also takes one id. It works in every status, since
+  extraction never writes the owner, and it can set no owner. Admin-only endpoints (`GET /api/users`, the reassign,
+  releasing an email) use the `Admin` policy, so members get 403.
 
 ### Money and precision
 
@@ -203,9 +207,10 @@ The app is in use, and its data must be preserved. Migrations are applied at sta
 - Keep the original palette: primary `#2f6fed` in light mode and `#6b9bff` in dark mode (with dark text on filled
   primary buttons). Check contrast in both color schemes.
 - Routing is a small hook, `useRoute.ts`, over the History API: `/` (`/?receipt={id}` with a receipt open beside the
-  list), `/receipts` (the receipt manager), `/receipts/{id}` (a receipt's own page) and `/splits?receipts=a,b`. The
-  backend serves `index.html` for any non-API path. Phones open receipts on their own page, since the start page
-  stacks there.
+  list), `/receipts` (the receipt manager; admins filter it by owner with `?owner=none` or `?owner={userId}`, which
+  replaces the history entry rather than adding one), `/receipts/{id}` (a receipt's own page) and
+  `/splits?receipts=a,b`. The backend serves `index.html` for any non-API path. Phones open receipts on their own
+  page, since the start page stacks there.
 - Every layout must work at phone width (390px) without sideways page scroll.
 - `api.ts` types mirror `ReceiptDtos.cs`; update both together. Split math stays in integer cents in `splits.ts`.
 - Oxlint enforces the React hooks rules, including no `setState` directly in effects: load data in an effect with

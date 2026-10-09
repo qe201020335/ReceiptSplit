@@ -40,23 +40,20 @@ section + section .month {
   background-color: var(--mantine-primary-color-light);
 }
 
+/* The buttons beside it keep it apart from them, so it needs less padding on that side. */
 .toggle {
   display: flex;
   flex: 1;
   align-items: center;
   gap: var(--mantine-spacing-sm);
   min-width: 0;
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-xs) var(--mantine-spacing-xs) var(--mantine-spacing-md);
 }
 
 .toggle:disabled {
   cursor: default;
 }
 
-.open {
-  flex-shrink: 0;
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md) var(--mantine-spacing-xs) 0;
-}
 
 /* Stays at the bottom of the window until the end of a long list, so Delete is always in reach. */
 .footer {
@@ -69,4 +66,90 @@ section + section .month {
   padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
   border-top: 1px solid var(--mantine-color-default-border);
   background-color: var(--mantine-color-body);
+}
+
+/* The owner filter's label sits beside it rather than above, so the header keeps one line on wide screens. */
+.filter {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+.filterLabel {
+  margin: 0;
+  color: var(--mantine-color-dimmed);
+}
+
+.filterInput {
+  flex: 1;
+}
+
+/* An admin's row: the toggle as before with the owner line beneath it, and the actions in a column of their own,
+   centered on both. */
+.row[data-with-owner] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.row[data-with-owner] .toggle {
+  grid-area: 1 / 1;
+  padding-bottom: 2px;
+}
+
+.row[data-with-owner] .owner {
+  grid-area: 2 / 1;
+}
+
+/* Open, and on an admin's row Reassign below it at the same width, beside the whole row. */
+.actions {
+  flex-shrink: 0;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: var(--mantine-spacing-md);
+}
+
+/* Starts where the store name does: past the toggle's padding, the 20px checkbox and the gap after it. */
+.owner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 var(--mantine-spacing-md) var(--mantine-spacing-xs)
+    calc(var(--mantine-spacing-md) + 20px + var(--mantine-spacing-sm));
+}
+
+/* No owner differs by shape, not color, so it reads in both schemes; the end padding keeps truncation from clipping
+   the slanted last letter. */
+.noOwner {
+  font-style: italic;
+  color: var(--mantine-color-dimmed);
+  padding-inline-end: 0.15em;
+}
+
+/* On a phone the footer's three buttons drop the word "receipts" and some padding, to fit a 3-digit count. */
+@media (max-width: $mantine-breakpoint-xs) {
+  .countNoun {
+    display: none;
+  }
+
+  .footer {
+    gap: var(--mantine-spacing-xs);
+  }
+
+  .footer button {
+    --button-padding-x: 10px;
+  }
+
+  /* Narrower row buttons leave the dates room on a phone. */
+  .actions > * {
+    --button-padding-x: 8px;
+  }
+}
+
+.footer > button {
+  flex-shrink: 0;
 }

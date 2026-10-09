@@ -14,6 +14,8 @@ export interface ReceiptSummary {
   storeName: string | null
   purchaseDate: string | null
   total: number | null
+  /** The owner's user id; null for a receipt without an owner, which only admins see. */
+  ownerId: string | null
 }
 
 export interface ReceiptLine {
@@ -101,6 +103,14 @@ export interface Account {
   isAdmin: boolean
   /** Where signing out goes; null when there is nothing to sign out of, as in development. */
   signOutUrl: string | null
+}
+
+/** A user in the admins' list (GET /api/users), for choosing who owns a receipt. */
+export interface UserSummary {
+  id: string
+  /** Null once an admin has released it. */
+  email: string | null
+  name: string | null
 }
 
 /** The codes the server's sign-in refusals carry (SignInProblem.cs). */
@@ -203,6 +213,9 @@ async function readProblem(response: Response): Promise<Problem> {
 export const api = {
   me: () => request<Account>('/api/me'),
 
+  /** Every user, sorted by name or else email; admins only. */
+  listUsers: () => request<UserSummary[]>('/api/users'),
+
   listReceipts: () => request<ReceiptSummary[]>('/api/receipts'),
 
   getReceipt: (id: string) => request<ReceiptDetail>(`/api/receipts/${id}`),
@@ -244,6 +257,17 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids }),
+    }),
+
+  /**
+   * Gives several receipts a new owner, or none when ownerId is null, or changes none: an unknown user fails it with
+   * 400 and unknown ids with 404. Admins only. The error's message then says why nothing was reassigned.
+   */
+  reassignReceipts: (ids: string[], ownerId: string | null) =>
+    request<void>('/api/receipts/reassign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, ownerId }),
     }),
 
   imageUrl: (id: string) => `/api/receipts/${id}/image`,

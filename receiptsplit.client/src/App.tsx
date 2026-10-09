@@ -121,8 +121,11 @@ function App() {
       ) : route.page === 'manage' ? (
         <Container size={containerSize} py="md" px="md">
           <ReceiptManager
+            account={account}
             receipts={receipts}
             error={listError}
+            owner={route.owner}
+            onOwnerChange={(owner) => replace({ page: 'manage', owner })}
             onChanged={reloadList}
             onOpen={(id) => go({ page: 'receipt', receiptId: id })}
             onBack={() => goBack(home)}
@@ -136,9 +139,9 @@ function App() {
             onSplit={() => go({ page: 'splits', ids: [route.receiptId] })}
             onDeleted={() => {
               reloadList()
-              goBack({ page: 'manage' })
+              goBack({ page: 'manage', owner: null })
             }}
-            onBack={() => goBack({ page: 'manage' })}
+            onBack={() => goBack({ page: 'manage', owner: null })}
           />
         </Container>
       ) : (
@@ -160,7 +163,7 @@ function App() {
                   picked={picked}
                   onPickedChange={setPicked}
                   onSplit={(ids) => go({ page: 'splits', ids })}
-                  onManage={() => go({ page: 'manage' })}
+                  onManage={() => go({ page: 'manage', owner: null })}
                 />
               </Stack>
             </Grid.Col>

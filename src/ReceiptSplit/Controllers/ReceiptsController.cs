@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
 using ReceiptSplit.Accounts;
@@ -182,6 +183,36 @@ public class ReceiptsController(ReceiptService receipts) : ControllerBase
                 StatusCodes.Status404NotFound,
                 "Receipts not found",
                 $"{count} couldn't be found; nothing was deleted.",
+                result.Blocking),
+        };
+    }
+
+    /// <summary>
+    /// Gives several receipts a new owner, or none, in any status. It changes none of them when the owner isn't a
+    /// user (400) or any id doesn't exist (404, listing them in <c>ids</c>). Admins only.
+    /// </summary>
+    [HttpPost("reassign")]
+    [Authorize(Policy = AccountPolicies.Admin)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Reassign(ReceiptReassignDto request, CancellationToken cancellationToken)
+    {
+        var result = await receipts.ReassignManyAsync(
+            Actor, [.. request.Ids.Distinct()], request.OwnerId, cancellationToken);
+        var count = result.Blocking.Count == 1 ? "1 receipt" : $"{result.Blocking.Count} receipts";
+        return result.Result switch
+        {
+            ReceiptActionResult.Done => NoContent(),
+            ReceiptActionResult.UnknownUser => Problem(
+                title: "User not found",
+                detail: "No user has that id; nothing was reassigned.",
+                statusCode: StatusCodes.Status400BadRequest),
+            _ => BulkProblem(
+                StatusCodes.Status404NotFound,
+                "Receipts not found",
+                $"{count} couldn't be found; nothing was reassigned.",
                 result.Blocking),
         };
     }

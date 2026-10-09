@@ -271,6 +271,45 @@ public class AccountsApiTests
     }
 
     [Fact]
+    public async Task Admins_list_every_user()
+    {
+        await using var factory = new ReceiptApiFactory();
+        // Ordinal order would be Bob, Zoe, amy: the list ignores case.
+        Name(factory, ReceiptApiFactory.AdminEmail, "Zoe");
+        Name(factory, ReceiptApiFactory.MemberEmail, "amy");
+        Name(factory, "other@example.com", "Bob");
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        using var member = factory.CreateClient();
+        using var other = factory.CreateClientFor("other@example.com");
+        var (zoe, amy, bob) = (await MeAsync(admin), await MeAsync(member), await MeAsync(other));
+
+        var users = await admin.GetFromJsonAsync<List<UserSummaryDto>>("/api/users", Json, Ct);
+
+        Assert.Equal(
+            [
+                new UserSummaryDto(amy.Id, ReceiptApiFactory.MemberEmail, "amy"),
+                new UserSummaryDto(bob.Id, "other@example.com", "Bob"),
+                new UserSummaryDto(zoe.Id, ReceiptApiFactory.AdminEmail, "Zoe"),
+            ],
+            users!);
+
+        static void Name(ReceiptApiFactory factory, string email, string name) =>
+            factory.Identities.Answers[email] =
+                IdentityLookupResult.Found(FakeIdentityLookup.GoogleAccount(email, name));
+    }
+
+    [Fact]
+    public async Task Members_cant_list_users()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var member = factory.CreateClient();
+
+        using var response = await member.GetAsync("/api/users", Ct);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Members_cant_release_an_email()
     {
         await using var factory = new ReceiptApiFactory();
