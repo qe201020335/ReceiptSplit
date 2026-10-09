@@ -40,23 +40,20 @@ section + section .month {
   background-color: var(--mantine-primary-color-light);
 }
 
+/* The buttons beside it keep it apart from them, so it needs less padding on that side. */
 .toggle {
   display: flex;
   flex: 1;
   align-items: center;
   gap: var(--mantine-spacing-sm);
   min-width: 0;
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-xs) var(--mantine-spacing-xs) var(--mantine-spacing-md);
 }
 
 .toggle:disabled {
   cursor: default;
 }
 
-.open {
-  flex-shrink: 0;
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md) var(--mantine-spacing-xs) 0;
-}
 
 /* Stays at the bottom of the window until the end of a long list, so Delete is always in reach. */
 .footer {
@@ -94,10 +91,8 @@ section + section .month {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
-/* The buttons beside it keep it apart from the next column, so it needs less padding on that side. */
 .row[data-with-owner] .toggle {
   grid-area: 1 / 1;
-  padding-right: var(--mantine-spacing-xs);
   padding-bottom: 2px;
 }
 
@@ -105,8 +100,9 @@ section + section .month {
   grid-area: 2 / 1;
 }
 
-/* Open and Reassign, stacked at the same width. */
+/* Open, and on an admin's row Reassign below it at the same width, beside the whole row. */
 .actions {
+  flex-shrink: 0;
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: center;

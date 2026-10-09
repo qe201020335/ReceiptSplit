@@ -22,7 +22,8 @@ What's already there and can be built on:
 
 **Goals:**
 - One endpoint does reassigning, for one receipt or many, under the bulk rule in AGENTS.md.
-- Members' API surface and page stay the same, apart from the new `ownerId` field and the selection change.
+- Members' API surface stays the same, apart from the new `ownerId` field. Their page changes only in the
+  selection and the Open button.
 - The person picker and the owner filter work from one user list, loaded once per visit to the manager.
 
 **Non-Goals:**
@@ -171,7 +172,7 @@ whose" at a glance. Everything else stays as quiet as the existing list.
 - The right column spans both rows and stacks two `xs` default buttons of equal width, Open and Reassign,
   centered vertically on the row. Open is a button rendered as a link, so it can still be opened in a new tab.
   Two bare links read as stray text and didn't line up with the row's middle.
-- Members' rows keep the plain Open link, because their page doesn't change.
+- Members' rows use the same actions column, with Open alone, so both kinds of row look alike.
 - At 390px the owner name truncates, and the buttons get 8px side padding so the dates still fit.
 - Hovering over and checking the row tint the whole grid, as they do today.
 

@@ -490,12 +490,10 @@ interface ReceiptManagerRowProps {
 
 /**
  * One receipt: the row itself selects it, and Open sits beside it rather than inside, so the two never clash. An
- * admin's row adds the owner on a line of its own below the toggle, and Open and Reassign as buttons beside both.
+ * admin's row adds the owner on a line of its own below the toggle, and Reassign below Open.
  */
 function ReceiptManagerRow({ receipt, owner, reassign, checked, disabled, onToggle, onOpen }: ReceiptManagerRowProps) {
   const date = dateOf(receipt)
-  const href = pathFor({ page: 'receipt', receiptId: receipt.id })
-  const openLabel = `Open ${receipt.storeName ?? 'Unknown store'}, ${date}`
   return (
     <div className={classes.row} data-checked={checked || undefined} data-with-owner={owner ? true : undefined}>
       <UnstyledButton
@@ -521,38 +519,23 @@ function ReceiptManagerRow({ receipt, owner, reassign, checked, disabled, onTogg
           </Group>
         </Stack>
       </UnstyledButton>
-      {owner ? (
-        // An admin's row has two actions, so they're buttons stacked beside the whole row rather than links.
-        <div className={classes.actions}>
-          <Button
-            component="a"
-            href={href}
-            size="xs"
-            variant="default"
-            aria-label={openLabel}
-            onClick={(event: MouseEvent<HTMLAnchorElement>) => {
-              event.preventDefault()
-              onOpen()
-            }}
-          >
-            Open
-          </Button>
-          {reassign}
-        </div>
-      ) : (
-        <Anchor
-          href={href}
-          size="sm"
-          className={classes.open}
-          aria-label={openLabel}
-          onClick={(event) => {
+      {/* Beside the whole row, centered on it; an admin's row adds Reassign below Open. */}
+      <div className={classes.actions}>
+        <Button
+          component="a"
+          href={pathFor({ page: 'receipt', receiptId: receipt.id })}
+          size="xs"
+          variant="default"
+          aria-label={`Open ${receipt.storeName ?? 'Unknown store'}, ${date}`}
+          onClick={(event: MouseEvent<HTMLAnchorElement>) => {
             event.preventDefault()
             onOpen()
           }}
         >
           Open
-        </Anchor>
-      )}
+        </Button>
+        {owner && reassign}
+      </div>
       {owner && (
         <div className={classes.owner}>
           <OwnerAvatar user={owner.user} />

@@ -104,7 +104,8 @@ a dev user who isn't.
   - a selection hidden by the filter isn't counted in the footer
   - no sideways scroll at 390px
 
-  As the member, the page matches master: compare screenshots.
+  As the member, the page matches master: compare screenshots. Result: it matched. Later, at the owner's request,
+  members' rows got the Open button too, so it no longer does.
 - [x] 5.3 In AGENTS.md, add `/receipts?owner=none|{userId}` to the Routing line of the frontend conventions. Verify
   that it matches `readRoute`.
 

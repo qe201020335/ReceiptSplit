@@ -66,8 +66,8 @@ A request SHALL name 1 to 1000 receipts and SHALL state the new owner, which may
 
 ### Requirement: The receipt manager shows owners to admins
 For an admin, each receipt in the receipt manager SHALL show its owner as an initials avatar and name, falling back
-to the email, or as "No owner". For a member, the manager SHALL show no owners and look as it did before owners
-were shown.
+to the email, or as "No owner". For a member, the manager SHALL show no owners, no Reassign button and no owner
+filter.
 
 #### Scenario: Admin
 - **WHEN** an admin opens the receipt manager

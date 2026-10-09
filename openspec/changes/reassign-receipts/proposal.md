@@ -17,7 +17,7 @@ right person, one at a time or many at once.
     members get 403.
   - It works in every status, including while the model reads the receipt, because extraction never touches the
     owner.
-- The receipt manager changes for admins only. Members see the page as it is today.
+- The receipt manager's owner features are for admins only. Members see no owners, Reassign or filter.
   - Each row shows the owner as an initials avatar and name, or "No owner".
   - Each row gets a Reassign button. It opens a searchable picker of people with a separate No owner choice, and
     the choice applies right away.
@@ -25,6 +25,7 @@ right person, one at a time or many at once.
   - The header gets an owner filter: Everyone, No owner, then each person, with counts. It's kept in the URL
     (`/receipts?owner=none` or `?owner={userId}`).
   - Bulk actions act only on selected receipts that the filter shows.
+- Every row's Open becomes a small button centered beside the row. On admin rows, Reassign sits below it.
 - Selection changes for everyone. Receipts being read can now be selected.
   - While any selected receipt is being read, Delete looks disabled. Clicking it shows a toast saying why instead
     of sending the request.
