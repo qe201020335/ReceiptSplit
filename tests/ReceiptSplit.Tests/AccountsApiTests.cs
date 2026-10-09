@@ -274,15 +274,28 @@ public class AccountsApiTests
     public async Task Admins_list_every_user()
     {
         await using var factory = new ReceiptApiFactory();
+        // Ordinal order would be Bob, Zoe, amy: the list ignores case.
+        Name(factory, ReceiptApiFactory.AdminEmail, "Zoe");
+        Name(factory, ReceiptApiFactory.MemberEmail, "amy");
+        Name(factory, "other@example.com", "Bob");
         using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
         using var member = factory.CreateClient();
         using var other = factory.CreateClientFor("other@example.com");
-        AccountDto[] accounts = [await MeAsync(admin), await MeAsync(member), await MeAsync(other)];
+        var (zoe, amy, bob) = (await MeAsync(admin), await MeAsync(member), await MeAsync(other));
 
         var users = await admin.GetFromJsonAsync<List<UserSummaryDto>>("/api/users", Json, Ct);
 
-        var expected = accounts.Select(a => new UserSummaryDto(a.Id, a.Email, a.Name));
-        Assert.Equal(expected.OrderBy(u => u.Name, StringComparer.Ordinal), users!);
+        Assert.Equal(
+            [
+                new UserSummaryDto(amy.Id, ReceiptApiFactory.MemberEmail, "amy"),
+                new UserSummaryDto(bob.Id, "other@example.com", "Bob"),
+                new UserSummaryDto(zoe.Id, ReceiptApiFactory.AdminEmail, "Zoe"),
+            ],
+            users!);
+
+        static void Name(ReceiptApiFactory factory, string email, string name) =>
+            factory.Identities.Answers[email] =
+                IdentityLookupResult.Found(FakeIdentityLookup.GoogleAccount(email, name));
     }
 
     [Fact]

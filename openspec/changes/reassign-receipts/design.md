@@ -102,9 +102,21 @@ email, and nulls go last on the client. `GET /api/users` in `UsersController` is
   URL, because it goes back through real history.
 - `App` passes `account` to `ReceiptManager`. When `account.isAdmin` is set, the manager loads `api.listUsers()` in
   an effect with a `current` flag, as `ReceiptDetail` does, and builds `Map<id, UserSummary>`.
+- The people are reloaded, keeping the old list on screen meanwhile:
+  - whenever a picker opens, since the person an admin is looking for may have signed up since, as after
+    releasing an email
+  - when the receipts name an owner the list doesn't have. This is keyed on those ids, so an id that's still
+    missing after the reload doesn't start another.
+- A row whose owner isn't in the list shows a filled gray placeholder and "Unknown user", or "…" while the list
+  first loads. It never shows the dashed no-owner outline, so an owned receipt can't pass for an unowned one.
 - An `owner` value the list doesn't contain shows Everyone, with the select on Everyone.
   - The URL is left as it is until the filter is changed.
-  - While the list loads, the filter applies by id anyway, since `ownerId` doesn't need names.
+  - While the list first loads, a person's id can't be checked, so the manager shows "Loading…" in place of the
+    receipts, with the select's placeholder "Loading people…". It shows neither nobody's receipts nor everyone's.
+  - If the list fails to load, the id shows Everyone, beside an alert saying the people couldn't be loaded.
+- Bulk actions remove only the receipts they acted on from the selection. Selected receipts the filter hides stay
+  selected. Whether a reassign came from the footer is passed in, not guessed from how many receipts it names.
+- The footer's picker marks as Current, and doesn't offer, the owner all the selected receipts already have.
 - `selectable()` goes away, and every row can be selected.
   - `selectedIds` is computed from the filtered list, so hidden, deleted or moved receipts drop out of the footer's
     count and actions.

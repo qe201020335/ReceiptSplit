@@ -12,11 +12,13 @@ interface OwnerPickerProps {
   /** Null while loading. */
   users: UserSummary[] | null
   usersError: string | null
-  /** The receipt's owner, which can't be picked again: null for none, undefined when picking for several. */
+  /** The owner all the receipts already have, which can't be picked again: null for none, undefined for mixed. */
   currentOwnerId?: string | null
   /** The signed-in admin, marked You. */
   meId: string | null
   onPick: (ownerId: string | null) => void
+  /** Called as it opens, so the people can be reloaded: someone may have signed up since. */
+  onOpen?: () => void
   /** The button that opens the picker; it gets the function that toggles it. */
   children: (toggle: () => void) => ReactElement
 }
@@ -25,7 +27,7 @@ interface OwnerPickerProps {
  * Searches people by name or email and picks one to own a receipt, or No owner, which stays offered below the
  * search results. Arrow keys, Enter and Escape work as in any Mantine combobox.
  */
-export function OwnerPicker({ users, usersError, currentOwnerId, meId, onPick, children }: OwnerPickerProps) {
+export function OwnerPicker({ users, usersError, currentOwnerId, meId, onPick, onOpen, children }: OwnerPickerProps) {
   const [search, setSearch] = useState('')
   const combobox = useCombobox({
     onDropdownClose: () => {
@@ -33,7 +35,10 @@ export function OwnerPicker({ users, usersError, currentOwnerId, meId, onPick, c
       combobox.focusTarget()
       setSearch('')
     },
-    onDropdownOpen: () => combobox.focusSearchInput(),
+    onDropdownOpen: () => {
+      combobox.focusSearchInput()
+      onOpen?.()
+    },
   })
 
   const query = search.trim().toLowerCase()

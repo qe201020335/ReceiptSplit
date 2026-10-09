@@ -119,7 +119,20 @@ export function ReceiptManager({
   const busy = deleting || reassigning
   const [users, setUsers] = useState<UserSummary[] | null>(null)
   const [usersError, setUsersError] = useState<string | null>(null)
+  // Bumping this reloads the people, as each picker opens: someone may have signed up since the page loaded.
+  const [usersVersion, setUsersVersion] = useState(0)
   usePageTitle('Manage receipts')
+
+  const all = receipts ?? []
+  const usersById = new Map((users ?? []).map((user) => [user.id, user]))
+  // Owners the loaded list doesn't have, such as someone who signed up and uploaded since. The list is reloaded when
+  // this changes; one still missing afterwards (users aren't deleted) doesn't trigger another load.
+  const unknownOwners =
+    admin && users !== null
+      ? [...new Set(all.flatMap(({ ownerId }) => (ownerId && !usersById.has(ownerId) ? [ownerId] : [])))]
+          .sort()
+          .join(',')
+      : ''
 
   useEffect(() => {
     if (!admin) {
@@ -142,18 +155,26 @@ export function ReceiptManager({
     return () => {
       current = false
     }
-  }, [admin])
+  }, [admin, usersVersion, unknownOwners])
 
-  const all = receipts ?? []
+  // A person's id in the URL can only be checked once the people load; until then the list waits rather than
+  // showing nobody's receipts or everyone's. If they can't be loaded, everyone's show.
+  const filterPending = admin && owner !== null && owner !== 'none' && users === null && usersError === null
   const filter = admin ? ownerFilter(owner, users) : null
-  const shown = filter === null ? all : all.filter((receipt) => (receipt.ownerId ?? 'none') === filter)
+  const shown = filterPending
+    ? []
+    : filter === null
+      ? all
+      : all.filter((receipt) => (receipt.ownerId ?? 'none') === filter)
   // In list order, and only receipts the filter shows: hidden, deleted or reassigned ones are never acted on.
   const selectedReceipts = shown.filter((receipt) => selected.has(receipt.id))
   const selectedIds = selectedReceipts.map(({ id }) => id)
   // The server won't delete a receipt while the model is reading it, so Delete waits until it's read.
   const readingCount = selectedReceipts.filter((receipt) => receipt.status === 'Processing').length
   const months = byMonth(shown)
-  const usersById = new Map((users ?? []).map((user) => [user.id, user]))
+  // The owner every selected receipt already has, which the footer's picker doesn't offer; undefined when mixed.
+  const selectedOwners = new Set(selectedReceipts.map(({ ownerId }) => ownerId))
+  const commonOwner = selectedOwners.size === 1 ? [...selectedOwners][0] : undefined
   const filterUser = filter === null || filter === 'none' ? undefined : usersById.get(filter)
 
   function toggle(ids: string[], on: boolean) {
@@ -199,7 +220,8 @@ export function ReceiptManager({
     setDeleting(true)
     try {
       await api.deleteReceipts(ids)
-      setSelected(new Set())
+      // Selected receipts the filter hides weren't deleted, so they stay selected.
+      toggle(ids, false)
       notifications.show({ message: `${receiptCount(ids.length)} deleted`, color: 'green' })
     } catch (e) {
       // Nothing was deleted, and the message says which receipts stopped it. The selection stays for another try;
@@ -209,6 +231,10 @@ export function ReceiptManager({
       setDeleting(false)
       onChanged()
     }
+  }
+
+  function reloadUsers() {
+    setUsersVersion((version) => version + 1)
   }
 
   function nameOf(ownerId: string): string {
@@ -225,20 +251,20 @@ export function ReceiptManager({
       centered: true,
       children: <Text size="sm">{ownerBreakdown(chosen, nameOf)}</Text>,
       labels: { confirm: `Reassign ${count}`, cancel: 'Cancel' },
-      onConfirm: () => void reassign(chosen.map(({ id }) => id), ownerId),
+      onConfirm: () => void reassign(chosen.map(({ id }) => id), ownerId, true),
     })
   }
 
-  async function reassign(ids: string[], ownerId: string | null) {
+  /** Reassigns from a row, or from the footer for the selection, which then drops what it reassigned. */
+  async function reassign(ids: string[], ownerId: string | null, fromSelection: boolean) {
     const target = ownerId === null ? null : nameOf(ownerId)
-    const several = ids.length > 1
     setReassigning(true)
     try {
       await api.reassignReceipts(ids, ownerId)
-      if (several) {
-        setSelected(new Set())
+      if (fromSelection) {
+        toggle(ids, false)
       }
-      const message = several
+      const message = fromSelection
         ? `${receiptCount(ids.length)} ${target === null ? 'set to no owner' : `reassigned to ${target}`}`
         : target === null
           ? 'Set to no owner'
@@ -246,7 +272,7 @@ export function ReceiptManager({
       notifications.show({ message, color: 'green' })
     } catch (e) {
       // Nothing was reassigned, and the message says why; the reload shows what changed meanwhile.
-      const title = several ? "Couldn't reassign the receipts" : "Couldn't reassign the receipt"
+      const title = fromSelection ? "Couldn't reassign the receipts" : "Couldn't reassign the receipt"
       notifications.show({ title, message: errorMessage(e), color: 'red' })
     } finally {
       setReassigning(false)
@@ -260,23 +286,28 @@ export function ReceiptManager({
       return undefined
     }
     if (receipt.ownerId === null) {
-      return { user: null, label: 'No owner' }
+      return { user: null, unknown: false, label: 'No owner' }
     }
     const user = usersById.get(receipt.ownerId)
     if (user) {
-      return { user, label: userLabel(user) }
+      return { user, unknown: false, label: userLabel(user) }
     }
-    // Still loading the people, or someone the list doesn't have.
-    return { user: null, label: users === null && !usersError ? '…' : 'Unknown user' }
+    // Still loading the people, or someone the list doesn't have yet. It has an owner, so it never looks like it
+    // has none.
+    return { user: null, unknown: true, label: users === null && !usersError ? '…' : 'Unknown user' }
   }
 
+  const ownerCounts = new Map<string | null, number>()
+  for (const { ownerId } of all) {
+    ownerCounts.set(ownerId, (ownerCounts.get(ownerId) ?? 0) + 1)
+  }
   const ownerChoices = admin
     ? [
         { value: everyone, label: `Everyone (${all.length})` },
-        { value: 'none', label: `No owner (${all.filter((r) => r.ownerId === null).length})` },
+        { value: 'none', label: `No owner (${ownerCounts.get(null) ?? 0})` },
         ...(users ?? []).map((user) => ({
           value: user.id,
-          label: `${userLabel(user)} (${all.filter((r) => r.ownerId === user.id).length})`,
+          label: `${userLabel(user)} (${ownerCounts.get(user.id) ?? 0})`,
         })),
       ]
     : []
@@ -302,7 +333,8 @@ export function ReceiptManager({
             <Select
               label="Owner"
               data={ownerChoices}
-              value={filter ?? everyone}
+              value={filterPending ? null : (filter ?? everyone)}
+              placeholder="Loading people…"
               onChange={(value) => onOwnerChange(value === null || value === everyone ? null : value)}
               allowDeselect={false}
               w={{ base: '100%', xs: 240 }}
@@ -321,7 +353,7 @@ export function ReceiptManager({
           {usersError}
         </Alert>
       )}
-      {receipts === null && !error && <Text c="dimmed">Loading…</Text>}
+      {(receipts === null || filterPending) && !error && <Text c="dimmed">Loading…</Text>}
       {receipts?.length === 0 && (
         <Card withBorder padding="xl">
           <Text c="dimmed" ta="center">
@@ -338,7 +370,7 @@ export function ReceiptManager({
           </Text>
         </Card>
       )}
-      {all.length > 0 && shown.length === 0 && (
+      {all.length > 0 && shown.length === 0 && !filterPending && (
         <Card withBorder padding="xl">
           <Text c="dimmed" ta="center">
             {filter === 'none'
@@ -387,13 +419,14 @@ export function ReceiptManager({
                     onToggle={(on) => toggle([receipt.id], on)}
                     onOpen={() => onOpen(receipt.id)}
                     reassign={
-                      admin && (
+                      admin ? (
                         <OwnerPicker
                           users={users}
                           usersError={usersError}
                           currentOwnerId={receipt.ownerId}
                           meId={account.id}
-                          onPick={(ownerId) => void reassign([receipt.id], ownerId)}
+                          onPick={(ownerId) => void reassign([receipt.id], ownerId, false)}
+                          onOpen={reloadUsers}
                         >
                           {(toggleOpen) => (
                             <Button
@@ -407,7 +440,7 @@ export function ReceiptManager({
                             </Button>
                           )}
                         </OwnerPicker>
-                      )
+                      ) : undefined
                     }
                   />
                 ))}
@@ -422,7 +455,14 @@ export function ReceiptManager({
               </Button>
               <Group gap="xs" wrap="nowrap">
                 {admin && (
-                  <OwnerPicker users={users} usersError={usersError} meId={account.id} onPick={confirmReassign}>
+                  <OwnerPicker
+                    users={users}
+                    usersError={usersError}
+                    currentOwnerId={commonOwner}
+                    meId={account.id}
+                    onPick={confirmReassign}
+                    onOpen={reloadUsers}
+                  >
                     {(toggleOpen) => (
                       <Button
                         variant="default"
@@ -474,14 +514,17 @@ function CountLabel({ verb, count }: { verb: string; count: number }) {
 interface OwnerLine {
   /** Null for no owner, or while the person can't be named. */
   user: UserSummary | null
+  /** It has an owner who can't be named yet. */
+  unknown: boolean
   label: string
 }
 
 interface ReceiptManagerRowProps {
   receipt: ReceiptSummary
-  /** Only admins' rows have an owner line, with its Reassign button. */
+  /** Only admins' rows have an owner line. */
   owner: OwnerLine | undefined
-  reassign: ReactNode
+  /** Only admins' rows have Reassign. */
+  reassign: ReactNode | undefined
   checked: boolean
   disabled: boolean
   onToggle: (on: boolean) => void
@@ -534,12 +577,17 @@ function ReceiptManagerRow({ receipt, owner, reassign, checked, disabled, onTogg
         >
           Open
         </Button>
-        {owner && reassign}
+        {reassign}
       </div>
       {owner && (
         <div className={classes.owner}>
-          <OwnerAvatar user={owner.user} />
-          <Text size="sm" truncate className={owner.user ? undefined : classes.noOwner}>
+          <OwnerAvatar user={owner.user} unknown={owner.unknown} />
+          <Text
+            size="sm"
+            truncate
+            c={owner.unknown ? 'dimmed' : undefined}
+            className={owner.user || owner.unknown ? undefined : classes.noOwner}
+          >
             {owner.label}
           </Text>
         </div>

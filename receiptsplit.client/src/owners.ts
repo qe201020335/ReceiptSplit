@@ -5,11 +5,13 @@ export function userLabel(user: UserSummary): string {
   return user.name ?? user.email ?? 'Unnamed user'
 }
 
-/** Picks the owner filter's value from the URL's: 'none', a known user's id, or null for everyone. */
+/**
+ * Picks the owner filter's value from the URL's: 'none', a known user's id, or null for everyone, which is also what
+ * an id shows when no one has it or the people couldn't be loaded.
+ */
 export function ownerFilter(owner: string | null, users: UserSummary[] | null): string | null {
   if (owner === null || owner === 'none') {
     return owner
   }
-  // Until the people load, an id filters anyway; summaries carry owner ids, not names.
-  return users === null || users.some(({ id }) => id === owner) ? owner : null
+  return users?.some(({ id }) => id === owner) ? owner : null
 }

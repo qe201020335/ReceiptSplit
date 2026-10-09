@@ -1,5 +1,6 @@
 import { Avatar, Badge, Box, Menu, Text, UnstyledButton } from '@mantine/core'
 import type { Account } from '../api.ts'
+import { userLabel } from '../owners.ts'
 import classes from './AccountMenu.module.css'
 
 interface AccountMenuProps {
@@ -8,7 +9,8 @@ interface AccountMenuProps {
 
 /** The signed-in user's initials in the header, opening who they are and Sign out. */
 export function AccountMenu({ account }: AccountMenuProps) {
-  const name = account.name ?? account.email ?? 'Account'
+  // Named as the receipt manager names owners, so the initials and their color match.
+  const name = userLabel(account)
   return (
     <Menu position="bottom-end" width={260}>
       <Menu.Target>
