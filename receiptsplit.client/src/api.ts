@@ -259,5 +259,16 @@ export const api = {
       body: JSON.stringify({ ids }),
     }),
 
+  /**
+   * Gives several receipts a new owner, or none when ownerId is null, or changes none: an unknown user fails it with
+   * 400 and unknown ids with 404. Admins only. The error's message then says why nothing was reassigned.
+   */
+  reassignReceipts: (ids: string[], ownerId: string | null) =>
+    request<void>('/api/receipts/reassign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, ownerId }),
+    }),
+
   imageUrl: (id: string) => `/api/receipts/${id}/image`,
 }

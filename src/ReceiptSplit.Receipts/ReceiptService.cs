@@ -309,6 +309,45 @@ public sealed class ReceiptService(AppDbContext db, ExtractionQueue queue, IOpti
     }
 
     /// <summary>
+    /// Gives several receipts a new owner, or none when <paramref name="ownerId"/> is null, or changes none of them:
+    /// an owner that isn't a user makes it <see cref="ReceiptActionResult.UnknownUser"/>, and ids that don't exist
+    /// make it not found. Only admins reassign, so for anyone else every id is not found. Allowed in every status:
+    /// extraction never writes the owner, so a receipt being read keeps the one given here.
+    /// </summary>
+    public async Task<BulkReceiptResult> ReassignManyAsync(
+        Actor actor, IReadOnlyCollection<Guid> ids, Guid? ownerId, CancellationToken cancellationToken)
+    {
+        if (!actor.IsAdmin)
+        {
+            return new BulkReceiptResult(ReceiptActionResult.NotFound, [.. ids]);
+        }
+
+        // Immediate, as in DeleteManyAsync, so a receipt deleted between the check and the save can't leave the
+        // request half done.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        if (ownerId is { } id && !await db.Users.AnyAsync(u => u.Id == id, cancellationToken))
+        {
+            return new BulkReceiptResult(ReceiptActionResult.UnknownUser, []);
+        }
+
+        var receipts = await Visible(actor).Where(r => ids.Contains(r.Id)).ToListAsync(cancellationToken);
+        var missing = ids.Except(receipts.Select(r => r.Id)).ToList();
+        if (missing.Count > 0)
+        {
+            return new BulkReceiptResult(ReceiptActionResult.NotFound, missing);
+        }
+
+        foreach (var receipt in receipts)
+        {
+            receipt.OwnerId = ownerId;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return BulkReceiptResult.Done;
+    }
+
+    /// <summary>
     /// Every lookup goes through here, so a receipt someone else owns, or one without an owner, looks the same to a
     /// member as one that doesn't exist.
     /// </summary>

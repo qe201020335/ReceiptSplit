@@ -6,4 +6,7 @@ public enum ReceiptActionResult
     Done,
     NotFound,
     Busy,
+
+    /// <summary>The user the receipts would be given to doesn't exist.</summary>
+    UnknownUser,
 }

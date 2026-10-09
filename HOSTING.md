@@ -53,7 +53,8 @@ await fetch('/api/users/release-email', {
 }).then((response) => response.status) // 204 released, 404 no account has that email
 ```
 
-Within a minute the person can sign in again and gets a new account. If the only admin is the one refused, stop
+Within a minute the person can sign in again and gets a new account. To give them the old account's receipts,
+open Manage receipts, filter by the old account, select its receipts and reassign them to the new one. If the only admin is the one refused, stop
 the app and clear the email in the database by hand, then start it again:
 
 ```sh

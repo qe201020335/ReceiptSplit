@@ -31,7 +31,7 @@ a dev user who isn't.
 
 ## 3. Reassign receipts
 
-- [ ] 3.1 Add `ReceiptActionResult.UnknownUser` and `ReceiptService.ReassignManyAsync` as design.md describes:
+- [x] 3.1 Add `ReceiptActionResult.UnknownUser` and `ReceiptService.ReassignManyAsync` as design.md describes:
   - non-admins get `NotFound` for every id
   - an unknown user is checked first
   - missing ids come back listed
@@ -39,12 +39,13 @@ a dev user who isn't.
 
   Verify that the solution builds, and that the existing switches on `ReceiptActionResult` still fall through to
   404, since they don't handle the new value.
-- [ ] 3.2 Add `ReceiptReassignDto` with `[property: JsonRequired]` on `OwnerId`. Add `POST /api/receipts/reassign`
+- [x] 3.2 Add `ReceiptReassignDto` with `[property: JsonRequired]` on `OwnerId`. Add `POST /api/receipts/reassign`
   with the Admin policy, mapping the results to 204, 400 "User not found" and a 404 `BulkProblem`. Add
   `api.reassignReceipts(ids, ownerId)` to `api.ts`. Verify with a test that a body without `ownerId` gets 400 and
   leaves the owner unchanged. If the attribute is ignored, use the fallback design.md names, and record the result
-  here.
-- [ ] 3.3 Add `ReceiptAccessTests` for every scenario under "Admins reassign receipts" and "Reassigning is refused
+  here. Result: System.Text.Json honors `JsonRequired` on the record's constructor parameter. A body without
+  `ownerId` gets 400 before the action runs, so no fallback is needed.
+- [x] 3.3 Add `ReceiptAccessTests` for every scenario under "Admins reassign receipts" and "Reassigning is refused
   as a whole" in the delta spec:
   - to another user (the previous owner gets 404)
   - an unowned receipt to a member
@@ -58,7 +59,7 @@ a dev user who isn't.
     the new owner and has the lines.
 
   Verify that `dotnet test` passes.
-- [ ] 3.4 In AGENTS.md:
+- [x] 3.4 In AGENTS.md:
   - in the Ownership bullet, add that admins reassign receipts, in any status, through the bulk endpoint, and that
     members get 403
   - in the bulk operations bullet, name `POST /api/receipts/reassign` beside the bulk delete
