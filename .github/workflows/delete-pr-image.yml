@@ -36,4 +36,4 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: .github/scripts/delete-pr-image.sh "$TAG"
+      - run: .github/scripts/delete-pr-image.ps1 -Repository "$GITHUB_REPOSITORY" -Tag "$TAG"

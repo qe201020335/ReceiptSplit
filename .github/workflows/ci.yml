@@ -149,4 +149,4 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Deletes older master builds, other images left with only sha-<commit>, and untagged leftovers.
-      - run: .github/scripts/prune-images.sh "$KEEP"
+      - run: .github/scripts/prune-images.ps1 -Repository "$GITHUB_REPOSITORY" -Keep "$KEEP"

@@ -50,8 +50,8 @@ openspec/                         OpenSpec specs (specs/) and proposed changes (
                                   pruning the package after a push to master
 .github/workflows/delete-pr-image.yml
                                   Deletes a pull request's pr-<number> image once it is merged or closed
-.github/scripts/                  The image cleanup the workflows run, with shared helpers in ghcr.sh; --dry-run
-                                  lists what they would delete
+.github/scripts/                  The image cleanup the workflows run, in PowerShell, with shared helpers in
+                                  ghcr.ps1; -WhatIf lists what they would delete
 ```
 
 ## Commands
