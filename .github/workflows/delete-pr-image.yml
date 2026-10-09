@@ -17,55 +17,23 @@ jobs:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       # A workflow can delete versions of a package it published: the repository gets the package's admin role.
       packages: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       TAG: pr-${{ github.event.pull_request.number }}
     steps:
+      # The script from the default branch: GitHub's merge commit for a closed pull request may already be gone.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: .github/scripts
+
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # The tag names an image index; its platform image and provenance are untagged versions of their own, left
-      # behind unless they're deleted by digest too. Other images' children are untagged as well, so only this
-      # index's are deleted.
-      - run: |
-          set -euo pipefail
-          image="ghcr.io/${GITHUB_REPOSITORY,,}"
-          versions="/users/$GITHUB_REPOSITORY_OWNER/packages/container/${image##*/}/versions"
-          # The pull request cleanup and the prune job can overlap, so a version already deleted counts as done.
-          delete() {
-            local error
-            if ! error=$(gh api -X DELETE "$versions/$1" 2>&1 > /dev/null < /dev/null); then
-              [[ $error == *'(HTTP 404)'* ]] || { echo "$error" >&2; return 1; }
-            fi
-          }
-
-          gh api --paginate "$versions" --jq '.[] | [.id, .name, (.metadata.container.tags | join(","))] | @tsv' \
-            > versions.tsv
-          tagged=$(awk -F '\t' -v tag="$TAG" \
-            '{ n = split($3, t, ","); for (i = 1; i <= n; i++) if (t[i] == tag) print }' versions.tsv)
-          if [ -z "$tagged" ]; then
-            echo "There is no $TAG image."
-            exit 0
-          fi
-          IFS=$'\t' read -r id digest tags <<< "$tagged"
-          # Besides its sha-<commit>, an image tagged anything else is still in use.
-          if tr ',' '\n' <<< "$tags" | grep -qvx -e "$TAG" -e 'sha-.*'; then
-            echo "::warning::$digest is also tagged $tags, so it was kept."
-            exit 0
-          fi
-
-          children=$(docker buildx imagetools inspect --raw "$image:$TAG" | jq -r '.manifests[]?.digest')
-          echo "Deleting $TAG ($digest)"
-          delete "$id"
-          for child in $children; do
-            child_id=$(awk -F '\t' -v digest="$child" '$2 == digest && $3 == "" { print $1 }' versions.tsv)
-            if [ -n "$child_id" ]; then
-              echo "Deleting $child"
-              delete "$child_id"
-            fi
-          done
+      - run: .github/scripts/delete-pr-image.sh "$TAG"

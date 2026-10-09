@@ -1,5 +1,10 @@
 <Solution>
   <Folder Name="/.github/" />
+  <Folder Name="/.github/scripts/">
+    <File Path=".github/scripts/delete-pr-image.sh" />
+    <File Path=".github/scripts/ghcr.sh" />
+    <File Path=".github/scripts/prune-images.sh" />
+  </Folder>
   <Folder Name="/.github/workflows/">
     <File Path=".github/workflows/ci.yml" />
     <File Path=".github/workflows/delete-pr-image.yml" />

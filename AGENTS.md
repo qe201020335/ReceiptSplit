@@ -36,7 +36,7 @@ receiptsplit.client/              React 19 + TypeScript + Vite 8 + Mantine 9
   src/photoEdits.ts               Cropping and rotating a photo on a canvas before upload
   src/theme.ts                    Mantine theme and color tokens
   src/components/                 Page parts; *.module.css for component styles
-ReceiptSplit.slnx                 The solution; its folders match src/, tests/ and .github/workflows/
+ReceiptSplit.slnx                 The solution; its folders match src/, tests/, .github/workflows/ and .github/scripts/
 Directory.Build.props             Shared .csproj settings: net10.0, nullable, warnings as errors when CI=true, and
                                   internals visible to the project's own .Tests project
 Directory.Packages.props          Every NuGet package version (central package management)
@@ -50,6 +50,7 @@ openspec/                         OpenSpec specs (specs/) and proposed changes (
                                   pruning the package after a push to master
 .github/workflows/delete-pr-image.yml
                                   Deletes a pull request's pr-<number> image once it is merged or closed
+.github/scripts/                  The image cleanup the workflows run, with shared helpers in ghcr.sh
 ```
 
 ## Commands
