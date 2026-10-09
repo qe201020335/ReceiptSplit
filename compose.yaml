@@ -1,7 +1,9 @@
 services:
   receiptsplit:
     # Built and pushed by the CI workflow, so deploying needs only this file and a .env. 
-    # Set RECEIPTSPLIT_IMAGE to pin a version (a v1.2.3 tag publishes 1.2.3 and 1.2).
+    # Set RECEIPTSPLIT_IMAGE to pin a release (a v1.2.3 git tag publishes 1.2.3 and 1.2), to roll back to one of the
+    # last 10 master builds (sha-<commit>), or to test a pull request (pr-<number>, deleted when it closes). Every
+    # image but a release is tagged sha-<commit>, the commit it was built from.
     image: ${RECEIPTSPLIT_IMAGE:-ghcr.io/qe201020335/receiptsplit:latest}
     pull_policy: always
     ports:

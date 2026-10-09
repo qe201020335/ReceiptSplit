@@ -1,7 +1,13 @@
 <Solution>
   <Folder Name="/.github/" />
+  <Folder Name="/.github/scripts/">
+    <File Path=".github/scripts/delete-pr-image.ps1" />
+    <File Path=".github/scripts/ghcr.ps1" />
+    <File Path=".github/scripts/prune-images.ps1" />
+  </Folder>
   <Folder Name="/.github/workflows/">
     <File Path=".github/workflows/ci.yml" />
+    <File Path=".github/workflows/delete-pr-image.yml" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".config/dotnet-tools.json" />

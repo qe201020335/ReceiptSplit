@@ -3,7 +3,9 @@ name: CI
 on:
   push:
     branches: [master]
-    tags: ['v*']
+    # Only version tags (v1.2.3, v1.2.3-rc.1): the image's tags come from the version, so any other tag would publish
+    # an image with none.
+    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
     paths-ignore:
       - '*.md' # ignore top level md file changes
       - 'openspec/**'
@@ -11,8 +13,19 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A newer push to a pull request cancels the run for the older one, so pr-<number> never goes back to an older commit.
+# The image cleanup joins the same group, so a run still going when the pull request closes can't push after it.
+# Runs for a branch or a tag go one at a time in the order they were pushed, so latest always ends on master's newest
+# build and two prune jobs never overlap; a run still waiting is replaced by a newer one.
+concurrency:
+  group: ${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   IMAGE: ghcr.io/${{ github.repository }}
+  # Pull requests from this repository's branches publish pr-<number> for testing in staging. Those from forks get a
+  # read-only token, so they only build.
+  PUSH: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
 jobs:
   backend:
@@ -67,13 +80,16 @@ jobs:
       contents: read
       packages: write
     steps:
+      # A pull request's image is built from its head commit rather than GitHub's merge commit, which exists only
+      # for the run, so its sha-<commit> tag names a commit that can be found.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: docker/setup-buildx-action@v3
 
-      # Pull requests from forks get a read-only token, and nothing is pushed for them anyway.
       - uses: docker/login-action@v3
-        if: github.event_name != 'pull_request'
+        if: env.PUSH == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -81,22 +97,56 @@ jobs:
 
       - id: meta
         uses: docker/metadata-action@v5
+        env:
+          # The sha-<commit> tag and the revision label name the pull request's head commit too.
+          DOCKER_METADATA_PR_HEAD_SHA: true
         with:
           images: ${{ env.IMAGE }}
-          # latest follows master; a v1.2.3 tag also publishes 1.2.3 and 1.2.
+          # latest follows master and a pull request publishes pr-<number>; those and every other build are also
+          # tagged sha-<commit>, so any image can be traced to its commit. A v1.2.3 git tag publishes 1.2.3 and 1.2
+          # instead, since the version already names the commit, and the prune job never deletes it.
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,enable=${{ github.ref_type != 'tag' }}
 
       - uses: docker/build-push-action@v6
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ env.PUSH == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           # Links the package to this repository, which also gives it the repository's readme.
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  prune:
+    # Keeps the package to the last few master builds and the images other tags still name.
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # A workflow can delete versions of a package it published: the repository gets the package's admin role.
+      packages: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      KEEP: 10
+    steps:
+      # The prune script, and master's history, which tells its builds apart from the other images tagged only
+      # sha-<commit>.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Deletes older master builds, other images left with only sha-<commit>, and untagged leftovers.
+      - run: .github/scripts/prune-images.ps1 -Repository "$GITHUB_REPOSITORY" -Keep "$KEEP"
