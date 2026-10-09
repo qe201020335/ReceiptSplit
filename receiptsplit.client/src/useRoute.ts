@@ -6,8 +6,11 @@ export type Route =
   | { page: 'home'; receiptId: string | null }
   /** One receipt on its own page, /receipts/{id}. */
   | { page: 'receipt'; receiptId: string }
-  /** The receipt manager, /receipts, which lists every receipt. */
-  | { page: 'manage' }
+  /**
+   * The receipt manager, /receipts, which lists every receipt. Admins filter it by owner, /receipts?owner=none for
+   * receipts without one and ?owner={userId} for someone's.
+   */
+  | { page: 'manage'; owner: string | null }
   /** One receipt split, or several together, /splits?receipts=a,b. */
   | { page: 'splits'; ids: string[] }
 
@@ -29,7 +32,7 @@ function readRoute(): Route {
     return ids.length > 0 ? { page: 'splits', ids } : home
   }
   if (managePath.test(pathname)) {
-    return { page: 'manage' }
+    return { page: 'manage', owner: query.get('owner') || null }
   }
   const match = receiptPath.exec(pathname)
   if (match) {
@@ -45,7 +48,7 @@ export function pathFor(route: Route): string {
     case 'receipt':
       return `/receipts/${encodeURIComponent(route.receiptId)}`
     case 'manage':
-      return '/receipts'
+      return route.owner ? `/receipts?owner=${encodeURIComponent(route.owner)}` : '/receipts'
     case 'splits':
       return `/splits?receipts=${route.ids.map(encodeURIComponent).join(',')}`
   }

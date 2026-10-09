@@ -1,17 +1,36 @@
-import { useState } from 'react'
-import { Alert, Anchor, Button, Card, Checkbox, Group, Stack, Text, Title, UnstyledButton } from '@mantine/core'
+import { useEffect, useState } from 'react'
+import {
+  Alert,
+  Anchor,
+  Button,
+  Card,
+  Checkbox,
+  Group,
+  Select,
+  Stack,
+  Text,
+  Title,
+  UnstyledButton,
+} from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
-import { api, errorMessage, type ReceiptSummary } from '../api.ts'
+import { api, errorMessage, type Account, type ReceiptSummary, type UserSummary } from '../api.ts'
 import { formatDateTime, formatMoney } from '../format.ts'
+import { ownerFilter, userLabel } from '../owners.ts'
 import { usePageTitle } from '../usePageTitle.ts'
 import { pathFor } from '../useRoute.ts'
+import { OwnerAvatar } from './OwnerAvatar.tsx'
 import { StatusBadge } from './StatusBadge.tsx'
 import classes from './ReceiptManager.module.css'
 
 interface ReceiptManagerProps {
+  /** The signed-in user; admins also see and filter by each receipt's owner. */
+  account: Account | null
   receipts: ReceiptSummary[] | null
   error: string | null
+  /** The owner filter from the URL: 'none', a user id, or null for everyone. Only admins filter. */
+  owner: string | null
+  onOwnerChange: (owner: string | null) => void
   /** Called after receipts were deleted, to reload the list. */
   onChanged: () => void
   onOpen: (id: string) => void
@@ -23,6 +42,9 @@ interface Month {
   label: string
   receipts: ReceiptSummary[]
 }
+
+/** The owner filter's value for everyone; Select needs a string for it. */
+const everyone = 'everyone'
 
 function receiptCount(count: number): string {
   return `${count} receipt${count === 1 ? '' : 's'}`
@@ -43,18 +65,58 @@ function byMonth(receipts: ReceiptSummary[]): Month[] {
   return months
 }
 
-/** Every receipt, to select several and delete them; later also where receipts get managed in other ways. */
-export function ReceiptManager({ receipts, error, onChanged, onOpen, onBack }: ReceiptManagerProps) {
+/** Every receipt, to select several and delete them; admins also see whose each one is and filter by owner. */
+export function ReceiptManager({
+  account,
+  receipts,
+  error,
+  owner,
+  onOwnerChange,
+  onChanged,
+  onOpen,
+  onBack,
+}: ReceiptManagerProps) {
+  const admin = account?.isAdmin === true
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
   const [deleting, setDeleting] = useState(false)
+  const [users, setUsers] = useState<UserSummary[] | null>(null)
+  const [usersError, setUsersError] = useState<string | null>(null)
   usePageTitle('Manage receipts')
 
-  // In list order, and without receipts that were deleted since they were selected.
-  const selectedReceipts = (receipts ?? []).filter((receipt) => selected.has(receipt.id))
+  useEffect(() => {
+    if (!admin) {
+      return
+    }
+    let current = true
+    api.listUsers().then(
+      (loaded) => {
+        if (current) {
+          setUsers(loaded)
+          setUsersError(null)
+        }
+      },
+      (e: unknown) => {
+        if (current) {
+          setUsersError(errorMessage(e))
+        }
+      },
+    )
+    return () => {
+      current = false
+    }
+  }, [admin])
+
+  const all = receipts ?? []
+  const filter = admin ? ownerFilter(owner, users) : null
+  const shown = filter === null ? all : all.filter((receipt) => (receipt.ownerId ?? 'none') === filter)
+  // In list order, and only receipts the filter shows: hidden, deleted or reassigned ones are never acted on.
+  const selectedReceipts = shown.filter((receipt) => selected.has(receipt.id))
   const selectedIds = selectedReceipts.map(({ id }) => id)
   // The server won't delete a receipt while the model is reading it, so Delete waits until it's read.
   const readingCount = selectedReceipts.filter((receipt) => receipt.status === 'Processing').length
-  const months = byMonth(receipts ?? [])
+  const months = byMonth(shown)
+  const usersById = new Map((users ?? []).map((user) => [user.id, user]))
+  const filterUser = filter === null || filter === 'none' ? undefined : usersById.get(filter)
 
   function toggle(ids: string[], on: boolean) {
     setSelected((current) => {
@@ -103,7 +165,7 @@ export function ReceiptManager({ receipts, error, onChanged, onOpen, onBack }: R
       notifications.show({ message: `${receiptCount(ids.length)} deleted`, color: 'green' })
     } catch (e) {
       // Nothing was deleted, and the message says which receipts stopped it. The selection stays for another try;
-      // the reload drops receipts that are gone or being read from it.
+      // the reload drops receipts that are gone from it.
       notifications.show({ title: "Couldn't delete the receipts", message: errorMessage(e), color: 'red' })
     } finally {
       setDeleting(false)
@@ -111,26 +173,71 @@ export function ReceiptManager({ receipts, error, onChanged, onOpen, onBack }: R
     }
   }
 
+  /** The owner line of an admin's row; undefined for members, whose rows have none. */
+  function ownerOf(receipt: ReceiptSummary): OwnerLine | undefined {
+    if (!admin) {
+      return undefined
+    }
+    if (receipt.ownerId === null) {
+      return { user: null, label: 'No owner' }
+    }
+    const user = usersById.get(receipt.ownerId)
+    if (user) {
+      return { user, label: userLabel(user) }
+    }
+    // Still loading the people, or someone the list doesn't have.
+    return { user: null, label: users === null && !usersError ? '…' : 'Unknown user' }
+  }
+
+  const ownerChoices = admin
+    ? [
+        { value: everyone, label: `Everyone (${all.length})` },
+        { value: 'none', label: `No owner (${all.filter((r) => r.ownerId === null).length})` },
+        ...(users ?? []).map((user) => ({
+          value: user.id,
+          label: `${userLabel(user)} (${all.filter((r) => r.ownerId === user.id).length})`,
+        })),
+      ]
+    : []
+
   return (
     <Stack gap="md">
       <Card withBorder padding="md">
-        <Group gap="md" wrap="nowrap">
-          <Button variant="default" onClick={onBack} style={{ flexShrink: 0 }}>
-            ← Back
-          </Button>
-          <Stack gap={0} miw={0}>
-            <Title order={2}>Manage receipts</Title>
-            {receipts && receipts.length > 0 && (
-              <Text size="sm" c="dimmed">
-                {receiptCount(receipts.length)}
-              </Text>
-            )}
-          </Stack>
+        <Group gap="md" justify="space-between">
+          <Group gap="md" wrap="nowrap" miw={0}>
+            <Button variant="default" onClick={onBack} style={{ flexShrink: 0 }}>
+              ← Back
+            </Button>
+            <Stack gap={0} miw={0}>
+              <Title order={2}>Manage receipts</Title>
+              {all.length > 0 && (
+                <Text size="sm" c="dimmed">
+                  {filter === null ? receiptCount(all.length) : `${shown.length} of ${receiptCount(all.length)}`}
+                </Text>
+              )}
+            </Stack>
+          </Group>
+          {admin && (
+            <Select
+              label="Owner"
+              data={ownerChoices}
+              value={filter ?? everyone}
+              onChange={(value) => onOwnerChange(value === null || value === everyone ? null : value)}
+              allowDeselect={false}
+              w={{ base: '100%', xs: 240 }}
+              classNames={{ root: classes.filter, label: classes.filterLabel, wrapper: classes.filterInput }}
+            />
+          )}
         </Group>
       </Card>
       {error && (
         <Alert color="red" variant="light">
           {error}
+        </Alert>
+      )}
+      {usersError && (
+        <Alert color="red" variant="light" title="Couldn't load people">
+          {usersError}
         </Alert>
       )}
       {receipts === null && !error && <Text c="dimmed">Loading…</Text>}
@@ -150,6 +257,24 @@ export function ReceiptManager({ receipts, error, onChanged, onOpen, onBack }: R
           </Text>
         </Card>
       )}
+      {all.length > 0 && shown.length === 0 && (
+        <Card withBorder padding="xl">
+          <Text c="dimmed" ta="center">
+            {filter === 'none'
+              ? 'Every receipt has an owner.'
+              : `${filterUser ? userLabel(filterUser) : 'This person'} has no receipts.`}{' '}
+            <Anchor
+              href={pathFor({ page: 'manage', owner: null })}
+              onClick={(event) => {
+                event.preventDefault()
+                onOwnerChange(null)
+              }}
+            >
+              Show everyone's
+            </Anchor>
+          </Text>
+        </Card>
+      )}
       {months.length > 0 && (
         <Card withBorder padding={0} className={classes.card}>
           {months.map((month) => {
@@ -161,9 +286,9 @@ export function ReceiptManager({ receipts, error, onChanged, onOpen, onBack }: R
                   <Checkbox
                     label={month.label}
                     aria-label={`Select all from ${month.label}`}
-                    checked={ids.length > 0 && checkedCount === ids.length}
+                    checked={checkedCount === ids.length}
                     indeterminate={checkedCount > 0 && checkedCount < ids.length}
-                    disabled={ids.length === 0 || deleting}
+                    disabled={deleting}
                     onChange={() => toggle(ids, checkedCount < ids.length)}
                     classNames={{ label: classes.monthLabel }}
                   />
@@ -175,6 +300,7 @@ export function ReceiptManager({ receipts, error, onChanged, onOpen, onBack }: R
                   <ReceiptManagerRow
                     key={receipt.id}
                     receipt={receipt}
+                    owner={ownerOf(receipt)}
                     checked={selected.has(receipt.id)}
                     disabled={deleting}
                     onToggle={(on) => toggle([receipt.id], on)}
@@ -208,8 +334,17 @@ export function ReceiptManager({ receipts, error, onChanged, onOpen, onBack }: R
   )
 }
 
+/** Who owns a receipt, as an admin's row shows it. */
+interface OwnerLine {
+  /** Null for no owner, or while the person can't be named. */
+  user: UserSummary | null
+  label: string
+}
+
 interface ReceiptManagerRowProps {
   receipt: ReceiptSummary
+  /** Only admins' rows have an owner line. */
+  owner: OwnerLine | undefined
   checked: boolean
   disabled: boolean
   onToggle: (on: boolean) => void
@@ -217,13 +352,13 @@ interface ReceiptManagerRowProps {
 }
 
 /**
- * One receipt: the row itself selects it, and Open sits beside it rather than inside, so the two never clash. Further
- * per-receipt details and actions belong here.
+ * One receipt: the row itself selects it, and Open sits beside it rather than inside, so the two never clash. An
+ * admin's row adds the owner on a line of its own below, outside the toggle, so its actions can be buttons too.
  */
-function ReceiptManagerRow({ receipt, checked, disabled, onToggle, onOpen }: ReceiptManagerRowProps) {
+function ReceiptManagerRow({ receipt, owner, checked, disabled, onToggle, onOpen }: ReceiptManagerRowProps) {
   const date = receipt.purchaseDate ?? formatDateTime(receipt.createdAt)
   return (
-    <div className={classes.row} data-checked={checked || undefined}>
+    <div className={classes.row} data-checked={checked || undefined} data-with-owner={owner ? true : undefined}>
       <UnstyledButton
         role="checkbox"
         aria-checked={checked}
@@ -259,6 +394,14 @@ function ReceiptManagerRow({ receipt, checked, disabled, onToggle, onOpen }: Rec
       >
         Open
       </Anchor>
+      {owner && (
+        <div className={classes.owner}>
+          <OwnerAvatar user={owner.user} />
+          <Text size="sm" truncate className={owner.user ? undefined : classes.noOwner}>
+            {owner.label}
+          </Text>
+        </div>
+      )}
     </div>
   )
 }

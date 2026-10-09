@@ -70,3 +70,48 @@ section + section .month {
   border-top: 1px solid var(--mantine-color-default-border);
   background-color: var(--mantine-color-body);
 }
+
+/* The owner filter's label sits beside it rather than above, so the header keeps one line on wide screens. */
+.filter {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+.filterLabel {
+  margin: 0;
+  color: var(--mantine-color-dimmed);
+}
+
+.filterInput {
+  flex: 1;
+}
+
+/* An admin's row: the toggle and Open as before, and the owner line beneath them. The right column holds the row's
+   actions, so Open and Reassign line up. */
+.row[data-with-owner] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.row[data-with-owner] .toggle {
+  padding-bottom: 2px;
+}
+
+/* Starts where the store name does: past the toggle's padding, the 20px checkbox and the gap after it. */
+.owner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 var(--mantine-spacing-md) var(--mantine-spacing-xs)
+    calc(var(--mantine-spacing-md) + 20px + var(--mantine-spacing-sm));
+}
+
+/* No owner differs by shape, not color, so it reads in both schemes; the end padding keeps truncation from clipping
+   the slanted last letter. */
+.noOwner {
+  font-style: italic;
+  color: var(--mantine-color-dimmed);
+  padding-inline-end: 0.15em;
+}

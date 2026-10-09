@@ -83,12 +83,12 @@ a dev user who isn't.
 
 ## 5. Owners and the owner filter
 
-- [ ] 5.1 Change the manager route to `{ page: 'manage'; owner: string | null }` in `useRoute.ts`, reading and
+- [x] 5.1 Change the manager route to `{ page: 'manage'; owner: string | null }` in `useRoute.ts`, reading and
   writing `?owner=`, and update every caller. Verify:
   - `/receipts?owner=none` survives a reload
   - from the manager, Open then Back returns to the same URL
   - changing the filter adds no history entry: Back from the manager still leaves it in one step
-- [ ] 5.2 Pass `account` from `App.tsx` to `ReceiptManager`. For admins:
+- [x] 5.2 Pass `account` from `App.tsx` to `ReceiptManager`. For admins:
   - load `api.listUsers()` in an effect with a `current` flag
   - render the owner line (avatar and name, or the dashed "No owner") in `[data-with-owner]` rows, in
     `ReceiptManager.module.css`, as design.md's row layout shows
@@ -105,7 +105,7 @@ a dev user who isn't.
   - no sideways scroll at 390px
 
   As the member, the page matches master: compare screenshots.
-- [ ] 5.3 In AGENTS.md, add `/receipts?owner=none|{userId}` to the Routing line of the frontend conventions. Verify
+- [x] 5.3 In AGENTS.md, add `/receipts?owner=none|{userId}` to the Routing line of the frontend conventions. Verify
   that it matches `readRoute`.
 
 ## 6. Reassigning from the manager
