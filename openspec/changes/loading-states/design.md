@@ -52,8 +52,9 @@ in `gray-3`, and in dark mode in `dark-4` (#39414f in this theme), on the card c
 A new `components/Placeholder.tsx` (+ `.module.css`) exports two pieces:
 - `Loading({ label, children })`: the wrapper. It's a `div` with `aria-busy="true"`. Inside, Mantine's
   `VisuallyHidden` holds `label` (for example "Loading receipts"), followed by the skeleton children or a spinner.
-  Every placeholder area and the picker's spinner use it, so each one is announced the same way. The filter
-  `Select`'s spinner sits inside the input, so it's announced through the placeholder text instead.
+  Every placeholder area and both spinners use it, so each one is announced the same way. That includes the filter
+  `Select`'s spinner in its `rightSection`: the "Loading people…" placeholder text only shows while the filter has
+  no value, and it usually shows Everyone.
 - `Bar(props)`: Mantine's `Skeleton` with `animate` turned off when `useReducedMotion()` (from `@mantine/hooks`)
   is true. It takes the same props as `Skeleton`: `height`, `width`, `circle`, `radius`.
 

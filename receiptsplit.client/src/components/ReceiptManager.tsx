@@ -6,6 +6,7 @@ import {
   Card,
   Checkbox,
   Group,
+  Loader,
   Select,
   Stack,
   Text,
@@ -20,12 +21,13 @@ import { ownerFilter, userLabel } from '../owners.ts'
 import { usePageTitle } from '../usePageTitle.ts'
 import { pathFor } from '../useRoute.ts'
 import { OwnerAvatar } from './OwnerAvatar.tsx'
+import { Bar, Loading, ReceiptRowsPlaceholder } from './Placeholder.tsx'
 import { OwnerPicker } from './OwnerPicker.tsx'
 import { StatusBadge } from './StatusBadge.tsx'
 import classes from './ReceiptManager.module.css'
 
 interface ReceiptManagerProps {
-  /** The signed-in user; admins also see and filter by each receipt's owner. */
+  /** The signed-in user, null while it loads; admins also see and filter by each receipt's owner. */
   account: Account | null
   receipts: ReceiptSummary[] | null
   error: string | null
@@ -113,6 +115,9 @@ export function ReceiptManager({
   onBack,
 }: ReceiptManagerProps) {
   const admin = account?.isAdmin === true
+  // Whether rows show owners depends on who's signed in, so nothing is listed until that's known: an admin never sees
+  // a member's rows first.
+  const accountPending = account === null
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
   const [deleting, setDeleting] = useState(false)
   const [reassigning, setReassigning] = useState(false)
@@ -159,9 +164,11 @@ export function ReceiptManager({
 
   // A person's id in the URL can only be checked once the people load; until then the list waits rather than
   // showing nobody's receipts or everyone's. If they can't be loaded, everyone's show.
-  const filterPending = admin && owner !== null && owner !== 'none' && users === null && usersError === null
+  const usersLoading = admin && users === null && usersError === null
+  const filterPending = usersLoading && owner !== null && owner !== 'none'
   const filter = admin ? ownerFilter(owner, users) : null
-  const shown = filterPending
+  const listPending = receipts === null || accountPending || filterPending
+  const shown = listPending
     ? []
     : filter === null
       ? all
@@ -286,15 +293,15 @@ export function ReceiptManager({
       return undefined
     }
     if (receipt.ownerId === null) {
-      return { user: null, unknown: false, label: 'No owner' }
+      return { user: null, unknown: false, loading: false, label: 'No owner' }
     }
     const user = usersById.get(receipt.ownerId)
     if (user) {
-      return { user, unknown: false, label: userLabel(user) }
+      return { user, unknown: false, loading: false, label: userLabel(user) }
     }
-    // Still loading the people, or someone the list doesn't have yet. It has an owner, so it never looks like it
+    // Someone the list doesn't have yet, or the people are still loading. It has an owner, so it never looks like it
     // has none.
-    return { user: null, unknown: true, label: users === null && !usersError ? '…' : 'Unknown user' }
+    return { user: null, unknown: true, loading: usersLoading, label: 'Unknown user' }
   }
 
   const ownerCounts = new Map<string | null, number>()
@@ -322,10 +329,16 @@ export function ReceiptManager({
             </Button>
             <Stack gap={0} miw={0}>
               <Title order={2}>Manage receipts</Title>
-              {all.length > 0 && (
-                <Text size="sm" c="dimmed">
-                  {filter === null ? receiptCount(all.length) : `${shown.length} of ${receiptCount(all.length)}`}
-                </Text>
+              {listPending && !error ? (
+                <Loading label="Counting receipts" className={classes.countPlaceholder}>
+                  <Bar height={10} width={90} />
+                </Loading>
+              ) : (
+                all.length > 0 && (
+                  <Text size="sm" c="dimmed">
+                    {filter === null ? receiptCount(all.length) : `${shown.length} of ${receiptCount(all.length)}`}
+                  </Text>
+                )
               )}
             </Stack>
           </Group>
@@ -335,6 +348,14 @@ export function ReceiptManager({
               data={ownerChoices}
               value={filterPending ? null : (filter ?? everyone)}
               placeholder="Loading people…"
+              // Everyone and No owner work before the people arrive, so it stays enabled with a spinner meanwhile.
+              rightSection={
+                usersLoading ? (
+                  <Loading label="Loading people">
+                    <Loader size="xs" />
+                  </Loading>
+                ) : undefined
+              }
               onChange={(value) => onOwnerChange(value === null || value === everyone ? null : value)}
               allowDeselect={false}
               w={{ base: '100%', xs: 240 }}
@@ -353,8 +374,22 @@ export function ReceiptManager({
           {usersError}
         </Alert>
       )}
-      {(receipts === null || filterPending) && !error && <Text c="dimmed">Loading…</Text>}
-      {receipts?.length === 0 && (
+      {listPending && !error && (
+        // A month heading and rows, shaped as the list will be; an admin's rows have owner lines and Reassign.
+        <Loading label="Loading receipts">
+          <Card withBorder padding={0} className={classes.card}>
+            <div className={classes.month}>
+              <Group gap="sm" wrap="nowrap">
+                <Bar height={20} width={20} radius="sm" />
+                <Bar height={12} width={110} />
+              </Group>
+              <Bar height={10} width={70} />
+            </div>
+            <ReceiptRowsPlaceholder rows={6} variant="manager" withOwner={admin} />
+          </Card>
+        </Loading>
+      )}
+      {receipts?.length === 0 && !accountPending && (
         <Card withBorder padding="xl">
           <Text c="dimmed" ta="center">
             No receipts yet.{' '}
@@ -370,7 +405,7 @@ export function ReceiptManager({
           </Text>
         </Card>
       )}
-      {all.length > 0 && shown.length === 0 && !filterPending && (
+      {all.length > 0 && shown.length === 0 && !listPending && (
         <Card withBorder padding="xl">
           <Text c="dimmed" ta="center">
             {filter === 'none'
@@ -516,6 +551,8 @@ interface OwnerLine {
   user: UserSummary | null
   /** It has an owner who can't be named yet. */
   unknown: boolean
+  /** The people are still loading, so the owner is drawn as a placeholder. */
+  loading: boolean
   label: string
 }
 
@@ -579,7 +616,15 @@ function ReceiptManagerRow({ receipt, owner, reassign, checked, disabled, onTogg
         </Button>
         {reassign}
       </div>
-      {owner && (
+      {owner?.loading && (
+        <Loading label="Loading owner" className={classes.owner}>
+          <Group gap={6} wrap="nowrap">
+            <Bar height={22} circle />
+            <Bar height={10} width={90} />
+          </Group>
+        </Loading>
+      )}
+      {owner && !owner.loading && (
         <div className={classes.owner}>
           <OwnerAvatar user={owner.user} unknown={owner.unknown} />
           <Text

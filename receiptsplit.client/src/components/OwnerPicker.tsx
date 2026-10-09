@@ -1,8 +1,9 @@
 import { useState, type ReactElement } from 'react'
-import { Combobox, Text, useCombobox } from '@mantine/core'
+import { Combobox, Loader, Text, useCombobox } from '@mantine/core'
 import type { UserSummary } from '../api.ts'
 import { userLabel } from '../owners.ts'
 import { OwnerAvatar } from './OwnerAvatar.tsx'
+import { Loading } from './Placeholder.tsx'
 import classes from './OwnerPicker.module.css'
 
 /** The option value for no owner; user ids are UUIDs, so it can't clash. */
@@ -46,13 +47,12 @@ export function OwnerPicker({ users, usersError, currentOwnerId, meId, onPick, o
     (user) =>
       query === '' || [user.name, user.email].some((text) => text?.toLowerCase().includes(query) === true),
   )
+  const loading = users === null && !usersError
   const empty = usersError
     ? "Couldn't load people."
-    : users === null
-      ? 'Loading people…'
-      : matches.length === 0
-        ? `No one matches “${search.trim()}”`
-        : null
+    : !loading && matches.length === 0
+      ? `No one matches “${search.trim()}”`
+      : null
 
   return (
     <Combobox
@@ -106,6 +106,12 @@ export function OwnerPicker({ users, usersError, currentOwnerId, meId, onPick, o
                 </Combobox.Option>
               )
             })}
+            {loading && (
+              // A spinner, not placeholder rows: the dropdown is drawn either way, only who's in it is waiting.
+              <Loading label="Loading people" className={classes.loading}>
+                <Loader size="sm" />
+              </Loading>
+            )}
             {empty && <Combobox.Empty>{empty}</Combobox.Empty>}
           </div>
           <div className={classes.divider} role="separator" />

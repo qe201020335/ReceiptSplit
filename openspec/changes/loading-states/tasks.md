@@ -41,7 +41,7 @@ screenshots while it waits. Stop everything afterwards.
 
 ## 2. The receipt manager
 
-- [ ] 2.1 In `ReceiptManager.tsx`, treat `account === null` as loading:
+- [x] 2.1 In `ReceiptManager.tsx`, treat `account === null` as loading:
   - placeholder rows in the list card and a bar for the count line
   - no empty state, footer or owner filter
   - `shown` empty
@@ -51,7 +51,13 @@ screenshots while it waits. Stop everything afterwards.
     first (screenshot taken while it waits).
   - with `/api/users` delayed on `/receipts?owner={id}`, placeholder rows show, then that person's receipts
   - with `/api/users` failing, everyone's receipts show with the alert
-- [ ] 2.2 While the people first load:
+
+  Result:
+  - With `/api/me` held, no real row was drawn (a MutationObserver saw no row without an owner), and the
+    placeholder rows are 67px, as a member's are. Once the account says admin, they're 91px, as the real rows are.
+  - The owner filter appears only once the account is known. On a phone it then wraps below the title, which is the
+    trade-off design.md accepts.
+- [x] 2.2 While the people first load:
   - draw admin owner lines as a circle and a bar, not "…"
   - in the `OwnerPicker`, show a centered `Loader` inside `Loading` where the people go, above No owner, not
     "Loading people…"
@@ -63,6 +69,9 @@ screenshots while it waits. Stop everything afterwards.
   - the open picker shows the spinner, and No owner can still be chosen from it
   - the filter shows its spinner, and Everyone and No owner can be chosen
   - a known-but-missing owner still shows "Unknown user"
+
+  Result: the filter's spinner is wrapped in `Loading`, so it's announced while the filter shows Everyone. design.md
+  now says so.
 
 ## 3. A receipt and the splits page
 
