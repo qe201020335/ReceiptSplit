@@ -145,6 +145,35 @@ public sealed class AccountServiceTests : IAsyncLifetime
         Assert.Equal(holder.UserId, (await ResolveAsync("person@example.com", Google("g-1"))).UserId);
     }
 
+    [Fact]
+    public async Task Users_are_listed_by_name_or_else_email_ignoring_case()
+    {
+        await ResolveAsync("zed@example.com", Google("g-1", "zed"));
+        await ResolveAsync("amy@example.com", Google("g-2", "Amy"));
+        await ResolveAsync("bea@example.com", Google("g-3", null));
+        await using var db = NewDb();
+        db.Users.Add(new User());
+        await db.SaveChangesAsync(Ct);
+
+        var users = await new AccountService(db, _logger).ListUsersAsync(Ct);
+
+        Assert.Equal(["amy@example.com", "bea@example.com", "zed@example.com", null], users.Select(u => u.Email));
+        Assert.Equal(["Amy", null, "zed", null], users.Select(u => u.Name));
+    }
+
+    [Fact]
+    public async Task A_user_whose_email_was_released_is_still_listed()
+    {
+        var holder = await ResolveAsync("person@example.com", Google("g-1", "Person"));
+        await using var db = NewDb();
+        var accounts = new AccountService(db, _logger);
+        await accounts.ReleaseEmailAsync("person@example.com", Ct);
+
+        var user = Assert.Single(await accounts.ListUsersAsync(Ct));
+
+        Assert.Equal(new UserSummary(holder.UserId!.Value, null, "Person"), user);
+    }
+
     private async Task<AccountResolution> ResolveAsync(string email, ProviderIdentity identity)
     {
         await using var db = NewDb();

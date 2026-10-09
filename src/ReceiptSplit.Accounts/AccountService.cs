@@ -78,6 +78,25 @@ public sealed class AccountService(
     }
 
     /// <summary>
+    /// Every user, for admins choosing who owns a receipt. Sorted the way the client shows them, by name or else
+    /// email, ignoring case; a household has a handful of users, so this is done in memory.
+    /// </summary>
+    public async Task<IReadOnlyList<UserSummary>> ListUsersAsync(CancellationToken cancellationToken)
+    {
+        var users = await db.Users
+            .AsNoTracking()
+            .Select(u => new UserSummary(u.Id, u.Email, u.Name))
+            .ToListAsync(cancellationToken);
+        return
+        [
+            .. users
+                .OrderBy(u => (u.Name ?? u.Email) is null)
+                .ThenBy(u => u.Name ?? u.Email, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(u => u.Email, StringComparer.Ordinal),
+        ];
+    }
+
+    /// <summary>
     /// Clears <paramref name="email"/> from the user holding it, who keeps their external identity and receipts.
     /// Someone refused because that user held the email gets a user of their own when their refusal expires.
     /// </summary>
@@ -155,6 +174,10 @@ public sealed class AccountService(
 /// <summary>The signed-in user, as the account menu shows them.</summary>
 /// <param name="SignOutUrl">Null when there is nothing to sign out of, as with development sign-in.</param>
 public sealed record CurrentAccount(Guid Id, string? Email, string? Name, bool IsAdmin, string? SignOutUrl);
+
+/// <summary>A user as admins see them in lists.</summary>
+/// <param name="Email">Null once an admin has released it.</param>
+public sealed record UserSummary(Guid Id, string? Email, string? Name);
 
 /// <summary>The user a sign-in resolved to, or a conflict when the email belongs to another account.</summary>
 /// <param name="Email">The user's stored email, which can differ from the token's when another user holds that.</param>

@@ -21,10 +21,10 @@ a dev user who isn't.
 
 ## 2. Admins list users
 
-- [ ] 2.1 Add public `UserSummary(Guid Id, string? Email, string? Name)` and `AccountService.ListUsersAsync`,
+- [x] 2.1 Add public `UserSummary(Guid Id, string? Email, string? Name)` and `AccountService.ListUsersAsync`,
   sorted by name and then email. Verify with `AccountServiceTests` over in-memory SQLite: the order, and a user
   with a released email listed with a null email.
-- [ ] 2.2 Add `UserSummaryDto` to `UserDtos.cs`, and `GET /api/users` to `UsersController` with the Admin policy.
+- [x] 2.2 Add `UserSummaryDto` to `UserDtos.cs`, and `GET /api/users` to `UsersController` with the Admin policy.
   Add `UserSummary` and `api.listUsers()` to `api.ts`. Verify with `AccountsApiTests`:
   - an admin lists themselves and two members with their ids, emails and names
   - a member gets 403

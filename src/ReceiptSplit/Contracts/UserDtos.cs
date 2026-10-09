@@ -8,3 +8,7 @@ public sealed record AccountDto(Guid Id, string? Email, string? Name, bool IsAdm
 
 /// <summary>Body of the request that clears an email from the user holding it.</summary>
 public sealed record ReleaseEmailDto([Required, EmailAddress, StringLength(320)] string Email);
+
+/// <summary>A user in the admins' list, for choosing who owns a receipt.</summary>
+/// <param name="Email">Null once an admin has released it.</param>
+public sealed record UserSummaryDto(Guid Id, string? Email, string? Name);

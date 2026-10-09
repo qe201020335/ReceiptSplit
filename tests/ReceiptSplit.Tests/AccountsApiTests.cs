@@ -271,6 +271,32 @@ public class AccountsApiTests
     }
 
     [Fact]
+    public async Task Admins_list_every_user()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var admin = factory.CreateClientFor(ReceiptApiFactory.AdminEmail);
+        using var member = factory.CreateClient();
+        using var other = factory.CreateClientFor("other@example.com");
+        AccountDto[] accounts = [await MeAsync(admin), await MeAsync(member), await MeAsync(other)];
+
+        var users = await admin.GetFromJsonAsync<List<UserSummaryDto>>("/api/users", Json, Ct);
+
+        var expected = accounts.Select(a => new UserSummaryDto(a.Id, a.Email, a.Name));
+        Assert.Equal(expected.OrderBy(u => u.Name, StringComparer.Ordinal), users!);
+    }
+
+    [Fact]
+    public async Task Members_cant_list_users()
+    {
+        await using var factory = new ReceiptApiFactory();
+        using var member = factory.CreateClient();
+
+        using var response = await member.GetAsync("/api/users", Ct);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Members_cant_release_an_email()
     {
         await using var factory = new ReceiptApiFactory();

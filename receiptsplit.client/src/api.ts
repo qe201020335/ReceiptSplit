@@ -105,6 +105,14 @@ export interface Account {
   signOutUrl: string | null
 }
 
+/** A user in the admins' list (GET /api/users), for choosing who owns a receipt. */
+export interface UserSummary {
+  id: string
+  /** Null once an admin has released it. */
+  email: string | null
+  name: string | null
+}
+
 /** The codes the server's sign-in refusals carry (SignInProblem.cs). */
 const signInRefusalCodes = ['unsupported-sign-in', 'account-conflict', 'identity-unavailable'] as const
 
@@ -204,6 +212,9 @@ async function readProblem(response: Response): Promise<Problem> {
 
 export const api = {
   me: () => request<Account>('/api/me'),
+
+  /** Every user, sorted by name or else email; admins only. */
+  listUsers: () => request<UserSummary[]>('/api/users'),
 
   listReceipts: () => request<ReceiptSummary[]>('/api/receipts'),
 
