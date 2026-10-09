@@ -25,12 +25,12 @@ jobs:
       TAG: pr-${{ github.event.pull_request.number }}
     steps:
       # The script from the default branch: GitHub's merge commit for a closed pull request may already be gone.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.repository.default_branch }}
           sparse-checkout: .github/scripts
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
