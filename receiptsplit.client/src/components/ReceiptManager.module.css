@@ -87,15 +87,33 @@ section + section .month {
   flex: 1;
 }
 
-/* An admin's row: the toggle and Open as before, and the owner line beneath them. The right column holds the row's
-   actions, so Open and Reassign line up. */
+/* An admin's row: the toggle as before with the owner line beneath it, and the actions in a column of their own,
+   centered on both. */
 .row[data-with-owner] {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
+/* The buttons beside it keep it apart from the next column, so it needs less padding on that side. */
 .row[data-with-owner] .toggle {
+  grid-area: 1 / 1;
+  padding-right: var(--mantine-spacing-xs);
   padding-bottom: 2px;
+}
+
+.row[data-with-owner] .owner {
+  grid-area: 2 / 1;
+}
+
+/* Open and Reassign, stacked at the same width. */
+.actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: var(--mantine-spacing-md);
 }
 
 /* Starts where the store name does: past the toggle's padding, the 20px checkbox and the gap after it. */
@@ -116,18 +134,6 @@ section + section .month {
   padding-inline-end: 0.15em;
 }
 
-/* Under Open, in the actions column; a button that looks like the Open link beside it. */
-.reassign {
-  align-self: center;
-  padding: 0 var(--mantine-spacing-md) var(--mantine-spacing-xs) 0;
-}
-
-.reassign:disabled {
-  cursor: default;
-  color: var(--mantine-color-dimmed);
-  text-decoration: none;
-}
-
 /* On a phone the footer's three buttons drop the word "receipts" and some padding, to fit a 3-digit count. */
 @media (max-width: $mantine-breakpoint-xs) {
   .countNoun {
@@ -140,6 +146,11 @@ section + section .month {
 
   .footer button {
     --button-padding-x: 10px;
+  }
+
+  /* Narrower row buttons leave the dates room on a phone. */
+  .actions > * {
+    --button-padding-x: 8px;
   }
 }
 

@@ -155,22 +155,24 @@ whose" at a glance. Everything else stays as quiet as the existing list.
 
 ```
 +--------------------------------------------------------+
-| [ ] Costco Wholesale                 $214.37      Open |
-|     2026-10-03                    [Completed]          |
-|     (AC) Alice Chen                           Reassign |
+| [ ] Costco Wholesale              $214.37   [  Open  ] |
+|     2026-10-03                 [Completed]  [Reassign] |
+|     (AC) Alice Chen                                    |
 +--------------------------------------------------------+
-| [ ] T&T Supermarket                   $48.10      Open |
-|     2026-09-28                  [Needs review]         |
-|     (  ) No owner                             Reassign |
+| [ ] T&T Supermarket                $48.10   [  Open  ] |
+|     2026-09-28               [Needs review] [Reassign] |
+|     (  ) No owner                                      |
 +--------------------------------------------------------+
 ```
 
 - The left column is the existing toggle button: checkbox, title, total, date and status.
 - The owner line sits outside it, in row 2, starting where the title does, because a button can't contain
   another button.
-- The right column stacks the two actions as matching `Anchor`s: Open on the first line and Reassign on the
-  owner line. Actions are always on the right and always look the same.
-- At 390px the owner name truncates, and Reassign keeps its place.
+- The right column spans both rows and stacks two `xs` default buttons of equal width, Open and Reassign,
+  centered vertically on the row. Open is a button rendered as a link, so it can still be opened in a new tab.
+  Two bare links read as stray text and didn't line up with the row's middle.
+- Members' rows keep the plain Open link, because their page doesn't change.
+- At 390px the owner name truncates, and the buttons get 8px side padding so the dates still fit.
 - Hovering over and checking the row tint the whole grid, as they do today.
 
 **Header (admins).** On a phone the filter wraps below the title. Its `Select` options are "Everyone (40)", "No

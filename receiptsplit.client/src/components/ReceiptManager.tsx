@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type MouseEvent, type ReactNode } from 'react'
 import {
   Alert,
   Anchor,
@@ -396,17 +396,15 @@ export function ReceiptManager({
                           onPick={(ownerId) => void reassign([receipt.id], ownerId)}
                         >
                           {(toggleOpen) => (
-                            <Anchor
-                              component="button"
-                              type="button"
-                              size="sm"
-                              className={classes.reassign}
+                            <Button
+                              size="xs"
+                              variant="default"
                               disabled={busy}
                               aria-label={`Reassign ${receipt.storeName ?? 'Unknown store'}, ${dateOf(receipt)}`}
                               onClick={toggleOpen}
                             >
                               Reassign
-                            </Anchor>
+                            </Button>
                           )}
                         </OwnerPicker>
                       )
@@ -492,10 +490,12 @@ interface ReceiptManagerRowProps {
 
 /**
  * One receipt: the row itself selects it, and Open sits beside it rather than inside, so the two never clash. An
- * admin's row adds the owner on a line of its own below, outside the toggle, so its actions can be buttons too.
+ * admin's row adds the owner on a line of its own below the toggle, and Open and Reassign as buttons beside both.
  */
 function ReceiptManagerRow({ receipt, owner, reassign, checked, disabled, onToggle, onOpen }: ReceiptManagerRowProps) {
   const date = dateOf(receipt)
+  const href = pathFor({ page: 'receipt', receiptId: receipt.id })
+  const openLabel = `Open ${receipt.storeName ?? 'Unknown store'}, ${date}`
   return (
     <div className={classes.row} data-checked={checked || undefined} data-with-owner={owner ? true : undefined}>
       <UnstyledButton
@@ -521,18 +521,38 @@ function ReceiptManagerRow({ receipt, owner, reassign, checked, disabled, onTogg
           </Group>
         </Stack>
       </UnstyledButton>
-      <Anchor
-        href={pathFor({ page: 'receipt', receiptId: receipt.id })}
-        size="sm"
-        className={classes.open}
-        aria-label={`Open ${receipt.storeName ?? 'Unknown store'}, ${date}`}
-        onClick={(event) => {
-          event.preventDefault()
-          onOpen()
-        }}
-      >
-        Open
-      </Anchor>
+      {owner ? (
+        // An admin's row has two actions, so they're buttons stacked beside the whole row rather than links.
+        <div className={classes.actions}>
+          <Button
+            component="a"
+            href={href}
+            size="xs"
+            variant="default"
+            aria-label={openLabel}
+            onClick={(event: MouseEvent<HTMLAnchorElement>) => {
+              event.preventDefault()
+              onOpen()
+            }}
+          >
+            Open
+          </Button>
+          {reassign}
+        </div>
+      ) : (
+        <Anchor
+          href={href}
+          size="sm"
+          className={classes.open}
+          aria-label={openLabel}
+          onClick={(event) => {
+            event.preventDefault()
+            onOpen()
+          }}
+        >
+          Open
+        </Anchor>
+      )}
       {owner && (
         <div className={classes.owner}>
           <OwnerAvatar user={owner.user} />
@@ -541,7 +561,6 @@ function ReceiptManagerRow({ receipt, owner, reassign, checked, disabled, onTogg
           </Text>
         </div>
       )}
-      {owner && reassign}
     </div>
   )
 }
