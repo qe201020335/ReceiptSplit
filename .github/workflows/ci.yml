@@ -99,15 +99,16 @@ jobs:
           DOCKER_METADATA_PR_HEAD_SHA: true
         with:
           images: ${{ env.IMAGE }}
-          # Every image is tagged sha-<commit>, so any of them can be traced to its commit. latest follows master, a
-          # pull request publishes pr-<number>, and a v1.2.3 tag also publishes 1.2.3 and 1.2.
+          # latest follows master and a pull request publishes pr-<number>; those and every other build are also
+          # tagged sha-<commit>, so any image can be traced to its commit. A v1.2.3 git tag publishes 1.2.3 and 1.2
+          # instead, since the version already names the commit, and the prune job never deletes it.
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha
+            type=sha,enable=${{ github.ref_type != 'tag' }}
 
       - uses: docker/build-push-action@v6
         with:

@@ -236,7 +236,9 @@ The app is in use, and its data must be preserved. Migrations are applied at sta
 - CI runs on every pull request; its `backend`, `client` and `image` jobs are required checks on master. Pushes to
   master that only touch top-level `*.md` files, `openspec/` or `.claude/` skip CI and publish no image. Don't add
   path filters to `pull_request`: a skipped workflow never reports the required checks, which blocks the merge.
-- Every image is tagged `sha-<commit>`; a pull request's is built from its head commit, not GitHub's merge commit.
+- Every image but a release is tagged `sha-<commit>`; a pull request's is built from its head commit, not GitHub's
+  merge commit. A `v1.2.3` git tag (which a GitHub release pushes too) publishes `1.2.3` and `1.2` instead, and
+  those are never pruned.
   Pull requests from this repository's branches publish `pr-<number>` for testing in staging, updated on every push;
   a newer push cancels the run for the older one. Closing the pull request deletes the image. After a push to master
   the `prune` job keeps the newest 10 master builds, and deletes other images left with only `sha-<commit>` and any
