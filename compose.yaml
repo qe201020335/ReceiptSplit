@@ -1,7 +1,8 @@
 services:
   receiptsplit:
     # Built and pushed by the CI workflow, so deploying needs only this file and a .env. 
-    # Set RECEIPTSPLIT_IMAGE to pin a version (a v1.2.3 tag publishes 1.2.3 and 1.2).
+    # Set RECEIPTSPLIT_IMAGE to pin a version (a v1.2.3 tag publishes 1.2.3 and 1.2), or to a pull request's
+    # pr-<number> image to test it; that one is deleted when the pull request closes.
     image: ${RECEIPTSPLIT_IMAGE:-ghcr.io/qe201020335/receiptsplit:latest}
     pull_policy: always
     ports:
