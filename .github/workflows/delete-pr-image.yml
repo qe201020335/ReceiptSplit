@@ -36,6 +36,13 @@ jobs:
           set -euo pipefail
           image="ghcr.io/${GITHUB_REPOSITORY,,}"
           versions="/users/$GITHUB_REPOSITORY_OWNER/packages/container/${image##*/}/versions"
+          # The pull request cleanup and the prune job can overlap, so a version already deleted counts as done.
+          delete() {
+            local error
+            if ! error=$(gh api -X DELETE "$versions/$1" 2>&1 > /dev/null < /dev/null); then
+              [[ $error == *'(HTTP 404)'* ]] || { echo "$error" >&2; return 1; }
+            fi
+          }
 
           gh api --paginate "$versions" --jq '.[] | [.id, .name, (.metadata.container.tags | join(","))] | @tsv' \
             > versions.tsv
@@ -54,11 +61,11 @@ jobs:
 
           children=$(docker buildx imagetools inspect --raw "$image:$TAG" | jq -r '.manifests[]?.digest')
           echo "Deleting $TAG ($digest)"
-          gh api -X DELETE "$versions/$id"
+          delete "$id"
           for child in $children; do
             child_id=$(awk -F '\t' -v digest="$child" '$2 == digest && $3 == "" { print $1 }' versions.tsv)
             if [ -n "$child_id" ]; then
               echo "Deleting $child"
-              gh api -X DELETE "$versions/$child_id"
+              delete "$child_id"
             fi
           done

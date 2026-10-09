@@ -156,6 +156,13 @@ jobs:
           set -euo pipefail
           image="ghcr.io/${GITHUB_REPOSITORY,,}"
           versions="/users/$GITHUB_REPOSITORY_OWNER/packages/container/${image##*/}/versions"
+          # The pull request cleanup and the prune job can overlap, so a version already deleted counts as done.
+          delete() {
+            local error
+            if ! error=$(gh api -X DELETE "$versions/$1" 2>&1 > /dev/null < /dev/null); then
+              [[ $error == *'(HTTP 404)'* ]] || { echo "$error" >&2; return 1; }
+            fi
+          }
 
           # id, digest, created, updated, tags
           gh api --paginate "$versions" \
@@ -190,6 +197,6 @@ jobs:
           failed=0
           while IFS=$'\t' read -r id digest _ _ tags; do
             echo "Deleting $digest${tags:+ ($tags)}"
-            gh api -X DELETE "$versions/$id" > /dev/null < /dev/null || failed=1
+            delete "$id" || failed=1
           done < <(cat old.tsv orphans.tsv)
           exit "$failed"
