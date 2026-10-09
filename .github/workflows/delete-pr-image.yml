@@ -46,7 +46,8 @@ jobs:
             exit 0
           fi
           IFS=$'\t' read -r id digest tags <<< "$tagged"
-          if [ "$tags" != "$TAG" ]; then
+          # Besides its sha-<commit>, an image tagged anything else is still in use.
+          if tr ',' '\n' <<< "$tags" | grep -qvx -e "$TAG" -e 'sha-.*'; then
             echo "::warning::$digest is also tagged $tags, so it was kept."
             exit 0
           fi

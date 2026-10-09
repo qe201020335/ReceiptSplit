@@ -77,7 +77,11 @@ jobs:
       contents: read
       packages: write
     steps:
+      # A pull request's image is built from its head commit rather than GitHub's merge commit, which exists only
+      # for the run, so its sha-<commit> tag names a commit that can be found.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: docker/setup-buildx-action@v3
 
@@ -90,17 +94,20 @@ jobs:
 
       - id: meta
         uses: docker/metadata-action@v5
+        env:
+          # The sha-<commit> tag and the revision label name the pull request's head commit too.
+          DOCKER_METADATA_PR_HEAD_SHA: true
         with:
           images: ${{ env.IMAGE }}
-          # latest follows master, and every master build keeps sha-<commit> for rolling back. A pull request
-          # publishes pr-<number>, and a v1.2.3 tag also publishes 1.2.3 and 1.2.
+          # Every image is tagged sha-<commit>, so any of them can be traced to its commit. latest follows master, a
+          # pull request publishes pr-<number>, and a v1.2.3 tag also publishes 1.2.3 and 1.2.
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,enable={{is_default_branch}}
+            type=sha
 
       - uses: docker/build-push-action@v6
         with:
@@ -113,26 +120,34 @@ jobs:
           cache-to: type=gha,mode=max
 
   prune:
-    # Keeps the package to the last few master builds and the other tagged images.
+    # Keeps the package to the last few master builds and the images other tags still name.
     needs: image
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       # A workflow can delete versions of a package it published: the repository gets the package's admin role.
       packages: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       KEEP: 10
     steps:
+      # master's history tells its builds apart from the other images tagged only sha-<commit>.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Each tag names an image index, whose platform image and provenance are untagged versions of their own. So
-      # every untagged version that no kept index lists goes too: the pieces of the master builds deleted here, and
-      # older pushes to pull requests. Anything updated in the last hour may be a build still pushing, so it stays.
+      # An image left with only its sha-<commit> tag is kept if it is one of the newest master builds, and otherwise
+      # deleted: older master builds, older pushes to pull requests and older runs on other branches. Each tag names
+      # an image index, whose platform image and provenance are untagged versions of their own, so every untagged
+      # version no kept index lists goes too. Anything updated in the last hour may be a build still pushing, so it
+      # stays.
       - run: |
           set -euo pipefail
           image="ghcr.io/${GITHUB_REPOSITORY,,}"
@@ -143,10 +158,18 @@ jobs:
             --jq '.[] | [.id, .name, .created_at, .updated_at, (.metadata.container.tags | join(","))] | @tsv' \
             > versions.tsv
 
-          # Master builds past the newest $KEEP, unless they also carry a tag such as latest.
-          awk -F '\t' '$5 ~ /(^|,)sha-/' versions.tsv | sort -t $'\t' -k3,3r | tail -n +$((KEEP + 1)) \
-            | awk -F '\t' '{ n = split($5, t, ","); for (i = 1; i <= n; i++) if (t[i] !~ /^sha-/) next; print }' \
-            > old.tsv
+          # metadata-action's sha-<commit> tags use the first seven characters.
+          git rev-list --first-parent HEAD | cut -c1-7 | sed 's/^/sha-/' > master.txt
+          # Adds whether a version is a master build, and whether sha-<commit> is all it is tagged.
+          awk -F '\t' -v OFS='\t' 'FILENAME == ARGV[1] { master[$1]; next } {
+            n = split($5, t, ","); build = 0; shaonly = n > 0
+            for (i = 1; i <= n; i++) { if (t[i] in master) build = 1; if (t[i] !~ /^sha-/) shaonly = 0 }
+            print $0, build, shaonly
+          }' master.txt versions.tsv > classified.tsv
+          {
+            awk -F '\t' '$6' classified.tsv | sort -t $'\t' -k3,3r | tail -n +$((KEEP + 1)) | awk -F '\t' '$7'
+            awk -F '\t' '!$6 && $7' classified.tsv
+          } | cut -f 1-5 > old.tsv
 
           awk -F '\t' 'FILENAME == ARGV[1] { old[$1]; next } $5 != "" && !($1 in old) { print $2 }' \
             old.tsv versions.tsv > kept.txt
