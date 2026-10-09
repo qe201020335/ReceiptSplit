@@ -24,11 +24,6 @@ interface Month {
   receipts: ReceiptSummary[]
 }
 
-/** The server won't delete a receipt while the model is reading it. */
-function selectable(receipt: ReceiptSummary): boolean {
-  return receipt.status !== 'Processing'
-}
-
 function receiptCount(count: number): string {
   return `${count} receipt${count === 1 ? '' : 's'}`
 }
@@ -54,10 +49,11 @@ export function ReceiptManager({ receipts, error, onChanged, onOpen, onBack }: R
   const [deleting, setDeleting] = useState(false)
   usePageTitle('Manage receipts')
 
-  // In list order, and without receipts that were deleted or started being read since they were selected.
-  const selectedIds = (receipts ?? [])
-    .filter((receipt) => selectable(receipt) && selected.has(receipt.id))
-    .map(({ id }) => id)
+  // In list order, and without receipts that were deleted since they were selected.
+  const selectedReceipts = (receipts ?? []).filter((receipt) => selected.has(receipt.id))
+  const selectedIds = selectedReceipts.map(({ id }) => id)
+  // The server won't delete a receipt while the model is reading it, so Delete waits until it's read.
+  const readingCount = selectedReceipts.filter((receipt) => receipt.status === 'Processing').length
   const months = byMonth(receipts ?? [])
 
   function toggle(ids: string[], on: boolean) {
@@ -75,6 +71,12 @@ export function ReceiptManager({ receipts, error, onChanged, onOpen, onBack }: R
   }
 
   function confirmDelete() {
+    if (readingCount > 0) {
+      const which = readingCount === 1 ? '1 selected receipt is' : `${readingCount} selected receipts are`
+      notifications.show({ message: `${which} being read and can't be deleted yet.` })
+      return
+    }
+
     const ids = selectedIds
     const count = receiptCount(ids.length)
     modals.openConfirmModal({
@@ -151,7 +153,7 @@ export function ReceiptManager({ receipts, error, onChanged, onOpen, onBack }: R
       {months.length > 0 && (
         <Card withBorder padding={0} className={classes.card}>
           {months.map((month) => {
-            const ids = month.receipts.filter(selectable).map(({ id }) => id)
+            const ids = month.receipts.map(({ id }) => id)
             const checkedCount = ids.filter((id) => selected.has(id)).length
             return (
               <section key={month.key} aria-label={month.label}>
@@ -173,8 +175,8 @@ export function ReceiptManager({ receipts, error, onChanged, onOpen, onBack }: R
                   <ReceiptManagerRow
                     key={receipt.id}
                     receipt={receipt}
-                    checked={selected.has(receipt.id) && selectable(receipt)}
-                    disabled={!selectable(receipt) || deleting}
+                    checked={selected.has(receipt.id)}
+                    disabled={deleting}
                     onToggle={(on) => toggle([receipt.id], on)}
                     onOpen={() => onOpen(receipt.id)}
                   />
@@ -188,7 +190,14 @@ export function ReceiptManager({ receipts, error, onChanged, onOpen, onBack }: R
               <Button variant="default" disabled={deleting} onClick={() => setSelected(new Set())}>
                 Clear
               </Button>
-              <Button color="red" loading={deleting} onClick={confirmDelete}>
+              {/* Not disabled while a selected receipt is being read: it stays clickable, to say why it won't delete. */}
+              <Button
+                color="red"
+                loading={deleting}
+                data-disabled={readingCount > 0 || undefined}
+                aria-disabled={readingCount > 0 || undefined}
+                onClick={confirmDelete}
+              >
                 Delete {receiptCount(selectedIds.length)}
               </Button>
             </div>

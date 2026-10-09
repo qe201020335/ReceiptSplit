@@ -69,7 +69,7 @@ a dev user who isn't.
 
 ## 4. Select receipts being read
 
-- [ ] 4.1 In `ReceiptManager.tsx`, remove `selectable()`, so every row and month checkbox can select receipts
+- [x] 4.1 In `ReceiptManager.tsx`, remove `selectable()`, so every row and month checkbox can select receipts
   being read. Render Delete with `data-disabled` and `aria-disabled="true"` while any selected receipt is
   Processing. Its click then shows "*N* selected receipt(s) is/are being read and can't be deleted yet." and sends
   nothing. Verify in the browser:
