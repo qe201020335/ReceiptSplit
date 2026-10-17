@@ -127,11 +127,12 @@ In the `base` stage, as root before `USER $APP_UID`:
 ```dockerfile
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --start-interval=5s --retries=3 \
-    CMD curl -sS --fail-with-body "http://localhost:${ASPNETCORE_HTTP_PORTS:-8080}/health" || exit 1
+    CMD curl -sS --fail-with-body -w "\n" "http://localhost:${ASPNETCORE_HTTP_PORTS:-8080}/health" || exit 1
 ```
 
 - `--fail-with-body` (curl 7.76+, the image has 8.5) fails on 503 but still prints `Degraded` or `Unhealthy`.
   Plain `-f` drops the body, so the health log would lose the word.
+- `-w "\n"` ends the body with a newline, so the health log doesn't run the word into curl's error line.
 - `|| exit 1`, because curl exits 22 on an HTTP failure and Docker reserves exit code 2.
 - Shell form, so `ASPNETCORE_HTTP_PORTS` is read when the probe runs. A value listing several ports isn't handled.
   The image sets one.

@@ -63,7 +63,7 @@ and `CI=true dotnet build ReceiptSplit.slnx` stays free of warnings. The client 
 
 ## 4. Docker health check
 
-- [ ] 4.1 In the Dockerfile's `base` stage, before `USER $APP_UID`, install curl with `--no-install-recommends`
+- [x] 4.1 In the Dockerfile's `base` stage, before `USER $APP_UID`, install curl with `--no-install-recommends`
   and clear the apt lists. Add the `HEALTHCHECK` from the design (curl `--fail-with-body` on
   `localhost:${ASPNETCORE_HTTP_PORTS:-8080}/health`, `|| exit 1`, start period 60 s). Verify with a local build
   (`sg docker -c`) and a container run with `ASPNETCORE_ENVIRONMENT=Development`, `Auth__DevUser` set and a
@@ -72,7 +72,7 @@ and `CI=true dotnet build ReceiptSplit.slnx` stays free of warnings. The client 
     health log shows `Degraded`
   - with a stub server in the scratchpad answering `/v1/models` with the configured model, it turns healthy
   - stop and remove what was started
-- [ ] 4.2 Add a **Health** section to HOSTING.md covering:
+- [x] 4.2 Add a **Health** section to HOSTING.md covering:
   - what healthy and unhealthy mean in `docker ps`, and that Docker only marks the container, never restarts it
   - `docker inspect --format '{{json .State.Health}}'` with `Degraded` (model server down, wait) versus `Unhealthy`
     (settings broke after a good start, read the logs)
