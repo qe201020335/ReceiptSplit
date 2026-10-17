@@ -27,7 +27,8 @@ dotnet run --project src/ReceiptSplit
 ```
 
 Then open <http://localhost:5173>. In Development every request is signed in as `dev@example.com`, an admin
-(`Auth:DevUser` and `Auth:Admins` in `appsettings.Development.json`). The app won't start unless the model server
-answers and offers the configured model.
+(`Auth:DevUser` and `Auth:Admins` in `appsettings.Development.json`). The app won't start when the model server
+settings are wrong: the server rejects the API key, the URL isn't llama-server, or the configured model isn't
+offered. When the server is only unreachable, the app starts anyway, but can't read receipts until it answers.
 
 To host it, see [HOSTING.md](./HOSTING.md).

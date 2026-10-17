@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ReceiptSplit.Accounts;
 using ReceiptSplit.Accounts.CloudflareAccess;
 using ReceiptSplit.Data;
@@ -48,12 +50,20 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// For Docker's health check, which calls from inside the container without an Access token. It reports the last
+// model server check and never calls the server itself. Degraded (the server is down) answers 503 like Unhealthy,
+// since receipts can't be read either way; the body says which.
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResultStatusCodes = { [HealthStatus.Degraded] = StatusCodes.Status503ServiceUnavailable },
+}).AllowAnonymous();
+
 // Unknown API paths stay 404; every other unmatched path is a client-side route of the React app.
 app.MapFallback("/api/{**path}", () => Results.NotFound());
 app.MapFallbackToFile("/index.html").AllowAnonymous();
 
-// Before anything starts, so settings or a model server that can't be used stop a deploy instead of failing every
-// request or receipt.
+// Before anything starts, so wrong settings stop a deploy instead of failing every request or receipt. A model
+// server that is only down doesn't stop it.
 if (!await app.Services.CheckAccountSettingsAsync()
     || !await app.Services.CheckCloudflareAccessAsync()
     || !await app.Services.CheckModelServerAsync())

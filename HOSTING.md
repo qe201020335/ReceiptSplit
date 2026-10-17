@@ -61,4 +61,38 @@ the app and clear the email in the database by hand, then start it again:
 sqlite3 data/receiptsplit.db "UPDATE Users SET Email = NULL WHERE Email = 'admin@example.com';"
 ```
 
+## Health
+
+The app checks the model server when it starts and every 30 seconds after (`Llm__MonitorInterval`), and the image's
+health check asks the app for the result. `docker ps` shows the container as healthy while receipts can be read,
+and unhealthy while they can't. Docker only marks the container: it doesn't restart it, and the app keeps serving
+receipts, edits and splits.
+
+To see why a container is unhealthy:
+
+```sh
+docker inspect --format '{{json .State.Health}}' <container>
+```
+
+Its log ends with what the app answered:
+
+| Answer | Meaning | What to do |
+|---|---|---|
+| `Healthy` | The model server answers and offers the model | Nothing |
+| `Degraded` | The model server is down, restarting or not answering | Wait; the container turns healthy on its own once the server answers |
+| `Unhealthy` | The model server's settings stopped working after a good start, such as an API key changed on the server | Read `docker compose logs`, which name the problem once, then fix the settings |
+
+**A container that keeps restarting** has model server settings that are wrong from the start: the server rejects
+the API key, `LLM_BASE_URL` isn't llama-server, or the model isn't offered. The app logs one fatal line saying which
+and exits, and `restart: unless-stopped` starts it again. `docker compose logs` shows the line. A server that is
+only down doesn't stop the app.
+
+Receipts uploaded while the model server is down end as failed. Once the container is healthy, run extraction on
+them again.
+
+The app answers the health check at `/health` without a sign-in, so Docker's probe can reach it inside the
+container. Through Cloudflare, Access still asks for a sign-in on that path like any other. An outside monitor would
+need an Access bypass policy for `/health` or a service token. The answer is only the one word, with no URL or error
+text.
+
 [access]: https://developers.cloudflare.com/cloudflare-one/applications/configure-apps/self-hosted-public-app/

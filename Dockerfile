@@ -3,12 +3,19 @@
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
+# The image has no HTTP client for the health check below.
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 # The SQLite database and uploaded photos live here. It's owned by the non-root app user so a
 # named volume mounted over it inherits that ownership.
 RUN mkdir -p /app/data && chown $APP_UID /app/data
 USER $APP_UID
 ENV Storage__Root=/app/data
 EXPOSE 8080
+# Healthy only while /health answers 200, so the container shows unhealthy while receipts can't be read. With
+# --fail-with-body the health log keeps Degraded or Unhealthy; curl's own exit code 22 becomes 1, as Docker reserves
+# 2. The start period covers migrations and the startup check's 30 s timeout.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --start-interval=5s --retries=3 \
+    CMD curl -sS --fail-with-body -w "\n" "http://localhost:${ASPNETCORE_HTTP_PORTS:-8080}/health" || exit 1
 
 # Node for building receiptsplit.client: Vite 8 needs Node 20.19+ and the SDK image has none.
 FROM node:24-slim AS node
