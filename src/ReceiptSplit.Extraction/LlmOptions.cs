@@ -18,4 +18,7 @@ public sealed class LlmOptions
 
     /// <summary>Covers a cold model load plus waiting behind other requests on the shared server.</summary>
     public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(10);
+
+    /// <summary>How often the running app checks the model server, which the health endpoint reports.</summary>
+    public TimeSpan MonitorInterval { get; set; } = TimeSpan.FromSeconds(30);
 }

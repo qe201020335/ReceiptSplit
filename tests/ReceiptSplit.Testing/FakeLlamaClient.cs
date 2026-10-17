@@ -46,6 +46,11 @@ public sealed class FakeLlamaClient : ILlamaClient
 
     public ConcurrentQueue<PreparedImage> Requests { get; } = new();
 
+    private int _listCalls;
+
+    /// <summary>How many times the models were listed, by the startup check or the monitor.</summary>
+    public int ListCalls => _listCalls;
+
     /// <summary>Holds extraction requests until <see cref="Release"/> is called.</summary>
     public void Block() => _gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -63,9 +68,13 @@ public sealed class FakeLlamaClient : ILlamaClient
         return new LlmCompletion(Content, ModelName, "stop", 100, 50, TimeSpan.FromMilliseconds(5));
     }
 
-    public Task<IReadOnlyList<string>> ListModelsAsync(CancellationToken cancellationToken) => ListFailure is not null
-        ? Task.FromException<IReadOnlyList<string>>(ListFailure)
-        : Task.FromResult<IReadOnlyList<string>>(Models);
+    public Task<IReadOnlyList<string>> ListModelsAsync(CancellationToken cancellationToken)
+    {
+        Interlocked.Increment(ref _listCalls);
+        return ListFailure is not null
+            ? Task.FromException<IReadOnlyList<string>>(ListFailure)
+            : Task.FromResult<IReadOnlyList<string>>(Models);
+    }
 
     private static TaskCompletionSource CompletedGate()
     {

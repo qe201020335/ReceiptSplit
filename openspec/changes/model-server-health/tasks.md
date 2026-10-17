@@ -25,7 +25,7 @@ and `CI=true dotnet build ReceiptSplit.slnx` stays free of warnings. The client 
 
 ## 2. Watch the model server while the app runs
 
-- [ ] 2.1 Add a singleton `ModelServerState` holding the latest result. It logs only when the state changes:
+- [x] 2.1 Add a singleton `ModelServerState` holding the latest result. It logs only when the state changes:
   Warning for a change to Unavailable, Error for one to Misconfigured, Information for one to Available.
   `CheckModelServerAsync()` stores its result there, as the first state. Verify with new `ModelServerStateTests`
   using `ListLogger`:
@@ -33,13 +33,16 @@ and `CI=true dotnet build ReceiptSplit.slnx` stays free of warnings. The client 
   - Unavailable → Available logs one information line
   - Available → Misconfigured logs one error
   - the same state with a different reason logs nothing
-- [ ] 2.2 Add `Llm:MonitorInterval` (default 30 s) to `LlmOptions`. Add the `ModelServerMonitor` background
+- [x] 2.2 Add `Llm:MonitorInterval` (default 30 s) to `LlmOptions`. Add the `ModelServerMonitor` background
   service, which waits one interval, then runs the check on every tick (`PeriodicTimer` over `TimeProvider`) and
   stores the result. Register it, and `TimeProvider.System` with `TryAddSingleton`, in `AddExtraction()`. Verify
-  with an API test through `ReceiptApiFactory`, with `Llm:MonitorInterval` set to 100 ms: after the app starts
-  with the model available, setting `ListFailure` to a `ConnectionError` makes the state Unavailable within a few
-  seconds, and the app keeps serving `GET /api/receipts`.
-- [ ] 2.3 Mention the monitor in AGENTS.md: in the Layout line for Extraction ("model server check and monitor")
+  with new `ModelServerMonitorTests` (the state is internal to Extraction, so the host's tests see it only once
+  `/health` exists, in 3.1):
+  - with a 50 ms interval, setting `ListFailure` to a `ConnectionError` makes the state Unavailable, and clearing it
+    makes it Available again
+  - with a long interval, starting the monitor makes no check before the first interval
+  - an unexpected exception from a check doesn't stop the monitor
+- [x] 2.3 Mention the monitor in AGENTS.md: in the Layout line for Extraction ("model server check and monitor")
   and in the **Startup checks** bullet (the startup result seeds the monitor, which never exits the app). Verify
   by reading.
 

@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -9,8 +10,8 @@ namespace ReceiptSplit.Extraction;
 public static class ExtractionExtensions
 {
     /// <summary>
-    /// Registers the model server settings, the model client and its startup check. Libraries that read receipts
-    /// call this too, so a second call does nothing.
+    /// Registers the model server settings, the model client, its startup check and the monitor that keeps checking
+    /// it. Libraries that read receipts call this too, so a second call does nothing.
     /// </summary>
     public static IHostApplicationBuilder AddExtraction(this IHostApplicationBuilder builder)
     {
@@ -33,19 +34,23 @@ public static class ExtractionExtensions
             }
         });
         builder.Services.AddSingleton<ModelServerCheck>();
+        builder.Services.AddSingleton<ModelServerState>();
+        builder.Services.TryAddSingleton(TimeProvider.System);
+        builder.Services.AddHostedService<ModelServerMonitor>();
         return builder;
     }
 
     /// <summary>
-    /// Checks the model server and logs the result. Returns false only when its settings are wrong, so a deploy with
-    /// a wrong API key, URL or model stops instead of failing every receipt, while a server that is only down
-    /// doesn't take the rest of the app down with it.
+    /// Checks the model server, logs the result and makes it the monitor's first state. Returns false only when its
+    /// settings are wrong, so a deploy with a wrong API key, URL or model stops instead of failing every receipt,
+    /// while a server that is only down doesn't take the rest of the app down with it.
     /// </summary>
     public static async Task<bool> CheckModelServerAsync(
         this IServiceProvider services,
         CancellationToken cancellationToken = default)
     {
         var result = await services.GetRequiredService<ModelServerCheck>().RunAsync(cancellationToken);
+        services.GetRequiredService<ModelServerState>().Seed(result);
         var logger = services.GetRequiredService<ILogger<ModelServerCheck>>();
         switch (result.Status)
         {

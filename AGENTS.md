@@ -19,7 +19,8 @@ src/                              The backend: host → Receipts → Accounts �
                                   Access token checks (JWT bearer), the get-identity lookup and the Access settings
   ReceiptSplit.Data/              Entities, AppDbContext, migrations, Precision (cents and tax rate rounding), Storage
                                   settings
-  ReceiptSplit.Extraction/        Model client, prompt, output parser, promotions, model server check, Llm settings
+  ReceiptSplit.Extraction/        Model client, prompt, output parser, promotions, model server check and monitor,
+                                  Llm settings
 tests/                            xUnit v3 on Microsoft.Testing.Platform, one test project per library
   Directory.Build.props           Test setup for every project whose name ends in .Tests
   ReceiptSplit.Tests/             API tests through the host (Support/ReceiptApiFactory), startup and live model tests
@@ -92,7 +93,9 @@ browser.
   (connection or DNS failures, no answer in 30 s, 5xx, 408, 429) or `Misconfigured` (a `Llm:BaseUrl` that isn't
   http(s), TLS or non-HTTP answers, other 4xx such as a rejected API key, a body that isn't a model list, or no
   `Llm:Model` by id or alias). Only `Misconfigured` stops the start; a server that is only down logs a warning.
-  `ReceiptApiFactory` sets `Llm:Model` to the fake client's model for this.
+  The result is the first state of `ModelServerMonitor`, which runs the same check every `Llm:MonitorInterval`,
+  logs only when the status changes, and never stops the app. `ReceiptApiFactory` sets `Llm:Model` to the fake
+  client's model for this.
 - **Logging is Serilog, console only**: the container's stdout is the log, so there is no file sink. Levels live
   in the `Serilog` section of `appsettings.json` (`MinimumLevel`), not in `Logging`, which nothing reads any more.
 - **Sign-in comes from Cloudflare Access.** The app is deployed behind it and never signs anyone in itself. Every
