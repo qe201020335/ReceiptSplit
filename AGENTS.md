@@ -88,8 +88,11 @@ browser.
 - **Startup checks.** `Program.cs` exits with code 1 when one fails. `CheckAccountSettingsAsync()` refuses
   `Auth:DevUser` outside Development. `CheckCloudflareAccessAsync()` needs the team domain and audience and fetches
   Access's keys, unless the development user signs requests in. `CheckModelServerAsync()` lists the models (`GET
-  /v1/models`, which doesn't load one) and fails when the server can't be reached, rejects the API key or doesn't
-  offer `Llm:Model` by id or alias. `ReceiptApiFactory` sets `Llm:Model` to the fake client's model for this.
+  /v1/models`, which doesn't load one), and `ModelServerCheck` sorts the result into `Available`, `Unavailable`
+  (connection or DNS failures, no answer in 30 s, 5xx, 408, 429) or `Misconfigured` (a `Llm:BaseUrl` that isn't
+  http(s), TLS or non-HTTP answers, other 4xx such as a rejected API key, a body that isn't a model list, or no
+  `Llm:Model` by id or alias). Only `Misconfigured` stops the start; a server that is only down logs a warning.
+  `ReceiptApiFactory` sets `Llm:Model` to the fake client's model for this.
 - **Logging is Serilog, console only**: the container's stdout is the log, so there is no file sink. Levels live
   in the `Serilog` section of `appsettings.json` (`MinimumLevel`), not in `Logging`, which nothing reads any more.
 - **Sign-in comes from Cloudflare Access.** The app is deployed behind it and never signs anyone in itself. Every

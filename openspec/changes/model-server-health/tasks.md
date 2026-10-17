@@ -5,21 +5,21 @@ and `CI=true dotnet build ReceiptSplit.slnx` stays free of warnings. The client 
 
 ## 1. Sort model server failures into unavailable and misconfigured
 
-- [ ] 1.1 Replace `ModelServerCheck`'s bool with a result holding the state (`Available`, `Unavailable`,
+- [x] 1.1 Replace `ModelServerCheck`'s bool with a result holding the state (`Available`, `Unavailable`,
   `Misconfigured`) and a reason for the log, classified as in the design's table. Check `Llm:BaseUrl` (absolute,
   http or https) before resolving `ILlamaClient`, and make `ModelServerCheck` a singleton. Verify with
   `ModelServerCheckTests`, one test per row of the table, using `FakeLlamaClient.ListFailure` with
   `HttpRequestException(HttpRequestError…, …, statusCode: …)`, a `JsonException`, and a `TaskCanceledException`
   for the timeout. Include malformed URLs (`not a url`, `localhost:8000`, `ftp://host`) and the existing
   router-mode alias test.
-- [ ] 1.2 Make `CheckModelServerAsync()` return false only for Misconfigured. It logs Critical for Misconfigured,
+- [x] 1.2 Make `CheckModelServerAsync()` return false only for Misconfigured. It logs Critical for Misconfigured,
   a warning that the app starts without the model server for Unavailable, and Information for Available. Verify
   with `StartupTests`:
   - the existing "model not offered" case still fails to start
   - a `ConnectionError` from `ListFailure` starts, and `GET /api/receipts` answers 200
   - a 503 from `ListFailure` starts
   - `Llm:BaseUrl` set to `not a url` fails to start without an unhandled exception
-- [ ] 1.3 Update README's "Running it" line to say the app won't start when the model server's settings are wrong
+- [x] 1.3 Update README's "Running it" line to say the app won't start when the model server's settings are wrong
   (key rejected, URL not llama-server, model not offered), but starts when the server is only unreachable. Update
   AGENTS.md's **Startup checks** bullet to match. Verify by reading both against the design's table.
 

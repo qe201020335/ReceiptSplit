@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ReceiptSplit.Extraction;
@@ -31,21 +32,35 @@ public static class ExtractionExtensions
                 http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", llm.ApiKey);
             }
         });
-        builder.Services.AddScoped<ModelServerCheck>();
+        builder.Services.AddSingleton<ModelServerCheck>();
         return builder;
     }
 
     /// <summary>
-    /// Checks that the model server can be reached and offers the configured model, logging why when it can't.
-    /// Run before the app starts, so a model server that can't be used stops a deploy instead of failing every
-    /// receipt.
+    /// Checks the model server and logs the result. Returns false only when its settings are wrong, so a deploy with
+    /// a wrong API key, URL or model stops instead of failing every receipt, while a server that is only down
+    /// doesn't take the rest of the app down with it.
     /// </summary>
     public static async Task<bool> CheckModelServerAsync(
         this IServiceProvider services,
         CancellationToken cancellationToken = default)
     {
-        await using var scope = services.CreateAsyncScope();
-        return await scope.ServiceProvider.GetRequiredService<ModelServerCheck>().RunAsync(cancellationToken);
+        var result = await services.GetRequiredService<ModelServerCheck>().RunAsync(cancellationToken);
+        var logger = services.GetRequiredService<ILogger<ModelServerCheck>>();
+        switch (result.Status)
+        {
+            case ModelServerStatus.Misconfigured:
+                logger.LogCritical("{Reason}", result.Reason);
+                return false;
+            case ModelServerStatus.Unavailable:
+                logger.LogWarning(
+                    "Starting without the model server, so receipts can't be read until it answers. {Reason}",
+                    result.Reason);
+                return true;
+            default:
+                logger.LogInformation("{Reason}", result.Reason);
+                return true;
+        }
     }
 
     private sealed class ExtractionMarker;

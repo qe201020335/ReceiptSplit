@@ -52,8 +52,8 @@ app.MapControllers();
 app.MapFallback("/api/{**path}", () => Results.NotFound());
 app.MapFallbackToFile("/index.html").AllowAnonymous();
 
-// Before anything starts, so settings or a model server that can't be used stop a deploy instead of failing every
-// request or receipt.
+// Before anything starts, so wrong settings stop a deploy instead of failing every request or receipt. A model
+// server that is only down doesn't stop it.
 if (!await app.Services.CheckAccountSettingsAsync()
     || !await app.Services.CheckCloudflareAccessAsync()
     || !await app.Services.CheckModelServerAsync())
