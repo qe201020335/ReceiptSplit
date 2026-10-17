@@ -48,7 +48,7 @@ and `CI=true dotnet build ReceiptSplit.slnx` stays free of warnings. The client 
 
 ## 3. Report the state at /health
 
-- [ ] 3.1 Add `ModelServerHealthCheck : IHealthCheck` reading `ModelServerState` (Available → Healthy, Unavailable
+- [x] 3.1 Add `ModelServerHealthCheck : IHealthCheck` reading `ModelServerState` (Available → Healthy, Unavailable
   → Degraded, Misconfigured → Unhealthy), registered with `AddHealthChecks()` in `AddExtraction()`. Map
   `app.MapHealthChecks("/health", …).AllowAnonymous()` in `Program.cs` with Degraded answering 503. Add a call
   count for `ListModelsAsync` to `FakeLlamaClient`. Verify with new `HealthTests` in `ReceiptSplit.Tests`:
@@ -58,7 +58,7 @@ and `CI=true dotnet build ReceiptSplit.slnx` stays free of warnings. The client 
   - a request through `CreateClientWithToken` with no token gets the state, not 401
   - ten requests between two checks add no `ListModelsAsync` calls
   - the body is exactly the status word
-- [ ] 3.2 Mention `/health` in AGENTS.md's "How the backend works": what each state answers, that it never
+- [x] 3.2 Mention `/health` in AGENTS.md's "How the backend works": what each state answers, that it never
   contacts the model server, and that it needs no sign-in. Verify by reading.
 
 ## 4. Docker health check

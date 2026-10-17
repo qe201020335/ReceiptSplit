@@ -92,6 +92,14 @@ it is scoped, but everything it uses is a singleton or the typed client). `TimeP
 The state compares each new result with the previous one and logs only when the state differs. Reasons within one
 state aren't compared, so an outage whose error text changes doesn't log again.
 
+Two framework loggers would repeat lines the state already logs once, so `appsettings.json` raises their levels in
+the Serilog overrides (found in a scratch run during implementation):
+- `Microsoft.Extensions.Diagnostics.HealthChecks` to Fatal. `DefaultHealthCheckService` logs every Degraded
+  result as a warning and every Unhealthy one as an error, which would mean a line per Docker probe.
+- `System.Net.Http.HttpClient.ILlamaClient` to Warning. The typed client logs four information lines per request,
+  plus a stack trace for each failure, which would mean lines on every monitor tick. Extraction failures are still
+  logged, with the exception, by `ReceiptExtractor`.
+
 Levels:
 - Critical: Misconfigured at startup, the one fatal line before exiting. Unchanged.
 - Warning: Unavailable at startup ("starting without the model server: …"), and Available → Unavailable.

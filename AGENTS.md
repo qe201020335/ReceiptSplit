@@ -93,11 +93,17 @@ browser.
   (connection or DNS failures, no answer in 30 s, 5xx, 408, 429) or `Misconfigured` (a `Llm:BaseUrl` that isn't
   http(s), TLS or non-HTTP answers, other 4xx such as a rejected API key, a body that isn't a model list, or no
   `Llm:Model` by id or alias). Only `Misconfigured` stops the start; a server that is only down logs a warning.
-  The result is the first state of `ModelServerMonitor`, which runs the same check every `Llm:MonitorInterval`,
-  logs only when the status changes, and never stops the app. `ReceiptApiFactory` sets `Llm:Model` to the fake
-  client's model for this.
+  `ReceiptApiFactory` sets `Llm:Model` to the fake client's model for this. The result is the first state of
+  `ModelServerMonitor`, which runs the same check every `Llm:MonitorInterval`, logs only when the status changes,
+  and never stops the app.
+- **Health.** `GET /health` reports the monitor's last result: `200 Healthy` when the model server is available,
+  `503 Degraded` while it is unavailable, `503 Unhealthy` when its settings broke after a good start. The body is
+  only that word. It never contacts the model server and needs no sign-in, for Docker's `HEALTHCHECK` on
+  localhost.
 - **Logging is Serilog, console only**: the container's stdout is the log, so there is no file sink. Levels live
   in the `Serilog` section of `appsettings.json` (`MinimumLevel`), not in `Logging`, which nothing reads any more.
+  The overrides quiet the health check service and the model client's HttpClient, which would otherwise log on
+  every probe and every monitor tick.
 - **Sign-in comes from Cloudflare Access.** The app is deployed behind it and never signs anyone in itself. Every
   request needs the token Access adds in `Cf-Access-Jwt-Assertion`, checked by the JWT bearer handler (signature
   against Access's key set, issuer, audience, expiry); the plain email header is never trusted. Only

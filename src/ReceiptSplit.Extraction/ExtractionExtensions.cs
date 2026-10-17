@@ -10,8 +10,8 @@ namespace ReceiptSplit.Extraction;
 public static class ExtractionExtensions
 {
     /// <summary>
-    /// Registers the model server settings, the model client, its startup check and the monitor that keeps checking
-    /// it. Libraries that read receipts call this too, so a second call does nothing.
+    /// Registers the model server settings, the model client, its startup check, the monitor that keeps checking it
+    /// and the health check reporting it. Libraries that read receipts call this too, so a second call does nothing.
     /// </summary>
     public static IHostApplicationBuilder AddExtraction(this IHostApplicationBuilder builder)
     {
@@ -37,6 +37,7 @@ public static class ExtractionExtensions
         builder.Services.AddSingleton<ModelServerState>();
         builder.Services.TryAddSingleton(TimeProvider.System);
         builder.Services.AddHostedService<ModelServerMonitor>();
+        builder.Services.AddHealthChecks().AddCheck<ModelServerHealthCheck>("model-server");
         return builder;
     }
 
